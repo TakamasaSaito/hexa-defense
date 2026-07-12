@@ -40,6 +40,22 @@ CONFIGオブジェクトは `index.html` 冒頭にまとめる。マジックナ
 | `WAVE_SPAWN_INTERVAL_MIN` | 0.18 | 最小スポーン間隔(秒) |
 | `WAVE_HEAL_ON_CLEAR` | 20 | ウェーブクリア回復量 |
 
+## 2段階難度カーブ
+| キー | 値 | 説明 |
+|---|---|---|
+| `WAVE_PHASE_BREAK` | 6 | W6以降を加速期とするフェーズ境界 |
+| `WAVE_HP_SCALE_EARLY` | 1.0 | イントロ期(W1〜5)のHP増加係数(×ENEMY_RED_HP_WAVE) |
+| `WAVE_HP_SCALE_LATE` | 2.2 | 加速期(W6〜)のHP増加係数 |
+| `WAVE_SPEED_SCALE_EARLY` | 1.0 | イントロ期の速度増加係数 |
+| `WAVE_SPEED_SCALE_LATE` | 1.6 | 加速期の速度増加係数 |
+| `WAVE_SPAWN_SCALE_EARLY` | 1.0 | イントロ期の出現数増加係数 |
+| `WAVE_SPAWN_SCALE_LATE` | 1.5 | 加速期の出現数増加係数 |
+
+W6以降のHPは「W1〜5で使う線形加算」に乗数を掛けて急加速させる。
+各フェーズ係数を変えることで「どこで初見が詰まるか」を細かく制御できる。
+
+目標バランス: 無強化・武器1個でW6〜7敗北(Node.jsシミュレーションで確認)
+
 ## XP設計
 | キー | 値 | 説明 |
 |---|---|---|
@@ -53,7 +69,7 @@ CONFIGオブジェクトは `index.html` 冒頭にまとめる。マジックナ
 | キー | 値 | 説明 |
 |---|---|---|
 | `SPECIAL_MAX` | 1000 | 満タン値 |
-| `SPECIAL_DMG_RATIO` | 0.5 | 与ダメ→ゲージ変換率 |
+| `SPECIAL_DMG_RATIO` | 1.0 | 与ダメ→ゲージ変換率 |
 | `SPECIAL_DAMAGE_MULT` | 8 | 必殺ダメージ倍率 |
 | `SPECIAL_KNOCKBACK` | 200 | ノックバック距離(px) |
 
@@ -130,7 +146,8 @@ W5のミニボス(HP300)が充填の主力。W3〜5で初めて1回撃てる体�
 | `PIERCE_LV` | [1,2,3,999] | 貫通弾各レベルの最大ヒット数 |
 
 ## 調整指針
-1. **初見W3〜4敗北** が基準。`ENEMY_*_HP_WAVE` と `WAVE_SPAWN_WAVE` で調整
-2. **経済目標**: W3敗北で約50〜60コイン獲得 → `COIN_RED` / `WAVE_SPAWN_BASE` で調整
-3. 必殺が「本作最大の気持ちいい瞬間」になるよう `SPECIAL_DAMAGE_MULT` と演出時間は慎重に
-4. iPhone Safari 60fps 維持が最優先。パーティクル上限 `PARTICLE_MAX=200` を超えたら削除
+1. **初見W6〜7敗北(W5武器獲得後)** が基準。`WAVE_HP_SCALE_LATE` / `WAVE_SPAWN_SCALE_LATE` で調整
+2. **W1〜5は緩やかに**: `WAVE_HP_SCALE_EARLY=1.0` を変えず、イントロ期は線形増加のみ
+3. **経済目標**: W6〜7敗北で約50〜60コイン獲得 → `COIN_RED` / `WAVE_SPAWN_BASE` で調整
+4. 必殺が「本作最大の気持ちいい瞬間」になるよう `SPECIAL_DAMAGE_MULT` と演出時間は慎重に
+5. iPhone Safari 60fps 維持が最優先。パーティクル上限 `PARTICLE_MAX=200` を超えたら削除
