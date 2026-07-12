@@ -87,10 +87,17 @@ CONFIGオブジェクトは `index.html` 冒頭にまとめる。マジックナ
 ## 倍速設定
 | キー | 値 | 説明 |
 |---|---|---|
-| `settings.speedX2` | false | 倍速モードON/OFF (localStorage保存) |
-| サブステップ数 | 2 | x2時はdt/2でupdate()を2回呼ぶ |
+| `SPEED_STEPS` | [1,2,5,10] | サイクルトグル倍率リスト |
+| `SPEED_SUBSTEP_DT` | 0.01667 (1/60s) | 固定サブステップdt |
+| `SPEED_BUDGET_MS` | 8 | フレーム内処理時間上限(ms) |
+| `SPEED_SUBSTEP_MAX_LAG` | 2 | 持ち越し上限(mult×この値がcap) |
+| `SPEED_PARTICLE_THRESH` | 2 | このインデックス以上(x5~)でパーティクル間引き |
+| `SPEED_PARTICLE_RATIO` | 0.3 | 間引き時のパーティクル/トレイル生成率 |
+| `settings.speedIdx` | 0 | 現在の倍率インデックス(localStorage保存) |
 
-倍速はゲームシミュレーション(update)のみ。draw・演出タイマー(flashTimer/shakeTimer)・hexRot回転は等倍のまま。
+- 倍速はゲームシミュレーション(update)のみ
+- draw・演出タイマー(flashTimer/shakeTimer)・hexRot回転は等倍
+- 8ms超過時は残りサブステップを次フレームへ持ち越し(溜まりすぎはcapで抑制)
 
 ## 調整指針
 1. **初見W3〜4敗北** が基準。`ENEMY_*_HP_WAVE` と `WAVE_SPAWN_WAVE` で調整
