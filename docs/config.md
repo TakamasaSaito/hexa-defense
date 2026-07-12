@@ -84,6 +84,14 @@ CONFIGオブジェクトは `index.html` 冒頭にまとめる。マジックナ
 | `PERM_BASE_PRICES` | [50,50,40,40,60] | Tier1価格(順: dmg/rate/hp/range/coin) |
 | `PERM_PRICE_SCALE` | 1.8 | Tier価格倍率 |
 
+## 倍速設定
+| キー | 値 | 説明 |
+|---|---|---|
+| `settings.speedX2` | false | 倍速モードON/OFF (localStorage保存) |
+| サブステップ数 | 2 | x2時はdt/2でupdate()を2回呼ぶ |
+
+倍速はゲームシミュレーション(update)のみ。draw・演出タイマー(flashTimer/shakeTimer)・hexRot回転は等倍のまま。
+
 ## 調整指針
 1. **初見W3〜4敗北** が基準。`ENEMY_*_HP_WAVE` と `WAVE_SPAWN_WAVE` で調整
 2. **経済目標**: W3敗北で約50〜60コイン獲得 → `COIN_RED` / `WAVE_SPAWN_BASE` で調整

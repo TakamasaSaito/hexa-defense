@@ -114,6 +114,18 @@ html, body { width:100%; height:100%; overflow:hidden; background:#05090f; touch
 .card .cname { text-align:center; font-family:'Chakra Petch',sans-serif; font-weight:700; font-size:13px; color:#eaffff; }
 .card .cdesc { text-align:center; font-size:11px; color:rgba(150,200,235,0.75); margin-top:5px; line-height:1.5; padding:0 6px; }
 
+/* 倍速ボタン */
+#speedBtn { pointer-events:auto; display:flex; align-items:center; justify-content:center;
+            font-family:'Chakra Petch',sans-serif; font-size:12px; font-weight:700; letter-spacing:3px;
+            color:rgba(140,210,240,0.7);
+            background:rgba(77,243,255,0.05); border:1px solid rgba(77,243,255,0.28);
+            padding:7px 16px; cursor:pointer;
+            clip-path:polygon(8px 0,100% 0,100% calc(100% - 8px),calc(100% - 8px) 100%,0 100%,0 8px);
+            box-shadow:0 0 10px rgba(77,243,255,0.08); }
+#speedBtn.active { color:#eaffff; border-color:rgba(77,243,255,0.75);
+                   background:rgba(77,243,255,0.14);
+                   box-shadow:0 0 18px rgba(77,243,255,0.35); }
+
 /* リザルト */
 .res-title { font-family:'Chakra Petch',sans-serif; font-weight:700;
              font-size:clamp(34px,9vw,50px); letter-spacing:8px; color:#f2fdff; }
@@ -154,6 +166,7 @@ html, body { width:100%; height:100%; overflow:hidden; background:#05090f; touch
         <div class="panel" style="font-family:'Chakra Petch',sans-serif;font-size:13px;color:rgba(140,210,240,0.8);letter-spacing:2px;">
           LV<span id="lvNum" style="font-size:20px;font-weight:700;color:#eaffff;margin-left:4px;">1</span>
         </div>
+        <button id="speedBtn">x1</button>
       </div>
     </div>
     <div class="xpwrap">
@@ -362,14 +375,24 @@ var hexRot = 0;
    localStorage
 ===================================================================== */
 var bestWave = 0;
+var settings = { speedX2: false };
+
 (function(){
   try {
     var v = localStorage.getItem('hd_best_wave');
     if(v) bestWave = parseInt(v, 10) || 0;
   } catch(e) {}
+  try {
+    var s = localStorage.getItem('hd_settings');
+    if(s){ var parsed = JSON.parse(s); if(parsed && typeof parsed === 'object') settings.speedX2 = !!parsed.speedX2; }
+  } catch(e) {}
 })();
+
 function saveBestWave(){
   try { localStorage.setItem('hd_best_wave', String(bestWave)); } catch(e) {}
+}
+function saveSettings(){
+  try { localStorage.setItem('hd_settings', JSON.stringify(settings)); } catch(e) {}
 }
 
 /* =====================================================================
@@ -626,13 +649,23 @@ function loop(t){
   requestAnimationFrame(loop);
   var dt = Math.min((t - lastTime) / 1000, 0.05);
   lastTime = t;
-  if(STATE === 'play') update(dt, t / 1000);
+  if(STATE === 'play'){
+    /* サブステップ方式: x2時はdt/2でupdate()を2回。弾すり抜け防止 */
+    var subDt = settings.speedX2 ? dt / 2 : dt;
+    update(subDt);
+    if(settings.speedX2) update(subDt);
+    /* 演出タイマーはx2に関係なく等倍 */
+    if(flashTimer > 0){ flashTimer -= dt; }
+    if(shakeTimer > 0){
+      shakeTimer -= dt;
+      shakeX = (Math.random() - 0.5) * 2 * shakeMag;
+      shakeY = (Math.random() - 0.5) * 2 * shakeMag;
+    } else { shakeX = 0; shakeY = 0; }
+  }
   draw(t / 1000, dt);
 }
 
-function update(dt, tm){
-  hexRot += dt * 0.25;
-
+function update(dt){
   /* スポーン */
   if(spawnQueue > 0){
     spawnTimer -= dt;
@@ -643,11 +676,6 @@ function update(dt, tm){
       spawnTimer = Math.max(CFG.WAVE_SPAWN_INTERVAL_MIN, interval);
     }
   }
-
-  /* 演出タイマー */
-  if(flashTimer  > 0) flashTimer  -= dt;
-  if(shakeTimer  > 0){ shakeTimer -= dt; shakeX = (Math.random()-0.5)*2*shakeMag; shakeY = (Math.random()-0.5)*2*shakeMag; }
-  else { shakeX = 0; shakeY = 0; }
 
   /* 敵移動 */
   var i, e;
@@ -762,6 +790,7 @@ function hexPath(r, rot){
 }
 
 function draw(tm, dt){
+  hexRot += dt * 0.25; /* 描画側で等倍回転 */
   ctx.save();
   if(shakeTimer > 0) ctx.translate(shakeX, shakeY);
 
@@ -942,10 +971,23 @@ document.getElementById('specialBtn').addEventListener('click', function(){
   fireSpecial();
 });
 
+document.getElementById('speedBtn').addEventListener('click', function(){
+  settings.speedX2 = !settings.speedX2;
+  updateSpeedBtn();
+  saveSettings();
+});
+
+function updateSpeedBtn(){
+  var btn = document.getElementById('speedBtn');
+  btn.textContent = settings.speedX2 ? 'x2' : 'x1';
+  if(settings.speedX2){ btn.classList.add('active'); } else { btn.classList.remove('active'); }
+}
+
 function updateBestWave(){
   document.getElementById('bestWaveDisp').textContent = bestWave > 0 ? 'W.' + bestWave : '—';
 }
 updateBestWave();
+updateSpeedBtn();
 
 /* =====================================================================
    ゲームループ開始
