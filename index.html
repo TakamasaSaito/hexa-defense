@@ -656,6 +656,12 @@ function fireSpecial(){
 /* =====================================================================
    ウェーブ管理
 ===================================================================== */
+/* デバッグ: URLパラメータ ?wave=N でウェーブスキップ */
+function getUrlParam(name){
+  var m = window.location.search.match(new RegExp('[?&]' + name + '=([^&]*)'));
+  return m ? decodeURIComponent(m[1]) : null;
+}
+
 function resetGame(){
   wave = 1; kills = 0;
   xp = 0; level = 1; xpNext = CFG.XP_BASE;
@@ -674,9 +680,14 @@ function resetGame(){
   turretAngle = 0; fireTimer = 0;
   flashTimer = 0; shakeTimer = 0;
   hideBossBar();
+
+  /* ?wave=N デバッグスキップ */
+  var skipW = parseInt(getUrlParam('wave'));
+  if(skipW >= 1 && skipW <= CFG.MAX_WAVE){ wave = skipW; }
+
   updateXPHud();
   updateSpecialHud();
-  document.getElementById('waveNum').textContent = '1';
+  document.getElementById('waveNum').textContent = String(wave);
   document.getElementById('waveTotal').textContent = ' / ' + CFG.MAX_WAVE;
   startWave();
 }
@@ -847,13 +858,18 @@ function update(dt){
     e.rot += e.rotSpd * dt;
   }
 
-  /* ターゲット選択 */
+  /* ターゲット選択(敵 + ボス) */
   var target = null, best = 1e9;
   for(i = 0; i < enemies.length; i++){
     e = enemies[i];
     var ex = e.x - cx(), ey = e.y - cy();
     var dd = Math.sqrt(ex * ex + ey * ey);
     if(dd < tower.range && dd < best){ best = dd; target = e; }
+  }
+  if(boss !== null){
+    var btx = boss.x - cx(), bty = boss.y - cy();
+    var btd = Math.sqrt(btx * btx + bty * bty);
+    if(btd < tower.range && btd < best){ best = btd; target = boss; }
   }
 
   if(target){
@@ -943,20 +959,18 @@ function update(dt){
    小型ボス生成・更新
 ===================================================================== */
 function spawnMiniCharger(){
-  var edge = Math.floor(Math.random() * 4);
-  var m = 80, bx, by;
-  if(edge === 0){ bx = Math.random() * W; by = -m; }
-  else if(edge === 1){ bx = W + m; by = Math.random() * H; }
-  else if(edge === 2){ bx = Math.random() * W; by = H + m; }
-  else { bx = -m; by = Math.random() * H; }
+  /* 軌道半径は画面サイズから決定し、ランダムな初期角度でそのまま軌道上に配置 */
+  var orbitDist = Math.min(W, H) * CFG.BOSS_MINI_ORBIT_RATIO;
+  var angle = Math.random() * Math.PI * 2;
   boss = {
-    x: bx, y: by,
+    x: cx() + Math.cos(angle) * orbitDist,
+    y: cy() + Math.sin(angle) * orbitDist,
     hp: CFG.BOSS_MINI_HP, maxHp: CFG.BOSS_MINI_HP,
     size: CFG.BOSS_MINI_SIZE, color: CFG.BOSS_MINI_COLOR,
     dmg: CFG.BOSS_MINI_DMG, xpReward: CFG.BOSS_MINI_XP,
     rot: 0,
-    orbitAngle: Math.atan2(by - cy(), bx - cx()),
-    orbitDist: 0
+    orbitAngle: angle,
+    orbitDist: orbitDist
   };
   bossPhase = 'wander';
   bossTimer = CFG.BOSS_MINI_WANDER_DUR;
@@ -965,9 +979,6 @@ function spawnMiniCharger(){
 
 function updateBoss(dt){
   if(!boss) return;
-  /* 初回フレームで軌道半径を設定 */
-  if(boss.orbitDist === 0) boss.orbitDist = Math.min(W, H) * CFG.BOSS_MINI_ORBIT_RATIO;
-
   bossTimer -= dt;
 
   if(bossPhase === 'wander'){
@@ -1052,6 +1063,11 @@ function updateSubTurrets(dt){
       var sdx = se.x - sx, sdy = se.y - sy;
       var sdd = Math.sqrt(sdx * sdx + sdy * sdy);
       if(sdd < tower.range && sdd < sbest){ sbest = sdd; starget = se; }
+    }
+    if(boss !== null){
+      var sbdx = boss.x - sx, sbdy = boss.y - sy;
+      var sbdd = Math.sqrt(sbdx * sbdx + sbdy * sbdy);
+      if(sbdd < tower.range && sbdd < sbest){ sbest = sbdd; starget = boss; }
     }
     if(starget){
       var sta = Math.atan2(starget.y - sy, starget.x - sx);
