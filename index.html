@@ -307,6 +307,15 @@ var CFG = {
   WAVE_SPAWN_INTERVAL_MIN:  0.18,
   WAVE_HEAL_ON_CLEAR:       20,
 
+  /* 2段階難度カーブ: W1~5=イントロ, W6~=加速期 */
+  WAVE_PHASE_BREAK:        6,    /* 加速期が始まるウェーブ番号 */
+  WAVE_HP_SCALE_EARLY:     1.0,  /* イントロ期のHP増加係数 */
+  WAVE_HP_SCALE_LATE:      2.2,  /* 加速期のHP増加係数 */
+  WAVE_SPEED_SCALE_EARLY:  1.0,
+  WAVE_SPEED_SCALE_LATE:   1.6,
+  WAVE_SPAWN_SCALE_EARLY:  1.0,
+  WAVE_SPAWN_SCALE_LATE:   1.5,
+
   /* XP */
   XP_BASE:        20,
   XP_SCALE:       1.3,
@@ -403,6 +412,14 @@ resize();
 
 function cx(){ return W / 2; }
 function cy(){ return H * 0.42; }
+
+/* 2段階カーブ: ウェーブwでの累積スケーリング量を返す */
+function waveAccum(w, perWave, earlyScale, lateScale){
+  var brk = CFG.WAVE_PHASE_BREAK - 1;
+  var earlyW = w <= brk ? w : brk;
+  var lateW = w > brk ? w - brk : 0;
+  return earlyW * perWave * earlyScale + lateW * perWave * lateScale;
+}
 
 /* =====================================================================
    ゲーム状態
@@ -671,7 +688,7 @@ function startWave(){
     spawnQueue = 0; spawnTimer = 0;
     spawnMiniCharger();
   } else {
-    spawnQueue = CFG.WAVE_SPAWN_BASE + wave * CFG.WAVE_SPAWN_WAVE;
+    spawnQueue = Math.floor(CFG.WAVE_SPAWN_BASE + waveAccum(wave, CFG.WAVE_SPAWN_WAVE, CFG.WAVE_SPAWN_SCALE_EARLY, CFG.WAVE_SPAWN_SCALE_LATE));
     spawnTimer = 0;
   }
   document.getElementById('waveNum').textContent = String(wave);
@@ -711,19 +728,19 @@ function spawnEnemy(){
   var tank = Math.random() < tankRatio;
 
   if(tank){
-    var hp = CFG.ENEMY_ORANGE_HP_BASE + wave * CFG.ENEMY_ORANGE_HP_WAVE;
+    var hp = CFG.ENEMY_ORANGE_HP_BASE + waveAccum(wave, CFG.ENEMY_ORANGE_HP_WAVE, CFG.WAVE_HP_SCALE_EARLY, CFG.WAVE_HP_SCALE_LATE);
     enemies.push({
       x: x, y: y, hp: hp, maxHp: hp,
-      speed: CFG.ENEMY_ORANGE_SPEED_BASE + wave * CFG.ENEMY_ORANGE_SPEED_WAVE,
+      speed: CFG.ENEMY_ORANGE_SPEED_BASE + waveAccum(wave, CFG.ENEMY_ORANGE_SPEED_WAVE, CFG.WAVE_SPEED_SCALE_EARLY, CFG.WAVE_SPEED_SCALE_LATE),
       size: CFG.ENEMY_ORANGE_SIZE, color: '#ffa028',
       rot: Math.random() * Math.PI * 2, rotSpd: (Math.random() - 0.5) * 1.5,
       dmg: CFG.ENEMY_ORANGE_DMG, xpReward: CFG.XP_PER_ORANGE
     });
   } else {
-    var hp2 = CFG.ENEMY_RED_HP_BASE + wave * CFG.ENEMY_RED_HP_WAVE;
+    var hp2 = CFG.ENEMY_RED_HP_BASE + waveAccum(wave, CFG.ENEMY_RED_HP_WAVE, CFG.WAVE_HP_SCALE_EARLY, CFG.WAVE_HP_SCALE_LATE);
     enemies.push({
       x: x, y: y, hp: hp2, maxHp: hp2,
-      speed: CFG.ENEMY_RED_SPEED_BASE + wave * CFG.ENEMY_RED_SPEED_WAVE,
+      speed: CFG.ENEMY_RED_SPEED_BASE + waveAccum(wave, CFG.ENEMY_RED_SPEED_WAVE, CFG.WAVE_SPEED_SCALE_EARLY, CFG.WAVE_SPEED_SCALE_LATE),
       size: CFG.ENEMY_RED_SIZE, color: '#ff2e4c',
       rot: Math.random() * Math.PI * 2, rotSpd: (Math.random() - 0.5) * 1.5,
       dmg: CFG.ENEMY_RED_DMG, xpReward: CFG.XP_PER_RED
