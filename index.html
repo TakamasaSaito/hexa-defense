@@ -114,6 +114,38 @@ html, body { width:100%; height:100%; overflow:hidden; background:#05090f; touch
 .card .cname { text-align:center; font-family:'Chakra Petch',sans-serif; font-weight:700; font-size:13px; color:#eaffff; }
 .card .cdesc { text-align:center; font-size:11px; color:rgba(150,200,235,0.75); margin-top:5px; line-height:1.5; padding:0 6px; }
 
+/* ボスHPバー */
+#bossBar { position:absolute; top:calc(env(safe-area-inset-top,0px) + 62px); left:50%; transform:translateX(-50%);
+           width:min(70vw,260px); display:none; }
+.boss-label { font-family:'Chakra Petch',sans-serif; font-size:9px; letter-spacing:4px;
+              color:rgba(77,243,255,0.75); text-align:center; margin-bottom:3px; }
+.boss-track { height:7px; background:rgba(20,40,66,0.9); border:1px solid rgba(77,243,255,0.35);
+              clip-path:polygon(4px 0,100% 0,calc(100% - 4px) 100%,0 100%); overflow:hidden; }
+.boss-fill { height:100%; width:100%; background:linear-gradient(90deg,#4df3ff,#ff3d81);
+             box-shadow:0 0 10px rgba(77,243,255,0.7); transition:width 0.1s; }
+
+/* 武器報酬画面 */
+.wpn-head { font-family:'Chakra Petch',sans-serif; font-weight:700; font-size:20px; letter-spacing:5px;
+            color:#ffd257; text-shadow:0 0 20px rgba(255,210,87,0.8); }
+.wpn-sub { font-size:11px; letter-spacing:3px; color:rgba(200,180,100,0.7); margin:8px 0 26px;
+           font-family:'Chakra Petch',sans-serif; }
+.wpn-cards { display:flex; gap:16px; padding:0 16px; }
+.wpn-card { pointer-events:auto; width:130px; padding:0 0 16px; cursor:pointer; position:relative;
+            background:linear-gradient(180deg,rgba(30,20,10,0.97),rgba(16,12,6,0.97));
+            border:1px solid rgba(255,210,87,0.45);
+            clip-path:polygon(14px 0,100% 0,100% calc(100% - 14px),calc(100% - 14px) 100%,0 100%,0 14px);
+            transition:transform 0.15s; }
+.wpn-card:active { transform:scale(0.96); }
+.wpn-card .band { height:4px; background:linear-gradient(90deg,#ffd257,#ffaa00); box-shadow:0 0 10px rgba(255,210,87,0.8); }
+.wpn-card .tag { position:absolute; top:10px; right:8px; font-family:'Chakra Petch',sans-serif;
+                 font-size:8px; letter-spacing:2px; color:rgba(255,210,87,0.6); }
+.wpn-card .icon { margin:20px auto 10px; width:48px; height:48px; display:flex; align-items:center;
+                  justify-content:center; font-size:26px;
+                  background:rgba(255,210,87,0.1); border:1px solid rgba(255,210,87,0.35);
+                  clip-path:polygon(25% 0,75% 0,100% 50%,75% 100%,25% 100%,0 50%); }
+.wpn-card .cname { text-align:center; font-family:'Chakra Petch',sans-serif; font-weight:700; font-size:13px; color:#ffd257; }
+.wpn-card .cdesc { text-align:center; font-size:11px; color:rgba(200,180,100,0.8); margin-top:5px; line-height:1.5; padding:0 6px; }
+
 /* 倍速ボタン */
 #speedBtn { pointer-events:auto; display:flex; align-items:center; justify-content:center;
             font-family:'Chakra Petch',sans-serif; font-size:12px; font-weight:700; letter-spacing:3px;
@@ -175,6 +207,12 @@ html, body { width:100%; height:100%; overflow:hidden; background:#05090f; touch
     </div>
   </div>
 
+  <!-- ボスHPバー -->
+  <div id="bossBar">
+    <div class="boss-label">MINI BOSS</div>
+    <div class="boss-track"><div class="boss-fill" id="bossFill"></div></div>
+  </div>
+
   <!-- 必殺ボタン -->
   <button id="specialBtn">
     <span id="sbText">SPECIAL</span>
@@ -198,6 +236,13 @@ html, body { width:100%; height:100%; overflow:hidden; background:#05090f; touch
     <div class="lv-head">LEVEL UP!</div>
     <div class="lv-sub">SELECT ONE UPGRADE</div>
     <div class="cards" id="lvCards"></div>
+  </div>
+
+  <!-- 武器報酬画面 -->
+  <div class="screen" id="scrWeapon">
+    <div class="wpn-head">WAVE CLEAR!</div>
+    <div class="wpn-sub" id="wpnSub">CHOOSE YOUR WEAPON</div>
+    <div class="wpn-cards" id="wpnCards"></div>
   </div>
 
   <!-- リザルト -->
@@ -269,9 +314,11 @@ var CFG = {
   XP_PER_RED:     8,
   XP_PER_ORANGE:  18,
 
-  /* 必殺 */
+  /* 必殺
+     満タン(1000)に必要な与ダメ = SPECIAL_MAX / SPECIAL_DMG_RATIO = 1000 ダメージ
+     W1(9体×HP18平均): 162ダメ→0.16本 / W3(15体×HP30): 450→0.45本 / W5ボス込み: ≒1本 */
   SPECIAL_MAX:          1000,
-  SPECIAL_DMG_RATIO:    0.5,
+  SPECIAL_DMG_RATIO:    1.0,
   SPECIAL_DAMAGE_MULT:  8,
   SPECIAL_KNOCKBACK:    200,
   SPECIAL_FLASH_DUR:    0.6,
@@ -282,12 +329,35 @@ var CFG = {
   PARTICLE_MAX: 220,
 
   /* 倍速 */
-  SPEED_STEPS:            [1, 2, 5, 10], /* サイクル倍率 */
+  SPEED_STEPS:            [1, 3, 10],    /* サイクル倍率: x1→x3→x10 */
   SPEED_SUBSTEP_DT:       0.01667,       /* 固定サブステップ dt (1/60秒) */
   SPEED_BUDGET_MS:        8,             /* フレーム内処理時間上限 */
   SPEED_SUBSTEP_MAX_LAG:  2,             /* 持ち越し上限(フレーム数) */
-  SPEED_PARTICLE_THRESH:  2,             /* このインデックス以上でパーティクル間引き (x5) */
+  SPEED_PARTICLE_THRESH:  2,             /* このインデックス以上でパーティクル間引き (x10) */
   SPEED_PARTICLE_RATIO:   0.3,           /* 間引き時のパーティクル生成率 */
+
+  /* 報酬ウェーブ */
+  REWARD_WAVES: [5, 10, 20, 30, 40],
+
+  /* W5小型ボス(チャージャー弱体版) */
+  BOSS_MINI_HP:           300,
+  BOSS_MINI_SPEED_WANDER: 0.6,           /* 軌道角速度 rad/s */
+  BOSS_MINI_ORBIT_RATIO:  0.30,          /* 軌道半径 = min(W,H) × この値 */
+  BOSS_MINI_SPEED_CHARGE: 280,
+  BOSS_MINI_SIZE:         22,
+  BOSS_MINI_DMG:          18,
+  BOSS_MINI_WARN_DUR:     0.8,
+  BOSS_MINI_CHARGE_DUR:   0.55,
+  BOSS_MINI_REST_DUR:     2.2,
+  BOSS_MINI_WANDER_DUR:   3.0,
+  BOSS_MINI_COLOR:        '#4df3ff',
+  BOSS_MINI_XP:           80,
+
+  /* 特殊武器 */
+  SUB_TURRET_DMG_RATIO:  0.5,            /* サブ砲台ダメージ倍率 */
+  SUB_TURRET_FIRE_RATIO: 0.65,           /* メイン砲の何倍の発射間隔か */
+  SUB_TURRET_OFFSETS: [{ dx: 52, dy: -36 }, { dx: -52, dy: -36 }],
+  PIERCE_LV: [1, 2, 3, 999],            /* インデックス=武器レベル, 値=最大ヒット数 */
 
   /* 星 */
   STAR_COUNT: 70,
@@ -361,6 +431,17 @@ var floaters   = [];
 var spawnQueue = 0, spawnTimer = 0;
 var turretAngle = 0, fireTimer = 0;
 
+/* ボス */
+var boss      = null;
+var bossPhase = 'wander'; /* wander | warn | charge | rest */
+var bossTimer = 0;
+var bossDirX  = 0, bossDirY = 0;
+
+/* 特殊武器 */
+var weapons = { subTurret: 0, pierce: 0 };
+var subTurretAngles    = [0, 0];
+var subTurretFireTimers = [0, 0];
+
 /* 演出 */
 var flashTimer  = 0;
 var shakeTimer  = 0;
@@ -383,7 +464,7 @@ var hexRot = 0;
    localStorage
 ===================================================================== */
 var bestWave = 0;
-var settings = { speedIdx: 0 };
+var settings = { speedIdx: 1 }; /* デフォルトx3 */
 
 (function(){
   try {
@@ -395,11 +476,9 @@ var settings = { speedIdx: 0 };
     if(s){
       var parsed = JSON.parse(s);
       if(parsed && typeof parsed === 'object'){
-        /* マイグレーション: speedX2(bool) → speedIdx(0-3) */
-        if(typeof parsed.speedIdx === 'number'){
-          settings.speedIdx = Math.min(CFG.SPEED_STEPS.length - 1, Math.max(0, parsed.speedIdx));
-        } else if(parsed.speedX2){
-          settings.speedIdx = 1;
+        /* SPEED_STEPSが変わったためインデックスは範囲チェックのみ。範囲外はデフォルト1(x3) */
+        if(typeof parsed.speedIdx === 'number' && parsed.speedIdx >= 0 && parsed.speedIdx < CFG.SPEED_STEPS.length){
+          settings.speedIdx = parsed.speedIdx;
         }
       }
     }
@@ -565,6 +644,10 @@ function resetGame(){
   xp = 0; level = 1; xpNext = CFG.XP_BASE;
   specialGauge = 0; pendingLevelUps = 0;
   enemies = []; bullets = []; particles = []; floaters = [];
+  boss = null; bossPhase = 'wander'; bossTimer = 0;
+  weapons = { subTurret: 0, pierce: 0 };
+  subTurretAngles = [0, 0]; subTurretFireTimers = [0, 0];
+  pendingSteps = 0;
   tower.hp          = CFG.TOWER_HP;
   tower.maxHp       = CFG.TOWER_HP;
   tower.dmg         = CFG.TOWER_DMG;
@@ -573,6 +656,7 @@ function resetGame(){
   tower.range       = Math.min(W, H) * CFG.TOWER_RANGE_RATIO;
   turretAngle = 0; fireTimer = 0;
   flashTimer = 0; shakeTimer = 0;
+  hideBossBar();
   updateXPHud();
   updateSpecialHud();
   document.getElementById('waveNum').textContent = '1';
@@ -581,8 +665,15 @@ function resetGame(){
 }
 
 function startWave(){
-  spawnQueue = CFG.WAVE_SPAWN_BASE + wave * CFG.WAVE_SPAWN_WAVE;
-  spawnTimer = 0;
+  boss = null; hideBossBar();
+  if(wave === 5){
+    /* W5: 小型ボスのみ */
+    spawnQueue = 0; spawnTimer = 0;
+    spawnMiniCharger();
+  } else {
+    spawnQueue = CFG.WAVE_SPAWN_BASE + wave * CFG.WAVE_SPAWN_WAVE;
+    spawnTimer = 0;
+  }
   document.getElementById('waveNum').textContent = String(wave);
 }
 
@@ -590,6 +681,11 @@ function waveComplete(){
   /* 小回復 */
   tower.hp = Math.min(tower.maxHp, tower.hp + CFG.WAVE_HEAL_ON_CLEAR);
   floater(cx(), cy() - 80, '+' + CFG.WAVE_HEAL_ON_CLEAR + ' HP', '#3ddc74');
+
+  /* 報酬ウェーブ判定 */
+  for(var r = 0; r < CFG.REWARD_WAVES.length; r++){
+    if(wave === CFG.REWARD_WAVES[r]){ showWeaponReward(); return; }
+  }
 
   if(wave >= CFG.MAX_WAVE){
     endGame(true);
@@ -753,12 +849,13 @@ function update(dt){
     fireTimer -= dt;
     if(fireTimer <= 0){
       fireTimer = tower.fireInterval;
+      var pierceMax = CFG.PIERCE_LV[Math.min(weapons.pierce, CFG.PIERCE_LV.length - 1)];
       bullets.push({
         x: cx() + Math.cos(turretAngle) * (CFG.TOWER_HEX_R_OUTER + 6),
         y: cy() + Math.sin(turretAngle) * (CFG.TOWER_HEX_R_OUTER + 6),
         vx: Math.cos(turretAngle) * tower.bulletSpeed,
         vy: Math.sin(turretAngle) * tower.bulletSpeed,
-        life: CFG.BULLET_LIFE
+        life: CFG.BULLET_LIFE, dmg: tower.dmg, pierceLeft: pierceMax
       });
     }
   }
@@ -774,26 +871,27 @@ function update(dt){
       if(particles.length < CFG.PARTICLE_MAX)
         particles.push({ x: b.x, y: b.y, vx: 0, vy: 0, life: 0.22, maxLife: 0.22, r: 2, color: '#9adfff' });
     }
-    var hit = false;
+    var depleted = false;
     for(var j = enemies.length - 1; j >= 0; j--){
       e = enemies[j];
       var hx = b.x - e.x, hy = b.y - e.y;
       if(Math.abs(hx) < e.size * 0.75 && Math.abs(hy) < e.size * 0.75){
-        e.hp -= tower.dmg;
-        gainSpecial(tower.dmg);
-        floater(e.x, e.y - e.size, String(Math.round(tower.dmg)), '#ffef9a');
+        var bdmg = b.dmg !== undefined ? b.dmg : tower.dmg;
+        e.hp -= bdmg;
+        gainSpecial(bdmg);
+        floater(e.x, e.y - e.size, String(Math.round(bdmg)), '#ffef9a');
         burst(b.x, b.y, e.color, 6);
-        hit = true;
+        b.pierceLeft--;
         if(e.hp <= 0){
           burst(e.x, e.y, e.color, 22);
           kills++;
           gainXP(e.xpReward);
           enemies.splice(j, 1);
         }
-        break;
+        if(b.pierceLeft <= 0){ depleted = true; break; }
       }
     }
-    if(hit || b.life <= 0) bullets.splice(i, 1);
+    if(depleted || b.life <= 0) bullets.splice(i, 1);
   }
 
   /* パーティクル */
@@ -812,10 +910,205 @@ function update(dt){
     if(f.life <= 0) floaters.splice(i, 1);
   }
 
+  /* ボス処理 */
+  if(boss !== null) updateBoss(dt);
+
+  /* サブ砲台発射 */
+  if(weapons.subTurret > 0) updateSubTurrets(dt);
+
   /* ウェーブクリア判定 */
-  if(spawnQueue === 0 && enemies.length === 0 && STATE === 'play'){
+  if(spawnQueue === 0 && enemies.length === 0 && boss === null && STATE === 'play'){
     waveComplete();
   }
+}
+
+/* =====================================================================
+   小型ボス生成・更新
+===================================================================== */
+function spawnMiniCharger(){
+  var edge = Math.floor(Math.random() * 4);
+  var m = 80, bx, by;
+  if(edge === 0){ bx = Math.random() * W; by = -m; }
+  else if(edge === 1){ bx = W + m; by = Math.random() * H; }
+  else if(edge === 2){ bx = Math.random() * W; by = H + m; }
+  else { bx = -m; by = Math.random() * H; }
+  boss = {
+    x: bx, y: by,
+    hp: CFG.BOSS_MINI_HP, maxHp: CFG.BOSS_MINI_HP,
+    size: CFG.BOSS_MINI_SIZE, color: CFG.BOSS_MINI_COLOR,
+    dmg: CFG.BOSS_MINI_DMG, xpReward: CFG.BOSS_MINI_XP,
+    rot: 0,
+    orbitAngle: Math.atan2(by - cy(), bx - cx()),
+    orbitDist: 0
+  };
+  bossPhase = 'wander';
+  bossTimer = CFG.BOSS_MINI_WANDER_DUR;
+  showBossBar();
+}
+
+function updateBoss(dt){
+  if(!boss) return;
+  /* 初回フレームで軌道半径を設定 */
+  if(boss.orbitDist === 0) boss.orbitDist = Math.min(W, H) * CFG.BOSS_MINI_ORBIT_RATIO;
+
+  bossTimer -= dt;
+
+  if(bossPhase === 'wander'){
+    boss.orbitAngle += CFG.BOSS_MINI_SPEED_WANDER * dt;
+    boss.x = cx() + Math.cos(boss.orbitAngle) * boss.orbitDist;
+    boss.y = cy() + Math.sin(boss.orbitAngle) * boss.orbitDist;
+    if(bossTimer <= 0){
+      bossPhase = 'warn'; bossTimer = CFG.BOSS_MINI_WARN_DUR;
+      var dx = cx() - boss.x, dy = cy() - boss.y;
+      var d  = Math.sqrt(dx * dx + dy * dy);
+      bossDirX = dx / d; bossDirY = dy / d;
+    }
+  } else if(bossPhase === 'warn'){
+    if(bossTimer <= 0){ bossPhase = 'charge'; bossTimer = CFG.BOSS_MINI_CHARGE_DUR; }
+  } else if(bossPhase === 'charge'){
+    boss.x += bossDirX * CFG.BOSS_MINI_SPEED_CHARGE * dt;
+    boss.y += bossDirY * CFG.BOSS_MINI_SPEED_CHARGE * dt;
+    var dx2 = boss.x - cx(), dy2 = boss.y - cy();
+    var d2  = Math.sqrt(dx2 * dx2 + dy2 * dy2);
+    if(d2 < CFG.TOWER_HIT_RADIUS + boss.size * 0.5){
+      tower.hp -= boss.dmg;
+      burst(boss.x, boss.y, boss.color, 20);
+      /* タワーから弾き返す */
+      boss.x = cx() + bossDirX * -(CFG.TOWER_HIT_RADIUS + boss.size);
+      boss.y = cy() + bossDirY * -(CFG.TOWER_HIT_RADIUS + boss.size);
+      bossPhase = 'rest'; bossTimer = CFG.BOSS_MINI_REST_DUR;
+      if(tower.hp <= 0){ tower.hp = 0; endGame(false); return; }
+    }
+    if(bossTimer <= 0){ bossPhase = 'rest'; bossTimer = CFG.BOSS_MINI_REST_DUR; }
+  } else if(bossPhase === 'rest'){
+    if(bossTimer <= 0){
+      bossPhase = 'wander'; bossTimer = CFG.BOSS_MINI_WANDER_DUR;
+      boss.orbitAngle = Math.atan2(boss.y - cy(), boss.x - cx());
+    }
+  }
+  boss.rot += 1.2 * dt;
+
+  /* 弾との当たり判定 */
+  for(var i = bullets.length - 1; i >= 0; i--){
+    var b = bullets[i];
+    var bx = b.x - boss.x, by2 = b.y - boss.y;
+    if(Math.abs(bx) < boss.size * 0.75 && Math.abs(by2) < boss.size * 0.75){
+      var bdmg = b.dmg !== undefined ? b.dmg : tower.dmg;
+      boss.hp -= bdmg;
+      gainSpecial(bdmg);
+      floater(boss.x, boss.y - boss.size, String(Math.round(bdmg)), '#4df3ff');
+      burst(b.x, b.y, boss.color, 4);
+      b.pierceLeft--;
+      if(b.pierceLeft <= 0) bullets.splice(i, 1);
+      if(boss.hp <= 0){
+        burst(boss.x, boss.y, boss.color, 40);
+        kills++;
+        gainXP(boss.xpReward);
+        boss = null; hideBossBar();
+        return;
+      }
+    }
+  }
+  updateBossHpBar();
+}
+
+function showBossBar(){
+  document.getElementById('bossBar').style.display = 'block';
+  document.getElementById('bossFill').style.width = '100%';
+}
+function hideBossBar(){ document.getElementById('bossBar').style.display = 'none'; }
+function updateBossHpBar(){
+  if(!boss) return;
+  document.getElementById('bossFill').style.width = Math.max(0, boss.hp / boss.maxHp * 100) + '%';
+}
+
+/* =====================================================================
+   サブ砲台更新
+===================================================================== */
+function updateSubTurrets(dt){
+  for(var si = 0; si < weapons.subTurret && si < CFG.SUB_TURRET_OFFSETS.length; si++){
+    var off = CFG.SUB_TURRET_OFFSETS[si];
+    var sx = cx() + off.dx, sy = cy() + off.dy;
+    var starget = null, sbest = 1e9;
+    for(var sj = 0; sj < enemies.length; sj++){
+      var se = enemies[sj];
+      var sdx = se.x - sx, sdy = se.y - sy;
+      var sdd = Math.sqrt(sdx * sdx + sdy * sdy);
+      if(sdd < tower.range && sdd < sbest){ sbest = sdd; starget = se; }
+    }
+    if(starget){
+      var sta = Math.atan2(starget.y - sy, starget.x - sx);
+      var sdiff = sta - subTurretAngles[si];
+      while(sdiff >  Math.PI) sdiff -= Math.PI * 2;
+      while(sdiff < -Math.PI) sdiff += Math.PI * 2;
+      subTurretAngles[si] += sdiff * Math.min(1, dt * 8);
+      subTurretFireTimers[si] -= dt;
+      if(subTurretFireTimers[si] <= 0){
+        subTurretFireTimers[si] = tower.fireInterval / CFG.SUB_TURRET_FIRE_RATIO;
+        var sDmg = tower.dmg * CFG.SUB_TURRET_DMG_RATIO;
+        var sAng = subTurretAngles[si];
+        var spMax = CFG.PIERCE_LV[Math.min(weapons.pierce, CFG.PIERCE_LV.length - 1)];
+        bullets.push({
+          x: sx + Math.cos(sAng) * 14,
+          y: sy + Math.sin(sAng) * 14,
+          vx: Math.cos(sAng) * tower.bulletSpeed,
+          vy: Math.sin(sAng) * tower.bulletSpeed,
+          life: CFG.BULLET_LIFE, dmg: sDmg, pierceLeft: spMax
+        });
+      }
+    }
+  }
+}
+
+/* =====================================================================
+   武器報酬
+===================================================================== */
+function showWeaponReward(){
+  STATE = 'weapon_reward';
+  /* 選択肢を動的生成 */
+  var container = document.getElementById('wpnCards');
+  container.innerHTML = '';
+
+  /* サブ砲台カード */
+  var stLv = weapons.subTurret;
+  var stCard = makeWpnCard('sub_turret', '&#128302;', 'サブ砲台',
+    stLv === 0 ? '小型砲台を<br>1基追加' : stLv === 1 ? '2基目を<br>追加' : '最大強化済',
+    stLv >= 2);
+  container.appendChild(stCard);
+
+  /* 貫通弾カード */
+  var piLv = weapons.pierce;
+  var piNames = ['貫通弾', '貫通弾Lv2', '貫通弾Lv3', '最大強化済'];
+  var piDescs = ['弾が敵を<br>1体貫通', '2体貫通に<br>強化', '無限貫通に<br>強化', '最大強化済'];
+  var piCard = makeWpnCard('pierce', '&#11014;', piNames[Math.min(piLv, 3)], piDescs[Math.min(piLv, 3)], piLv >= 3);
+  container.appendChild(piCard);
+
+  document.getElementById('wpnSub').textContent = 'CHOOSE YOUR WEAPON — WAVE ' + wave;
+  showScreen('scrWeapon');
+}
+
+function makeWpnCard(id, icon, name, desc, disabled){
+  var div = document.createElement('div');
+  div.className = 'wpn-card' + (disabled ? ' disabled' : '');
+  div.innerHTML =
+    '<div class="band"></div>' +
+    '<div class="tag">SPECIAL</div>' +
+    '<div class="icon">' + icon + '</div>' +
+    '<div class="cname">' + name + '</div>' +
+    '<div class="cdesc">' + desc + '</div>';
+  if(!disabled){
+    div.setAttribute('data-wpn', id);
+    div.addEventListener('click', onWeaponSelect);
+  }
+  return div;
+}
+
+function onWeaponSelect(){
+  var id = this.getAttribute('data-wpn');
+  if(id === 'sub_turret') weapons.subTurret = Math.min(weapons.subTurret + 1, 2);
+  if(id === 'pierce')     weapons.pierce    = Math.min(weapons.pierce    + 1, CFG.PIERCE_LV.length - 1);
+  hideScreen('scrWeapon');
+  if(wave >= CFG.MAX_WAVE){ endGame(true); } else { wave++; startWave(); STATE = 'play'; }
 }
 
 /* =====================================================================
@@ -903,12 +1196,45 @@ function draw(tm, dt){
     }
   }
 
+  /* ボス */
+  if(boss !== null){
+    ctx.save(); ctx.translate(boss.x, boss.y); ctx.rotate(boss.rot);
+    ctx.shadowColor = boss.color; ctx.shadowBlur = 24;
+    ctx.strokeStyle = boss.color; ctx.lineWidth = 4;
+    hexPath(boss.size, 0); ctx.stroke();
+    ctx.globalAlpha = 0.18; ctx.fillStyle = boss.color;
+    hexPath(boss.size, 0); ctx.fill();
+    ctx.globalAlpha = 1; ctx.restore();
+    /* warn: 予告線 */
+    if(bossPhase === 'warn'){
+      var warnAlpha = 0.5 + 0.45 * Math.sin(tm * Math.PI * 10);
+      ctx.globalAlpha = warnAlpha;
+      ctx.strokeStyle = '#ff3d81'; ctx.lineWidth = 2;
+      ctx.setLineDash([8, 6]);
+      ctx.beginPath(); ctx.moveTo(boss.x, boss.y);
+      ctx.lineTo(boss.x + bossDirX * (W + H), boss.y + bossDirY * (W + H));
+      ctx.stroke(); ctx.setLineDash([]); ctx.globalAlpha = 1;
+    }
+  }
+
   /* 弾 */
   ctx.shadowColor = '#57d8ff'; ctx.shadowBlur = 14; ctx.fillStyle = '#cdf2ff';
   for(j = 0; j < bullets.length; j++){
     ctx.beginPath(); ctx.arc(bullets[j].x, bullets[j].y, 4, 0, Math.PI * 2); ctx.fill();
   }
   ctx.shadowBlur = 0;
+
+  /* サブ砲台 */
+  for(var si = 0; si < weapons.subTurret && si < CFG.SUB_TURRET_OFFSETS.length; si++){
+    var soff = CFG.SUB_TURRET_OFFSETS[si];
+    ctx.save(); ctx.translate(cx() + soff.dx, cy() + soff.dy);
+    ctx.shadowColor = '#4df3ff'; ctx.shadowBlur = 12;
+    ctx.strokeStyle = 'rgba(77,243,255,0.8)'; ctx.lineWidth = 2;
+    hexPath(11, -hexRot * 2); ctx.stroke();
+    ctx.rotate(subTurretAngles[si]);
+    ctx.fillStyle = '#d8f6ff'; ctx.fillRect(7, -2, 11, 4);
+    ctx.shadowBlur = 0; ctx.restore();
+  }
 
   /* タワー */
   ctx.save(); ctx.translate(cx(), cy());

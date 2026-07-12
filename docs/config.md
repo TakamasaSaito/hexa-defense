@@ -87,17 +87,47 @@ CONFIGオブジェクトは `index.html` 冒頭にまとめる。マジックナ
 ## 倍速設定
 | キー | 値 | 説明 |
 |---|---|---|
-| `SPEED_STEPS` | [1,2,5,10] | サイクルトグル倍率リスト |
+| `SPEED_STEPS` | [1,3,10] | サイクルトグル倍率リスト(デフォルトx3) |
 | `SPEED_SUBSTEP_DT` | 0.01667 (1/60s) | 固定サブステップdt |
 | `SPEED_BUDGET_MS` | 8 | フレーム内処理時間上限(ms) |
 | `SPEED_SUBSTEP_MAX_LAG` | 2 | 持ち越し上限(mult×この値がcap) |
 | `SPEED_PARTICLE_THRESH` | 2 | このインデックス以上(x5~)でパーティクル間引き |
 | `SPEED_PARTICLE_RATIO` | 0.3 | 間引き時のパーティクル/トレイル生成率 |
-| `settings.speedIdx` | 0 | 現在の倍率インデックス(localStorage保存) |
+| `settings.speedIdx` | 1 | 現在の倍率インデックス(デフォルト1=x3、localStorage保存) |
 
 - 倍速はゲームシミュレーション(update)のみ
 - draw・演出タイマー(flashTimer/shakeTimer)・hexRot回転は等倍
 - 8ms超過時は残りサブステップを次フレームへ持ち越し(溜まりすぎはcapで抑制)
+
+## 必殺ゲージ充填量の目安
+`SPECIAL_MAX / SPECIAL_DMG_RATIO = 満タンまでに必要な与ダメージ量`
+
+| 設定 | 必要与ダメ | W1(9体) | W3(15体) | W5ボス込み |
+|---|---|---|---|---|
+| ratio=0.5(旧) | 2000 | 0.08本 | 0.23本 | 〜0.5本 |
+| ratio=1.0(現在) | 1000 | 0.16本 | 0.45本 | 〜1本 |
+
+W5のミニボス(HP300)が充填の主力。W3〜5で初めて1回撃てる体感が目標。
+
+## W5小型ボス設定
+| キー | 値 | 説明 |
+|---|---|---|
+| `BOSS_MINI_HP` | 300 | HP |
+| `BOSS_MINI_SPEED_WANDER` | 0.6 rad/s | 軌道回転速度 |
+| `BOSS_MINI_ORBIT_RATIO` | 0.30 | 軌道半径 = min(W,H) × この値 |
+| `BOSS_MINI_SPEED_CHARGE` | 280 px/s | 突進速度 |
+| `BOSS_MINI_WARN_DUR` | 0.8 s | 予告線表示時間 |
+| `BOSS_MINI_CHARGE_DUR` | 0.55 s | 突進持続時間 |
+| `BOSS_MINI_REST_DUR` | 2.2 s | 休止時間 |
+| `BOSS_MINI_WANDER_DUR` | 3.0 s | 周回時間(次のwarnまで) |
+
+## 特殊武器設定
+| キー | 値 | 説明 |
+|---|---|---|
+| `REWARD_WAVES` | [5,10,20,30,40] | 武器報酬が出るウェーブ |
+| `SUB_TURRET_DMG_RATIO` | 0.5 | サブ砲台のダメージ倍率 |
+| `SUB_TURRET_FIRE_RATIO` | 0.65 | サブ砲台の発射速度倍率 |
+| `PIERCE_LV` | [1,2,3,999] | 貫通弾各レベルの最大ヒット数 |
 
 ## 調整指針
 1. **初見W3〜4敗北** が基準。`ENEMY_*_HP_WAVE` と `WAVE_SPAWN_WAVE` で調整
