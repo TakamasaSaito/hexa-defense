@@ -858,18 +858,17 @@ function update(dt){
     e.rot += e.rotSpd * dt;
   }
 
-  /* ターゲット選択(敵 + ボス) */
+  /* 戦闘対象リスト(enemies + boss)を毎フレーム構築 */
+  var combatants = enemies.slice();
+  if(boss !== null) combatants.push(boss);
+
+  /* ターゲット選択 */
   var target = null, best = 1e9;
-  for(i = 0; i < enemies.length; i++){
-    e = enemies[i];
-    var ex = e.x - cx(), ey = e.y - cy();
-    var dd = Math.sqrt(ex * ex + ey * ey);
-    if(dd < tower.range && dd < best){ best = dd; target = e; }
-  }
-  if(boss !== null){
-    var btx = boss.x - cx(), bty = boss.y - cy();
-    var btd = Math.sqrt(btx * btx + bty * bty);
-    if(btd < tower.range && btd < best){ best = btd; target = boss; }
+  for(i = 0; i < combatants.length; i++){
+    var ct0 = combatants[i];
+    var cdx = ct0.x - cx(), cdy = ct0.y - cy();
+    var cdd = Math.sqrt(cdx * cdx + cdy * cdy);
+    if(cdd < tower.range && cdd < best){ best = cdd; target = ct0; }
   }
 
   if(target){
@@ -893,7 +892,7 @@ function update(dt){
     }
   }
 
-  /* 弾更新 */
+  /* 弾更新 + 全戦闘対象への当たり判定 */
   for(i = bullets.length - 1; i >= 0; i--){
     var b = bullets[i];
     b.x += b.vx * dt; b.y += b.vy * dt; b.life -= dt;
@@ -905,21 +904,27 @@ function update(dt){
         particles.push({ x: b.x, y: b.y, vx: 0, vy: 0, life: 0.22, maxLife: 0.22, r: 2, color: '#9adfff' });
     }
     var depleted = false;
-    for(var j = enemies.length - 1; j >= 0; j--){
-      e = enemies[j];
-      var hx = b.x - e.x, hy = b.y - e.y;
-      if(Math.abs(hx) < e.size * 0.75 && Math.abs(hy) < e.size * 0.75){
+    for(var j = combatants.length - 1; j >= 0; j--){
+      var ct = combatants[j];
+      var hx = b.x - ct.x, hy = b.y - ct.y;
+      if(Math.abs(hx) < ct.size * 0.75 && Math.abs(hy) < ct.size * 0.75){
         var bdmg = b.dmg !== undefined ? b.dmg : tower.dmg;
-        e.hp -= bdmg;
+        ct.hp -= bdmg;
         gainSpecial(bdmg);
-        floater(e.x, e.y - e.size, String(Math.round(bdmg)), '#ffef9a');
-        burst(b.x, b.y, e.color, 6);
+        floater(ct.x, ct.y - ct.size, String(Math.round(bdmg)), ct.isBoss ? '#4df3ff' : '#ffef9a');
+        burst(b.x, b.y, ct.color, ct.isBoss ? 4 : 6);
         b.pierceLeft--;
-        if(e.hp <= 0){
-          burst(e.x, e.y, e.color, 22);
+        if(ct.hp <= 0){
+          burst(ct.x, ct.y, ct.color, ct.isBoss ? 40 : 22);
           kills++;
-          gainXP(e.xpReward);
-          enemies.splice(j, 1);
+          gainXP(ct.xpReward);
+          if(ct.isBoss){
+            boss = null; hideBossBar();
+          } else {
+            var ei = enemies.indexOf(ct);
+            if(ei !== -1) enemies.splice(ei, 1);
+          }
+          combatants.splice(j, 1);
         }
         if(b.pierceLeft <= 0){ depleted = true; break; }
       }
@@ -965,6 +970,7 @@ function spawnMiniCharger(){
   boss = {
     x: cx() + Math.cos(angle) * orbitDist,
     y: cy() + Math.sin(angle) * orbitDist,
+    isBoss: true,
     hp: CFG.BOSS_MINI_HP, maxHp: CFG.BOSS_MINI_HP,
     size: CFG.BOSS_MINI_SIZE, color: CFG.BOSS_MINI_COLOR,
     dmg: CFG.BOSS_MINI_DMG, xpReward: CFG.BOSS_MINI_XP,
@@ -1015,28 +1021,6 @@ function updateBoss(dt){
     }
   }
   boss.rot += 1.2 * dt;
-
-  /* 弾との当たり判定 */
-  for(var i = bullets.length - 1; i >= 0; i--){
-    var b = bullets[i];
-    var bx = b.x - boss.x, by2 = b.y - boss.y;
-    if(Math.abs(bx) < boss.size * 0.75 && Math.abs(by2) < boss.size * 0.75){
-      var bdmg = b.dmg !== undefined ? b.dmg : tower.dmg;
-      boss.hp -= bdmg;
-      gainSpecial(bdmg);
-      floater(boss.x, boss.y - boss.size, String(Math.round(bdmg)), '#4df3ff');
-      burst(b.x, b.y, boss.color, 4);
-      b.pierceLeft--;
-      if(b.pierceLeft <= 0) bullets.splice(i, 1);
-      if(boss.hp <= 0){
-        burst(boss.x, boss.y, boss.color, 40);
-        kills++;
-        gainXP(boss.xpReward);
-        boss = null; hideBossBar();
-        return;
-      }
-    }
-  }
   updateBossHpBar();
 }
 
@@ -1054,20 +1038,17 @@ function updateBossHpBar(){
    サブ砲台更新
 ===================================================================== */
 function updateSubTurrets(dt){
+  var sCombatants = enemies.slice();
+  if(boss !== null) sCombatants.push(boss);
   for(var si = 0; si < weapons.subTurret && si < CFG.SUB_TURRET_OFFSETS.length; si++){
     var off = CFG.SUB_TURRET_OFFSETS[si];
     var sx = cx() + off.dx, sy = cy() + off.dy;
     var starget = null, sbest = 1e9;
-    for(var sj = 0; sj < enemies.length; sj++){
-      var se = enemies[sj];
-      var sdx = se.x - sx, sdy = se.y - sy;
+    for(var sj = 0; sj < sCombatants.length; sj++){
+      var sc = sCombatants[sj];
+      var sdx = sc.x - sx, sdy = sc.y - sy;
       var sdd = Math.sqrt(sdx * sdx + sdy * sdy);
-      if(sdd < tower.range && sdd < sbest){ sbest = sdd; starget = se; }
-    }
-    if(boss !== null){
-      var sbdx = boss.x - sx, sbdy = boss.y - sy;
-      var sbdd = Math.sqrt(sbdx * sbdx + sbdy * sbdy);
-      if(sbdd < tower.range && sbdd < sbest){ sbest = sbdd; starget = boss; }
+      if(sdd < tower.range && sdd < sbest){ sbest = sdd; starget = sc; }
     }
     if(starget){
       var sta = Math.atan2(starget.y - sy, starget.x - sx);

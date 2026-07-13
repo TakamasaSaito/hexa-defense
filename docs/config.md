@@ -157,6 +157,21 @@ W5のミニボス(HP300)が充填の主力。W3〜5で初めて1回撃てる体�
 | `SUB_TURRET_FIRE_RATIO` | 0.65 | サブ砲台の発射速度倍率 |
 | `PIERCE_LV` | [1,2,3,999] | 貫通弾各レベルの最大ヒット数 |
 
+## デバッグ機能
+
+### URLパラメータ: `?wave=N`
+任意のウェーブからゲームを開始できる。本番ビルドにも残存(コスト無し)。
+
+```
+http://localhost:8000/?wave=5   # W5ミニボス戦を即確認
+http://localhost:8000/?wave=6   # 2段階カーブ加速期を確認
+http://localhost:8000/?wave=10  # W10予定ボス位置まで確認
+```
+
+- 実装: `resetGame()` 内で `getUrlParam('wave')` を読み、`1 ≤ N ≤ MAX_WAVE` なら `wave = N` にセット
+- 武器・恒久強化はリセット状態。ウェーブ難度のみスキップ
+- 本番URLにパラメータがなければ通常通りW1開始
+
 ## 調整指針
 1. **初見W6〜7敗北(W5武器獲得後)** が基準。`WAVE_HP_SCALE_LATE` / `WAVE_SPAWN_SCALE_LATE` で調整
 2. **W1〜5は緩やかに**: `WAVE_HP_SCALE_EARLY=1.0` を変えず、イントロ期は線形増加のみ
