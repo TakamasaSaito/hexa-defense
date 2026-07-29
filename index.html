@@ -235,6 +235,37 @@ html, body { width:100%; height:100%; overflow:hidden; background:#05090f; touch
 .perma-price-col { font-family:'Chakra Petch',sans-serif; font-size:13px; font-weight:700;
   color:#ffd257; white-space:nowrap; display:flex; align-items:center; gap:4px; }
 
+/* チェックポイント選択パネル */
+.cp-panel { width:min(88vw,320px); background:linear-gradient(180deg,rgba(10,22,42,0.97),rgba(6,12,26,0.97));
+  border:1px solid rgba(77,243,255,0.35); padding:22px 16px 16px;
+  clip-path:polygon(18px 0,100% 0,100% calc(100% - 18px),calc(100% - 18px) 100%,0 100%,0 18px); }
+.cp-title { font-family:'Chakra Petch',sans-serif; font-weight:700; font-size:14px; letter-spacing:4px;
+  color:#eaffff; text-align:center; margin-bottom:16px; }
+.cp-wave-btn { pointer-events:auto; display:block; width:100%; padding:13px; margin-bottom:8px; border:none;
+  cursor:pointer; font-family:'Chakra Petch',sans-serif; font-weight:700; font-size:13px; letter-spacing:3px;
+  color:#eaffff; background:rgba(77,243,255,0.04); border:1px solid rgba(77,243,255,0.32);
+  clip-path:polygon(8px 0,100% 0,100% calc(100% - 8px),calc(100% - 8px) 100%,0 100%,0 8px); }
+.cp-wave-btn:active { background:rgba(77,243,255,0.18); }
+
+/* ポーズパネル */
+.pause-panel { width:min(78vw,260px); background:linear-gradient(180deg,rgba(10,22,42,0.97),rgba(6,12,26,0.97));
+  border:1px solid rgba(77,243,255,0.35); padding:26px 18px 18px; text-align:center;
+  clip-path:polygon(16px 0,100% 0,100% calc(100% - 16px),calc(100% - 16px) 100%,0 100%,0 16px); }
+.pause-title { font-family:'Chakra Petch',sans-serif; font-weight:700; font-size:17px; letter-spacing:6px;
+  color:#eaffff; margin-bottom:20px; }
+.pause-btn { pointer-events:auto; display:block; width:100%; padding:13px; margin-bottom:9px; border:none;
+  cursor:pointer; font-family:'Chakra Petch',sans-serif; font-weight:700; font-size:13px; letter-spacing:3px;
+  color:#eaffff; background:rgba(77,243,255,0.04); border:1px solid rgba(77,243,255,0.32);
+  clip-path:polygon(8px 0,100% 0,100% calc(100% - 8px),calc(100% - 8px) 100%,0 100%,0 8px); }
+.pause-btn:active { background:rgba(77,243,255,0.18); }
+
+/* ポーズボタン(HUD) */
+#pauseBtn { pointer-events:auto; display:flex; align-items:center; justify-content:center;
+  font-family:'Chakra Petch',sans-serif; font-size:11px; font-weight:700; letter-spacing:2px;
+  color:rgba(140,210,240,0.7); background:rgba(77,243,255,0.05); border:1px solid rgba(77,243,255,0.28);
+  padding:7px 11px; cursor:pointer;
+  clip-path:polygon(8px 0,100% 0,100% calc(100% - 8px),calc(100% - 8px) 100%,0 100%,0 8px); }
+
 /* リトライ2ボタンレイアウト */
 .res-actions { display:flex; gap:12px; flex-wrap:wrap; justify-content:center; }
 .upgrade-btn-res { pointer-events:auto; border:none; cursor:pointer;
@@ -288,7 +319,10 @@ html, body { width:100%; height:100%; overflow:hidden; background:#05090f; touch
         <div class="panel coin" id="coinHud">
           <span class="chex" style="width:15px;height:15px"></span><span id="coinNum">0</span>
         </div>
-        <button id="speedBtn">x1</button>
+        <div style="display:flex;gap:6px">
+          <button id="speedBtn">x1</button>
+          <button id="pauseBtn">II</button>
+        </div>
       </div>
     </div>
     <div class="xpwrap">
@@ -339,6 +373,24 @@ html, body { width:100%; height:100%; overflow:hidden; background:#05090f; touch
       </div>
       <div id="permaItems"></div>
       <button id="permaCloseBtn" class="store-close">BACK</button>
+    </div>
+  </div>
+
+  <!-- チェックポイント選択 -->
+  <div class="screen" id="scrCheckpoint">
+    <div class="cp-panel">
+      <div class="cp-title">START FROM CHECKPOINT</div>
+      <div id="cpButtons"></div>
+      <button id="cpCloseBtn" class="store-close">BACK</button>
+    </div>
+  </div>
+
+  <!-- ポーズ -->
+  <div class="screen" id="scrPause">
+    <div class="pause-panel">
+      <div class="pause-title">PAUSED</div>
+      <button id="resumeBtn" class="pause-btn">RESUME</button>
+      <button id="suspendBtn" class="pause-btn">SAVE &amp; QUIT</button>
     </div>
   </div>
 
@@ -526,6 +578,10 @@ var CFG = {
   TOWER_HP_BAR_SEGS:  10,
   TOWER_HP_BAR_Y:     -58,
 
+  /* チェックポイント */
+  CHECKPOINT_WAVES:       [10, 20, 30, 40],
+  CHECKPOINT_START_COINS: 80,
+
   /* 恒久強化 */
   META_COIN_RATE:        0.5,
   PERM_MAX_LEVEL:        5,
@@ -621,6 +677,9 @@ var upgradeCounts = { rate: 0, dmg: 0, range: 0, speed: 0, maxhp: 0, heal: 0 };
 
 /* 恒久強化: ラン開始時に再計算するコイン倍率 */
 var coinGainMult = 1;
+
+/* チェックポイント: 武器報酬画面をCP開始補償として使う際のフラグ */
+var checkpointWeaponMode = false;
 
 /* 演出 */
 var flashTimer  = 0;
@@ -1004,7 +1063,7 @@ function resetGame(){
   updateSpecialHud();
   document.getElementById('waveNum').textContent = String(wave);
   document.getElementById('waveTotal').textContent = ' / ' + CFG.MAX_WAVE;
-  startWave();
+  /* startWave() は呼び出し元で行う(チェックポイント開始時に武器選択を挟むため) */
 }
 
 function startWave(){
@@ -1024,6 +1083,14 @@ function waveComplete(){
   /* 小回復 */
   tower.hp = Math.min(tower.maxHp, tower.hp + CFG.WAVE_HEAL_ON_CLEAR);
   floater(cx(), cy() - 80, '+' + CFG.WAVE_HEAL_ON_CLEAR + ' HP', '#3ddc74');
+
+  /* チェックポイント解除 */
+  for(var ci = 0; ci < CFG.CHECKPOINT_WAVES.length; ci++){
+    if(wave === CFG.CHECKPOINT_WAVES[ci]){
+      unlockCheckpoint(CFG.CHECKPOINT_WAVES[ci]);
+      break;
+    }
+  }
 
   /* 報酬ウェーブ判定 */
   for(var r = 0; r < CFG.REWARD_WAVES.length; r++){
@@ -1474,7 +1541,13 @@ function onWeaponSelect(){
   if(id === 'sub_turret') weapons.subTurret = Math.min(weapons.subTurret + 1, 2);
   if(id === 'pierce')     weapons.pierce    = Math.min(weapons.pierce    + 1, CFG.PIERCE_LV.length - 1);
   hideScreen('scrWeapon');
-  if(wave >= CFG.MAX_WAVE){ endGame(true); } else { wave++; startWave(); STATE = 'play'; }
+  if(checkpointWeaponMode){
+    checkpointWeaponMode = false;
+    startWave();
+    STATE = 'play';
+  } else {
+    if(wave >= CFG.MAX_WAVE){ endGame(true); } else { wave++; startWave(); STATE = 'play'; }
+  }
 }
 
 /* =====================================================================
@@ -1679,6 +1752,148 @@ function draw(tm, dt){
 }
 
 /* =====================================================================
+   チェックポイント
+===================================================================== */
+function unlockCheckpoint(w){
+  for(var i = 0; i < saveData.unlockedCheckpoints.length; i++){
+    if(saveData.unlockedCheckpoints[i] === w) return;
+  }
+  saveData.unlockedCheckpoints.push(w);
+  persistSave();
+  floater(cx(), cy() - 110, 'CHECKPOINT W' + w + ' UNLOCKED', '#4df3ff');
+}
+
+function openCheckpointScreen(){
+  renderCheckpointScreen();
+  showScreen('scrCheckpoint');
+}
+
+function renderCheckpointScreen(){
+  var container = document.getElementById('cpButtons');
+  container.innerHTML = '';
+  var cps = saveData.unlockedCheckpoints;
+  var allOptions = [1];
+  for(var ci = 0; ci < CFG.CHECKPOINT_WAVES.length; ci++){
+    for(var cj = 0; cj < cps.length; cj++){
+      if(cps[cj] === CFG.CHECKPOINT_WAVES[ci]){ allOptions.push(CFG.CHECKPOINT_WAVES[ci]); break; }
+    }
+  }
+  for(var o = 0; o < allOptions.length; o++){
+    var w = allOptions[o];
+    var btn = document.createElement('button');
+    btn.className = 'cp-wave-btn';
+    btn.textContent = w === 1 ? 'WAVE 1  (START)' : ('WAVE ' + w + '  +' + CFG.CHECKPOINT_START_COINS + ' COINS & WEAPON');
+    btn.setAttribute('data-cpw', String(w));
+    btn.addEventListener('click', onCheckpointSelect);
+    container.appendChild(btn);
+  }
+}
+
+function onCheckpointSelect(){
+  var w = parseInt(this.getAttribute('data-cpw'), 10);
+  hideScreen('scrCheckpoint');
+  showGameUI();
+  resetGame();
+  if(w <= 1){
+    startWave();
+    STATE = 'play';
+  } else {
+    wave = w;
+    document.getElementById('waveNum').textContent = String(wave);
+    coins = CFG.CHECKPOINT_START_COINS;
+    updateCoinHud();
+    checkpointWeaponMode = true;
+    showWeaponReward();
+  }
+}
+
+/* =====================================================================
+   中断セーブ
+===================================================================== */
+function openPauseScreen(){
+  if(STATE !== 'play') return;
+  STATE = 'pause';
+  showScreen('scrPause');
+}
+
+function closePauseScreen(){
+  if(STATE !== 'pause') return;
+  hideScreen('scrPause');
+  STATE = 'play';
+}
+
+function suspendRun(){
+  saveData.suspendedRun = {
+    wave: wave,
+    hp: tower.hp, maxHp: tower.maxHp,
+    dmg: tower.dmg, fireInterval: tower.fireInterval,
+    bulletSpeed: tower.bulletSpeed, range: tower.range,
+    level: level, xp: xp, xpNext: xpNext,
+    coins: coins, kills: kills, specialGauge: specialGauge,
+    weapons: { subTurret: weapons.subTurret, pierce: weapons.pierce },
+    upgradeCounts: {
+      rate: upgradeCounts.rate, dmg: upgradeCounts.dmg, range: upgradeCounts.range,
+      speed: upgradeCounts.speed, maxhp: upgradeCounts.maxhp, heal: upgradeCounts.heal
+    }
+  };
+  persistSave();
+
+  STATE = 'title'; /* ループ停止 */
+  hideScreen('scrPause');
+  enemies = []; bullets = []; particles = []; floaters = []; healItems = [];
+  boss = null; hideBossBar();
+  document.getElementById('hudEl').style.display = 'none';
+  document.getElementById('specialBtn').style.display = 'none';
+  showScreen('scrTitle');
+  updateTitleScreen();
+}
+
+function resumeRun(){
+  var sr = saveData.suspendedRun;
+  if(!sr) return;
+
+  /* 戦闘状態リセット */
+  enemies = []; bullets = []; particles = []; floaters = []; healItems = [];
+  boss = null; bossPhase = 'wander'; bossTimer = 0;
+  subTurretAngles = [0, 0]; subTurretFireTimers = [0, 0];
+  pendingLevelUps = 0; pendingSteps = 0;
+  flashTimer = 0; shakeTimer = 0; hideBossBar();
+
+  /* セーブ状態を復元 */
+  wave            = sr.wave;
+  tower.hp        = sr.hp;
+  tower.maxHp     = sr.maxHp;
+  tower.dmg       = sr.dmg;
+  tower.fireInterval = sr.fireInterval;
+  tower.bulletSpeed  = sr.bulletSpeed;
+  tower.range     = sr.range;
+  level           = sr.level;
+  xp              = sr.xp;
+  xpNext          = sr.xpNext || xpRequiredForLevel(level);
+  coins           = sr.coins;
+  kills           = sr.kills;
+  specialGauge    = sr.specialGauge || 0;
+  weapons         = { subTurret: sr.weapons.subTurret, pierce: sr.weapons.pierce };
+  upgradeCounts   = {
+    rate: sr.upgradeCounts.rate, dmg: sr.upgradeCounts.dmg, range: sr.upgradeCounts.range,
+    speed: sr.upgradeCounts.speed, maxhp: sr.upgradeCounts.maxhp, heal: sr.upgradeCounts.heal
+  };
+  turretAngle = 0; fireTimer = 0;
+
+  /* 中断セーブをクリア */
+  saveData.suspendedRun = null;
+  persistSave();
+
+  /* HUD更新 */
+  updateXPHud(); updateCoinHud(); updateSpecialHud();
+  document.getElementById('waveNum').textContent = String(wave);
+  document.getElementById('waveTotal').textContent = ' / ' + CFG.MAX_WAVE;
+
+  startWave();
+  STATE = 'play';
+}
+
+/* =====================================================================
    恒久強化
 ===================================================================== */
 var PERM_DEFS = [
@@ -1857,6 +2072,7 @@ function showGameUI(){
 document.getElementById('playBtn').addEventListener('click', function(){
   showGameUI();
   resetGame();
+  startWave();
   STATE = 'play';
   updateTitleScreen();
 });
@@ -1865,11 +2081,39 @@ document.getElementById('retryBtn').addEventListener('click', function(){
   hideScreen('scrResult');
   showGameUI();
   resetGame();
+  startWave();
   STATE = 'play';
 });
 
 document.getElementById('upgradeBtn').addEventListener('click', function(){
   openPermaScreen();
+});
+
+document.getElementById('continueBtn').addEventListener('click', function(){
+  hideScreen('scrTitle');
+  document.getElementById('hudEl').style.display = 'block';
+  document.getElementById('specialBtn').style.display = 'block';
+  resumeRun();
+});
+
+document.getElementById('checkpointBtn').addEventListener('click', function(){
+  openCheckpointScreen();
+});
+
+document.getElementById('cpCloseBtn').addEventListener('click', function(){
+  hideScreen('scrCheckpoint');
+});
+
+document.getElementById('pauseBtn').addEventListener('click', function(){
+  openPauseScreen();
+});
+
+document.getElementById('resumeBtn').addEventListener('click', function(){
+  closePauseScreen();
+});
+
+document.getElementById('suspendBtn').addEventListener('click', function(){
+  suspendRun();
 });
 
 document.getElementById('permaCloseBtn').addEventListener('click', function(){
