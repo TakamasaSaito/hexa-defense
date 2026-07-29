@@ -136,6 +136,7 @@ html, body { width:100%; height:100%; overflow:hidden; background:#05090f; touch
             clip-path:polygon(14px 0,100% 0,100% calc(100% - 14px),calc(100% - 14px) 100%,0 100%,0 14px);
             transition:transform 0.15s; }
 .wpn-card:active { transform:scale(0.96); }
+.wpn-card.disabled { opacity:0.38; cursor:not-allowed; pointer-events:none; }
 .wpn-card .band { height:4px; background:linear-gradient(90deg,#ffd257,#ffaa00); box-shadow:0 0 10px rgba(255,210,87,0.8); }
 .wpn-card .tag { position:absolute; top:10px; right:8px; font-family:'Chakra Petch',sans-serif;
                  font-size:8px; letter-spacing:2px; color:rgba(255,210,87,0.6); }
@@ -1752,23 +1753,26 @@ function updateSubTurrets(dt){
    武器報酬
 ===================================================================== */
 function showWeaponReward(){
+  var stLv = weapons.subTurret;
+  var piLv = weapons.pierce;
+  /* 両武器マックス時は報酬画面をスキップ */
+  if(stLv >= 2 && piLv >= 3){ proceedAfterWeaponReward(); return; }
+
   STATE = 'weapon_reward';
-  /* 選択肢を動的生成 */
   var container = document.getElementById('wpnCards');
   container.innerHTML = '';
 
   /* サブ砲台カード */
-  var stLv = weapons.subTurret;
-  var stCard = makeWpnCard('sub_turret', '&#128302;', 'サブ砲台',
-    stLv === 0 ? '小型砲台を<br>1基追加' : stLv === 1 ? '2基目を<br>追加' : '最大強化済',
-    stLv >= 2);
+  var stName = stLv === 0 ? 'サブ砲台' : stLv === 1 ? 'サブ砲台2基目' : 'サブ砲台';
+  var stDesc = stLv === 0 ? '小型砲台を<br>1基追加' : stLv === 1 ? '2基目を<br>追加' : '最大強化済';
+  var stCard = makeWpnCard('sub_turret', '&#128302;', stName, stDesc, stLv >= 2);
   container.appendChild(stCard);
 
   /* 貫通弾カード */
-  var piLv = weapons.pierce;
   var piNames = ['貫通弾', '貫通弾Lv2', '貫通弾Lv3', '最大強化済'];
   var piDescs = ['弾が敵を<br>1体貫通', '2体貫通に<br>強化', '無限貫通に<br>強化', '最大強化済'];
-  var piCard = makeWpnCard('pierce', '&#11014;', piNames[Math.min(piLv, 3)], piDescs[Math.min(piLv, 3)], piLv >= 3);
+  var piIdx   = Math.min(piLv, 3);
+  var piCard  = makeWpnCard('pierce', '&#11014;', piNames[piIdx], piDescs[piIdx], piLv >= 3);
   container.appendChild(piCard);
 
   document.getElementById('wpnSub').textContent = 'CHOOSE YOUR WEAPON — WAVE ' + wave;
@@ -1796,10 +1800,13 @@ function onWeaponSelect(){
   if(id === 'sub_turret') weapons.subTurret = Math.min(weapons.subTurret + 1, 2);
   if(id === 'pierce')     weapons.pierce    = Math.min(weapons.pierce    + 1, CFG.PIERCE_LV.length - 1);
   hideScreen('scrWeapon');
+  proceedAfterWeaponReward();
+}
+
+function proceedAfterWeaponReward(){
   if(checkpointWeaponMode){
     checkpointWeaponMode = false;
-    startWave();
-    STATE = 'play';
+    startWave(); STATE = 'play';
   } else {
     if(wave >= CFG.MAX_WAVE){ endGame(true); } else { wave++; startWave(); STATE = 'play'; }
   }
