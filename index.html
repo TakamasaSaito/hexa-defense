@@ -195,6 +195,55 @@ html, body { width:100%; height:100%; overflow:hidden; background:#05090f; touch
                background:rgba(77,243,255,0.06); color:#9fe8ff; font-family:'Chakra Petch',sans-serif; font-weight:700;
                font-size:12px; letter-spacing:4px; cursor:pointer; }
 
+/* タイトル追加ボタン(UPGRADE/CONTINUE/SELECT WAVE) */
+.title-sub-btn { pointer-events:auto; margin-top:12px; border:none; cursor:pointer;
+  font-family:'Chakra Petch',sans-serif; font-weight:700; font-size:13px; letter-spacing:3px;
+  color:#4df3ff; padding:11px 32px; display:block;
+  background:rgba(77,243,255,0.06); border:1px solid rgba(77,243,255,0.45);
+  clip-path:polygon(10px 0,100% 0,100% calc(100% - 10px),calc(100% - 10px) 100%,0 100%,0 10px); }
+.title-sub-btn:active { background:rgba(77,243,255,0.18); }
+
+/* メタコイン獲得表示(リザルト) */
+.meta-earned { margin:6px 0 16px; font-family:'Chakra Petch',sans-serif; font-size:14px;
+  letter-spacing:3px; color:#ffd257; text-align:center; text-shadow:0 0 12px rgba(255,210,87,0.6); }
+
+/* 恒久強化パネル */
+.perma-panel { width:min(90vw,360px); max-height:80vh; overflow-y:auto;
+  background:linear-gradient(180deg,rgba(10,22,42,0.97),rgba(6,12,26,0.97));
+  border:1px solid rgba(77,243,255,0.35); padding:20px 16px 16px;
+  clip-path:polygon(18px 0,100% 0,100% calc(100% - 18px),calc(100% - 18px) 100%,0 100%,0 18px); }
+.perma-hdr { display:flex; justify-content:space-between; align-items:baseline; margin-bottom:14px; }
+.perma-title-txt { font-family:'Chakra Petch',sans-serif; font-weight:700; font-size:16px;
+  letter-spacing:4px; color:#eaffff; }
+.perma-meta-bal { font-family:'Chakra Petch',sans-serif; font-weight:700; font-size:14px;
+  color:#ffd257; display:flex; align-items:center; gap:5px; }
+.perma-row { display:flex; align-items:center; gap:10px; padding:10px 8px; cursor:pointer;
+  pointer-events:auto; border:1px solid rgba(77,243,255,0.12); margin-bottom:7px;
+  background:rgba(77,243,255,0.02); }
+.perma-row:active { background:rgba(77,243,255,0.1); }
+.perma-row.maxed { opacity:0.45; pointer-events:none; cursor:default; }
+.perma-row.cant-afford { opacity:0.5; pointer-events:none; cursor:not-allowed; }
+.perma-icon { width:30px; height:30px; flex:none; display:flex; align-items:center;
+  justify-content:center; font-size:15px; background:rgba(77,243,255,0.07);
+  border:1px solid rgba(77,243,255,0.22);
+  clip-path:polygon(25% 0,75% 0,100% 50%,75% 100%,25% 100%,0 50%); }
+.perma-body { flex:1; }
+.perma-name { font-family:'Chakra Petch',sans-serif; font-weight:600; font-size:12px; color:#eaffff; }
+.perma-pips { display:flex; gap:3px; margin-top:5px; }
+.perma-pip { width:14px; height:5px; background:rgba(77,243,255,0.12); border:1px solid rgba(77,243,255,0.25); }
+.perma-pip.on { background:#4df3ff; box-shadow:0 0 6px rgba(77,243,255,0.8); }
+.perma-price-col { font-family:'Chakra Petch',sans-serif; font-size:13px; font-weight:700;
+  color:#ffd257; white-space:nowrap; display:flex; align-items:center; gap:4px; }
+
+/* リトライ2ボタンレイアウト */
+.res-actions { display:flex; gap:12px; flex-wrap:wrap; justify-content:center; }
+.upgrade-btn-res { pointer-events:auto; border:none; cursor:pointer;
+  font-family:'Chakra Petch',sans-serif; font-weight:700; font-size:15px; letter-spacing:3px;
+  color:#0a0400; padding:14px 32px;
+  background:linear-gradient(180deg,#ffd257,#e8a000);
+  clip-path:polygon(10px 0,100% 0,100% calc(100% - 10px),calc(100% - 10px) 100%,0 100%,0 10px);
+  box-shadow:0 0 22px rgba(255,200,60,0.5); }
+
 /* リザルト */
 .res-title { font-family:'Chakra Petch',sans-serif; font-weight:700;
              font-size:clamp(34px,9vw,50px); letter-spacing:8px; color:#f2fdff; }
@@ -266,9 +315,30 @@ html, body { width:100%; height:100%; overflow:hidden; background:#05090f; touch
     <div class="logo" data-t="DEFENSE" style="font-size:clamp(26px,7vw,40px);letter-spacing:12px;">DEFENSE</div>
     <div class="logo-sub">Neon Wave Survival</div>
     <div class="logo-rule"></div>
-    <button class="play-btn" id="playBtn">PLAY NOW</button>
+    <div style="display:flex;flex-direction:column;align-items:center">
+      <button class="play-btn" id="playBtn">PLAY NOW</button>
+      <button class="title-sub-btn" id="continueBtn" style="display:none">CONTINUE</button>
+      <button class="title-sub-btn" id="checkpointBtn" style="display:none">SELECT WAVE</button>
+      <button class="title-sub-btn" id="upgradeBtn">UPGRADE</button>
+    </div>
     <div class="title-meta">
       <div class="meta-item"><div class="v" id="bestWaveDisp">—</div><div class="k">BEST WAVE</div></div>
+      <div class="meta-item"><div class="v" id="metaCoinDisp" style="color:#ffd257">0</div><div class="k">META COINS</div></div>
+    </div>
+  </div>
+
+  <!-- 恒久強化 -->
+  <div class="screen" id="scrPerma">
+    <div class="perma-panel">
+      <div class="perma-hdr">
+        <span class="perma-title-txt">UPGRADE</span>
+        <span class="perma-meta-bal">
+          <span class="chex" style="width:11px;height:11px;background:#ffd257;box-shadow:0 0 8px rgba(255,210,87,0.9)"></span>
+          <span id="permaCoinNum">0</span>
+        </span>
+      </div>
+      <div id="permaItems"></div>
+      <button id="permaCloseBtn" class="store-close">BACK</button>
     </div>
   </div>
 
@@ -309,7 +379,11 @@ html, body { width:100%; height:100%; overflow:hidden; background:#05090f; touch
       <div class="res-cell"><div class="rv" id="resLevel">—</div><div class="rk">LEVEL</div></div>
       <div class="res-cell"><div class="rv gold" id="resCoins">0</div><div class="rk">COINS</div></div>
     </div>
-    <button class="retry-btn" id="retryBtn">PLAY AGAIN</button>
+    <div id="resMetaEarned" class="meta-earned" style="display:none"></div>
+    <div class="res-actions">
+      <button class="upgrade-btn-res" id="upgradeFromResultBtn" style="display:none">UPGRADE</button>
+      <button class="retry-btn" id="retryBtn">PLAY AGAIN</button>
+    </div>
   </div>
 
 </div>
@@ -452,6 +526,17 @@ var CFG = {
   TOWER_HP_BAR_SEGS:  10,
   TOWER_HP_BAR_Y:     -58,
 
+  /* 恒久強化 */
+  META_COIN_RATE:        0.5,
+  PERM_MAX_LEVEL:        5,
+  PERM_BASE_PRICE:       20,
+  PERM_PRICE_SCALE:      1.8,
+  PERM_DMG_PER_LV:       0.15,
+  PERM_RATE_PER_LV:      0.12,
+  PERM_HP_PER_LV:        20,
+  PERM_RANGE_PER_LV:     0.08,
+  PERM_COIN_GAIN_PER_LV: 0.15,
+
   /* XPカードプール */
   CARD_POOL: [
     { id:'rate',    icon:'&#9889;',  name:'連射速度',  desc:'発射間隔<br>-20%' },
@@ -533,6 +618,9 @@ var subTurretFireTimers = [0, 0];
 var coins = 0;
 var healItems = [];
 var upgradeCounts = { rate: 0, dmg: 0, range: 0, speed: 0, maxhp: 0, heal: 0 };
+
+/* 恒久強化: ラン開始時に再計算するコイン倍率 */
+var coinGainMult = 1;
 
 /* 演出 */
 var flashTimer  = 0;
@@ -749,9 +837,10 @@ function updateSpecialHud(){
    コイン
 ===================================================================== */
 function gainCoin(amount, x, y){
-  coins += amount;
+  var actual = Math.ceil(amount * coinGainMult);
+  coins += actual;
   updateCoinHud();
-  floater(x, y - 18, '+' + amount, '#ffd257');
+  floater(x, y - 18, '+' + actual, '#ffd257');
 }
 
 function updateCoinHud(){
@@ -901,6 +990,7 @@ function resetGame(){
   tower.fireInterval= CFG.TOWER_FIRE_INTERVAL;
   tower.bulletSpeed = CFG.TOWER_BULLET_SPEED;
   tower.range       = Math.min(W, H) * CFG.TOWER_RANGE_RATIO;
+  applyPermanentUpgrades();
   turretAngle = 0; fireTimer = 0;
   flashTimer = 0; shakeTimer = 0;
   hideBossBar();
@@ -1589,11 +1679,143 @@ function draw(tm, dt){
 }
 
 /* =====================================================================
+   恒久強化
+===================================================================== */
+var PERM_DEFS = [
+  { id:'dmg',      icon:'&#128165;', name:'初期ダメージ',   suffix:'+15%/LV' },
+  { id:'rate',     icon:'&#9889;',   name:'初期連射速度',   suffix:'-12%間隔/LV' },
+  { id:'hp',       icon:'&#10010;',  name:'初期HP',         suffix:'+20 HP/LV' },
+  { id:'range',    icon:'&#127919;', name:'初期射程',       suffix:'+8%/LV' },
+  { id:'coinGain', icon:'&#9670;',   name:'コイン獲得量',   suffix:'+15%/LV' }
+];
+
+function getPermPrice(id, currentLv){
+  var price = CFG.PERM_BASE_PRICE;
+  for(var i = 0; i < currentLv; i++) price = price * CFG.PERM_PRICE_SCALE;
+  return Math.floor(price);
+}
+
+function applyPermanentUpgrades(){
+  var pu = saveData.permanentUpgrades;
+  var i;
+  /* ダメージ */
+  var dmgMult = 1;
+  for(i = 0; i < pu.dmg; i++) dmgMult *= (1 + CFG.PERM_DMG_PER_LV);
+  tower.dmg *= dmgMult;
+  /* 発射間隔 */
+  var rateMult = 1;
+  for(i = 0; i < pu.rate; i++) rateMult *= (1 - CFG.PERM_RATE_PER_LV);
+  tower.fireInterval *= rateMult;
+  /* HP */
+  tower.maxHp += pu.hp * CFG.PERM_HP_PER_LV;
+  tower.hp = tower.maxHp;
+  /* 射程(baseRange設定後に乗算) */
+  var rangeMult = 1;
+  for(i = 0; i < pu.range; i++) rangeMult *= (1 + CFG.PERM_RANGE_PER_LV);
+  tower.range *= rangeMult;
+  /* コイン倍率 */
+  coinGainMult = 1;
+  for(i = 0; i < pu.coinGain; i++) coinGainMult *= (1 + CFG.PERM_COIN_GAIN_PER_LV);
+}
+
+function renderPermaScreen(){
+  var container = document.getElementById('permaItems');
+  container.innerHTML = '';
+  document.getElementById('permaCoinNum').textContent = String(saveData.metaCoins);
+
+  for(var d = 0; d < PERM_DEFS.length; d++){
+    var def = PERM_DEFS[d];
+    var lv    = saveData.permanentUpgrades[def.id];
+    var maxed = lv >= CFG.PERM_MAX_LEVEL;
+    var price = maxed ? 0 : getPermPrice(def.id, lv);
+    var canAfford = !maxed && saveData.metaCoins >= price;
+
+    var div = document.createElement('div');
+    var cls = 'perma-row';
+    if(maxed) cls += ' maxed';
+    else if(!canAfford) cls += ' cant-afford';
+    div.className = cls;
+
+    var pipsHtml = '<div class="perma-pips">';
+    for(var pi = 0; pi < CFG.PERM_MAX_LEVEL; pi++){
+      pipsHtml += '<div class="perma-pip' + (pi < lv ? ' on' : '') + '"></div>';
+    }
+    pipsHtml += '</div>';
+
+    var priceHtml = maxed
+      ? '<span style="color:rgba(77,243,255,0.55);font-size:11px;letter-spacing:2px">MAX</span>'
+      : ('<div class="perma-price-col">' +
+         '<span class="chex" style="width:10px;height:10px;background:#ffd257"></span>' +
+         price + '</div>');
+
+    div.innerHTML =
+      '<div class="perma-icon">' + def.icon + '</div>' +
+      '<div class="perma-body">' +
+        '<div class="perma-name">' + def.name +
+          ' <span style="color:rgba(77,243,255,0.55);font-size:10px">' + def.suffix + '</span>' +
+        '</div>' +
+        pipsHtml +
+      '</div>' +
+      priceHtml;
+
+    if(!maxed && canAfford){
+      div.setAttribute('data-perm', def.id);
+      div.addEventListener('click', onPermBuy);
+    }
+    container.appendChild(div);
+  }
+}
+
+function onPermBuy(){
+  var id  = this.getAttribute('data-perm');
+  var lv  = saveData.permanentUpgrades[id];
+  if(lv >= CFG.PERM_MAX_LEVEL) return;
+  var price = getPermPrice(id, lv);
+  if(saveData.metaCoins < price) return;
+  saveData.metaCoins -= price;
+  saveData.permanentUpgrades[id]++;
+  persistSave();
+  renderPermaScreen();
+}
+
+function openPermaScreen(){
+  renderPermaScreen();
+  showScreen('scrPerma');
+}
+
+function closePermaScreen(){
+  hideScreen('scrPerma');
+  updateTitleScreen();
+}
+
+function updateTitleScreen(){
+  document.getElementById('bestWaveDisp').textContent = bestWave > 0 ? 'W.' + bestWave : '—';
+  document.getElementById('metaCoinDisp').textContent = String(saveData.metaCoins);
+  document.getElementById('continueBtn').style.display  = saveData.suspendedRun ? 'block' : 'none';
+  document.getElementById('checkpointBtn').style.display = saveData.unlockedCheckpoints.length > 1 ? 'block' : 'none';
+}
+
+/* =====================================================================
    ゲーム終了
 ===================================================================== */
 function endGame(win){
   STATE = 'result';
-  if(wave > bestWave){ bestWave = wave; saveBestWave(); }
+
+  /* ベストウェーブ更新 */
+  if(wave > bestWave){ bestWave = wave; }
+
+  /* トータルキル累積 */
+  saveData.totalKills += kills;
+
+  /* メタコイン変換 */
+  var metaEarned = Math.floor(coins * CFG.META_COIN_RATE);
+  saveData.metaCoins += metaEarned;
+
+  /* 中断セーブをクリア */
+  saveData.suspendedRun = null;
+
+  persistSave();
+
   var titleEl = document.getElementById('resTitle');
   titleEl.textContent = win ? 'VICTORY' : 'GAME OVER';
   titleEl.className   = 'res-title ' + (win ? 'win' : 'lose');
@@ -1601,6 +1823,19 @@ function endGame(win){
   document.getElementById('resKills').textContent = String(kills);
   document.getElementById('resLevel').textContent = String(level);
   document.getElementById('resCoins').textContent = String(Math.floor(coins));
+
+  /* メタコイン獲得表示 */
+  var metaEl = document.getElementById('resMetaEarned');
+  if(metaEarned > 0){
+    metaEl.style.display = 'block';
+    metaEl.textContent = '+' + metaEarned + ' META COINS EARNED';
+  } else {
+    metaEl.style.display = 'none';
+  }
+
+  /* UPGRADE ボタン: 敗北時のみ表示 */
+  document.getElementById('upgradeFromResultBtn').style.display = win ? 'none' : 'inline-block';
+
   showScreen('scrResult');
 }
 
@@ -1613,19 +1848,39 @@ function hideScreen(id){ document.getElementById(id).classList.remove('show'); }
 /* =====================================================================
    イベント
 ===================================================================== */
-document.getElementById('playBtn').addEventListener('click', function(){
+function showGameUI(){
   hideScreen('scrTitle');
   document.getElementById('hudEl').style.display = 'block';
   document.getElementById('specialBtn').style.display = 'block';
+}
+
+document.getElementById('playBtn').addEventListener('click', function(){
+  showGameUI();
   resetGame();
   STATE = 'play';
-  updateBestWave();
+  updateTitleScreen();
 });
 
 document.getElementById('retryBtn').addEventListener('click', function(){
   hideScreen('scrResult');
+  showGameUI();
   resetGame();
   STATE = 'play';
+});
+
+document.getElementById('upgradeBtn').addEventListener('click', function(){
+  openPermaScreen();
+});
+
+document.getElementById('permaCloseBtn').addEventListener('click', function(){
+  closePermaScreen();
+});
+
+document.getElementById('upgradeFromResultBtn').addEventListener('click', function(){
+  hideScreen('scrResult');
+  showScreen('scrTitle');
+  updateTitleScreen();
+  openPermaScreen();
 });
 
 document.getElementById('specialBtn').addEventListener('click', function(){
@@ -1653,10 +1908,7 @@ function updateSpeedBtn(){
   if(settings.speedIdx > 0){ btn.classList.add('active'); } else { btn.classList.remove('active'); }
 }
 
-function updateBestWave(){
-  document.getElementById('bestWaveDisp').textContent = bestWave > 0 ? 'W.' + bestWave : '—';
-}
-updateBestWave();
+updateTitleScreen();
 updateSpeedBtn();
 
 /* =====================================================================
