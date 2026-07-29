@@ -553,36 +553,95 @@ var stars = [];
 var hexRot = 0;
 
 /* =====================================================================
-   localStorage
+   StorageAdapter + SaveData
 ===================================================================== */
-var bestWave = 0;
-var settings = { speedIdx: 1 }; /* デフォルトx3 */
+function defaultSaveData(){
+  return {
+    version: 1,
+    metaCoins: 0,
+    bestWave: 0,
+    totalKills: 0,
+    permanentUpgrades: { dmg: 0, rate: 0, hp: 0, range: 0, coinGain: 0 },
+    unlockedCheckpoints: [1],
+    suspendedRun: null,
+    settings: { mute: false, speedIdx: 1 }
+  };
+}
 
-(function(){
-  try {
-    var v = localStorage.getItem('hd_best_wave');
-    if(v) bestWave = parseInt(v, 10) || 0;
-  } catch(e) {}
-  try {
-    var s = localStorage.getItem('hd_settings');
-    if(s){
-      var parsed = JSON.parse(s);
-      if(parsed && typeof parsed === 'object'){
-        /* SPEED_STEPSが変わったためインデックスは範囲チェックのみ。範囲外はデフォルト1(x3) */
-        if(typeof parsed.speedIdx === 'number' && parsed.speedIdx >= 0 && parsed.speedIdx < CFG.SPEED_STEPS.length){
-          settings.speedIdx = parsed.speedIdx;
-        }
+function migrateSave(data){
+  if(!data || typeof data !== 'object') return defaultSaveData();
+  var d = defaultSaveData();
+  if(typeof data.metaCoins === 'number') d.metaCoins = data.metaCoins;
+  if(typeof data.bestWave === 'number') d.bestWave = data.bestWave;
+  if(typeof data.totalKills === 'number') d.totalKills = data.totalKills;
+  if(data.permanentUpgrades && typeof data.permanentUpgrades === 'object'){
+    var pu = data.permanentUpgrades;
+    if(typeof pu.dmg === 'number') d.permanentUpgrades.dmg = pu.dmg;
+    if(typeof pu.rate === 'number') d.permanentUpgrades.rate = pu.rate;
+    if(typeof pu.hp === 'number') d.permanentUpgrades.hp = pu.hp;
+    if(typeof pu.range === 'number') d.permanentUpgrades.range = pu.range;
+    if(typeof pu.coinGain === 'number') d.permanentUpgrades.coinGain = pu.coinGain;
+  }
+  if(Array.isArray(data.unlockedCheckpoints)){
+    var valid = [1, 10, 20, 30, 40];
+    var cps = [];
+    for(var ci = 0; ci < data.unlockedCheckpoints.length; ci++){
+      for(var vi = 0; vi < valid.length; vi++){
+        if(data.unlockedCheckpoints[ci] === valid[vi]){ cps.push(valid[vi]); break; }
       }
     }
-  } catch(e) {}
-})();
+    if(cps.length === 0) cps = [1];
+    d.unlockedCheckpoints = cps;
+  }
+  if(data.suspendedRun && typeof data.suspendedRun === 'object') d.suspendedRun = data.suspendedRun;
+  if(data.settings && typeof data.settings === 'object'){
+    if(typeof data.settings.mute === 'boolean') d.settings.mute = data.settings.mute;
+    if(typeof data.settings.speedIdx === 'number' &&
+       data.settings.speedIdx >= 0 && data.settings.speedIdx < CFG.SPEED_STEPS.length){
+      d.settings.speedIdx = data.settings.speedIdx;
+    }
+  }
+  d.version = 1;
+  return d;
+}
 
-function saveBestWave(){
-  try { localStorage.setItem('hd_best_wave', String(bestWave)); } catch(e) {}
-}
-function saveSettings(){
-  try { localStorage.setItem('hd_settings', JSON.stringify(settings)); } catch(e) {}
-}
+function LocalStorageAdapter(){}
+LocalStorageAdapter.prototype.load = function(){
+  try {
+    var raw = localStorage.getItem('hd_save');
+    if(raw) return migrateSave(JSON.parse(raw));
+    /* 旧キー(v0)からのマイグレーション */
+    var oldBest = localStorage.getItem('hd_best_wave');
+    var oldSet  = localStorage.getItem('hd_settings');
+    if(oldBest || oldSet){
+      var d = defaultSaveData();
+      if(oldBest) d.bestWave = parseInt(oldBest, 10) || 0;
+      if(oldSet){
+        try {
+          var os = JSON.parse(oldSet);
+          if(os && typeof os.speedIdx === 'number' && os.speedIdx >= 0 &&
+             os.speedIdx < CFG.SPEED_STEPS.length) d.settings.speedIdx = os.speedIdx;
+        } catch(e2) {}
+      }
+      return d;
+    }
+  } catch(e) {}
+  return defaultSaveData();
+};
+LocalStorageAdapter.prototype.save = function(data){
+  try { localStorage.setItem('hd_save', JSON.stringify(data)); } catch(e) {}
+};
+
+var storage  = new LocalStorageAdapter();
+var saveData = storage.load();
+
+/* 既存コードの参照を維持 — オブジェクト参照なので変更が saveData に反映される */
+var bestWave = saveData.bestWave;
+var settings = saveData.settings;
+
+function persistSave(){ saveData.bestWave = bestWave; storage.save(saveData); }
+function saveBestWave(){ persistSave(); }
+function saveSettings(){ persistSave(); }
 
 /* =====================================================================
    XP / レベルアップ
