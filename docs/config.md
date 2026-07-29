@@ -92,8 +92,9 @@ W1~4: 全ての敵を射程内で撃破(ダメ0)→ W5ボス撃破・武器獲�
 | `COIN_ORANGE` | 3 | タンク撃破コイン |
 | `COIN_BOSS` | 50 | ボス撃破コイン |
 
-コインはラン内通貨。ランが終わるとリセット(メタコイン化はM3スコープ)。
+コインはラン内通貨。ラン終了時に `META_COIN_RATE(0.5)` 分がメタコインに変換される。
 `gainCoin(amount, x, y)` が獲得・HUD更新・フローター演出をまとめて処理。
+コイン実際獲得量 = `ceil(amount × coinGainMult)` (恒久強化coinGainで倍率が上がる)。
 
 ## ラン内ショップ(M2)
 | キー | 値 | 説明 |
@@ -118,18 +119,56 @@ W1~4: 全ての敵を射程内で撃破(ダメ0)→ W5ボス撃破・武器獲�
 
 **挙動:** 敵死亡位置に緑発光クロスがスポーン → タワーへゆっくり漂う → タワー接触か弾ヒットで取得(+15HP)。8秒で消滅。
 
-## 恒久強化
+## 恒久強化(M3実装済)
 | キー | 値 | 説明 |
 |---|---|---|
-| `META_COIN_RATIO` | 0.5 | 獲得コインのメタコイン変換率 |
-| `PERM_TIERS` | 5 | 段階数 |
-| `PERM_DMG_PER_TIER` | 0.10 | ダメージ+率/段 |
-| `PERM_RATE_PER_TIER` | 0.05 | 発射間隔削減率/段 |
-| `PERM_HP_PER_TIER` | 20 | HP+/段 |
-| `PERM_RANGE_PER_TIER` | 0.05 | 射程+率/段 |
-| `PERM_COIN_PER_TIER` | 0.10 | コイン獲得量+率/段 |
-| `PERM_BASE_PRICES` | [50,50,40,40,60] | Tier1価格(順: dmg/rate/hp/range/coin) |
-| `PERM_PRICE_SCALE` | 1.8 | Tier価格倍率 |
+| `META_COIN_RATE` | 0.5 | ラン終了コインのメタコイン変換率 |
+| `PERM_MAX_LEVEL` | 5 | 各系統の最大レベル |
+| `PERM_BASE_PRICE` | 20 | Tier1価格(メタコイン) |
+| `PERM_PRICE_SCALE` | 1.8 | レベルごと価格倍率 |
+| `PERM_DMG_PER_LV` | 0.15 | ダメージ+15%/LV |
+| `PERM_RATE_PER_LV` | 0.12 | 発射間隔-12%/LV |
+| `PERM_HP_PER_LV` | 20 | 最大HP+20/LV |
+| `PERM_RANGE_PER_LV` | 0.08 | 射程+8%/LV |
+| `PERM_COIN_GAIN_PER_LV` | 0.15 | コイン獲得量+15%/LV |
+
+**価格:** `floor(PERM_BASE_PRICE × PERM_PRICE_SCALE ^ currentLv)` → LV0→1: 20, 1→2: 36, 2→3: 65, 3→4: 117, 4→5: 211
+
+**経済目標:** W3-4敗北で約30〜50コイン獲得 → メタコイン15〜25 → Tier1(20)を1個購入できる
+
+5系統の効果は `applyPermanentUpgrades()` がラン開始時に `resetGame()` 経由で適用する。
+
+## チェックポイント制(M3実装済)
+| キー | 値 | 説明 |
+|---|---|---|
+| `CHECKPOINT_WAVES` | [10,20,30,40] | 到達時に解除されるウェーブ番号 |
+| `CHECKPOINT_START_COINS` | 80 | CP開始時の補償コイン数 |
+
+解除されたCPはタイトルの「SELECT WAVE」から選択可能。
+CP開始時: `coins = CHECKPOINT_START_COINS` + 武器2択(checkpointWeaponMode=true でshowWeaponReward()を流用)。
+`docs/decisions/003-checkpoint-compensation.md` 参照。
+
+## 中断セーブ(M3実装済)
+`saveData.suspendedRun` に1スロット上書き保存。保存内容:
+wave/hp/maxHp/dmg/fireInterval/bulletSpeed/range/level/xp/xpNext/coins/kills/specialGauge/weapons/upgradeCounts
+
+- HUDの「II」(ポーズ)ボタン → SAVE & QUIT で保存
+- タイトルの「CONTINUE」ボタン(suspendedRun存在時のみ表示)で復元
+
+## SaveData スキーマ(v1)
+```json
+{
+  "version": 1,
+  "metaCoins": 0,
+  "bestWave": 0,
+  "totalKills": 0,
+  "permanentUpgrades": { "dmg":0, "rate":0, "hp":0, "range":0, "coinGain":0 },
+  "unlockedCheckpoints": [1],
+  "suspendedRun": null,
+  "settings": { "mute": false, "speedIdx": 1 }
+}
+```
+localStorageキー: `hd_save`。旧v0キー(`hd_best_wave`/`hd_settings`)からの自動マイグレーション付き。
 
 ## 倍速設定
 | キー | 値 | 説明 |
