@@ -114,11 +114,11 @@ html, body { width:100%; height:100%; overflow:hidden; background:#05090f; touch
 .card .cname { text-align:center; font-family:'Chakra Petch',sans-serif; font-weight:700; font-size:13px; color:#eaffff; }
 .card .cdesc { text-align:center; font-size:11px; color:rgba(150,200,235,0.75); margin-top:5px; line-height:1.5; padding:0 6px; }
 
-/* ボスHPバー */
-#bossBar { position:absolute; top:calc(env(safe-area-inset-top,0px) + 62px); left:50%; transform:translateX(-50%);
+/* ボスHPバー — XPバー(76px〜99px)の下に配置 */
+#bossBar { position:absolute; top:calc(env(safe-area-inset-top,0px) + 106px); left:50%; transform:translateX(-50%);
            width:min(70vw,260px); display:none; }
 .boss-label { font-family:'Chakra Petch',sans-serif; font-size:9px; letter-spacing:4px;
-              color:rgba(77,243,255,0.75); text-align:center; margin-bottom:3px; }
+              color:rgba(255,100,50,0.9); text-align:center; margin-bottom:3px; }
 .boss-track { height:7px; background:rgba(20,40,66,0.9); border:1px solid rgba(77,243,255,0.35);
               clip-path:polygon(4px 0,100% 0,calc(100% - 4px) 100%,0 100%); overflow:hidden; }
 .boss-fill { height:100%; width:100%; background:linear-gradient(90deg,#4df3ff,#ff3d81);
@@ -333,7 +333,7 @@ html, body { width:100%; height:100%; overflow:hidden; background:#05090f; touch
 
   <!-- ボスHPバー -->
   <div id="bossBar">
-    <div class="boss-label">MINI BOSS</div>
+    <div class="boss-label" id="bossLabel">MINI BOSS</div>
     <div class="boss-track"><div class="boss-fill" id="bossFill"></div></div>
   </div>
 
@@ -558,6 +558,48 @@ var CFG = {
   BOSS_MINI_COLOR:        '#4df3ff',
   BOSS_MINI_XP:           80,
 
+  /* ボス登場警告 */
+  BOSS_WARNING_DUR:      2.0,
+
+  /* チャージャー (W10/W30) */
+  BOSS_CHARGER_HP:           800,
+  BOSS_CHARGER_HP_HARD:      1400,
+  BOSS_CHARGER_SIZE:         28,
+  BOSS_CHARGER_COLOR:        '#ff6b35',
+  BOSS_CHARGER_DMG:          25,
+  BOSS_CHARGER_DMG_HARD:     35,
+  BOSS_CHARGER_SPEED_WANDER: 0.7,
+  BOSS_CHARGER_ORBIT_RATIO:  0.32,
+  BOSS_CHARGER_SPEED_CHARGE: 380,
+  BOSS_CHARGER_WARN_DUR:     1.5,
+  BOSS_CHARGER_CHARGE_DUR:   0.5,
+  BOSS_CHARGER_REST_DUR:     1.8,
+  BOSS_CHARGER_WANDER_DUR:   2.5,
+  BOSS_CHARGER_XP:           200,
+  BOSS_CHARGER_COIN:         60,
+  BOSS_CHARGER_COIN_HARD:    120,
+  BOSS_CHARGER_SHOCKWAVE_R:  120,
+  BOSS_CHARGER_SHOCKWAVE_DMG: 40,
+
+  /* サモナー (W20/W40) */
+  BOSS_SUMMONER_HP:                1200,
+  BOSS_SUMMONER_HP_HARD:           2000,
+  BOSS_SUMMONER_SIZE:              30,
+  BOSS_SUMMONER_COLOR:             '#c84dff',
+  BOSS_SUMMONER_ORBIT_RATIO:       0.45,
+  BOSS_SUMMONER_SPEED_ORBIT:       0.45,
+  BOSS_SUMMONER_SUMMON_INTERVAL:   5.0,
+  BOSS_SUMMONER_SUMMON_COUNT:      3,
+  BOSS_SUMMONER_SUMMON_COUNT_HARD: 5,
+  BOSS_SUMMONER_BULLET_INTERVAL:   2.5,
+  BOSS_SUMMONER_BULLET_COUNT:      2,
+  BOSS_SUMMONER_BULLET_COUNT_HARD: 4,
+  BOSS_SUMMONER_BULLET_SPEED:      190,
+  BOSS_SUMMONER_BULLET_DMG:        18,
+  BOSS_SUMMONER_XP:                300,
+  BOSS_SUMMONER_COIN:              60,
+  BOSS_SUMMONER_COIN_HARD:         120,
+
   /* 特殊武器 */
   SUB_TURRET_DMG_RATIO:  0.5,            /* サブ砲台ダメージ倍率 */
   SUB_TURRET_FIRE_RATIO: 0.65,           /* メイン砲の何倍の発射間隔か */
@@ -659,11 +701,14 @@ var floaters   = [];
 var spawnQueue = 0, spawnTimer = 0;
 var turretAngle = 0, fireTimer = 0;
 
-/* ボス */
-var boss      = null;
-var bossPhase = 'wander'; /* wander | warn | charge | rest */
-var bossTimer = 0;
-var bossDirX  = 0, bossDirY = 0;
+/* ボス — フェーズ等はすべて boss オブジェクト上に持つ */
+var boss = null;
+/* 登場警告 */
+var warningTimer = 0;
+var warningLabel = '';
+var bossSpawnFn  = null;
+/* 敵弾(サモナー用) */
+var enemyBullets = [];
 
 /* 特殊武器 */
 var weapons = { subTurret: 0, pierce: 0 };
@@ -1038,8 +1083,8 @@ function resetGame(){
   specialGauge = 0; pendingLevelUps = 0;
   coins = 0; healItems = [];
   upgradeCounts = { rate: 0, dmg: 0, range: 0, speed: 0, maxhp: 0, heal: 0 };
-  enemies = []; bullets = []; particles = []; floaters = [];
-  boss = null; bossPhase = 'wander'; bossTimer = 0;
+  enemies = []; bullets = []; particles = []; floaters = []; enemyBullets = [];
+  boss = null; warningTimer = 0; bossSpawnFn = null;
   weapons = { subTurret: 0, pierce: 0 };
   subTurretAngles = [0, 0]; subTurretFireTimers = [0, 0];
   pendingSteps = 0;
@@ -1067,11 +1112,18 @@ function resetGame(){
 }
 
 function startWave(){
-  boss = null; hideBossBar();
+  boss = null; hideBossBar(); enemyBullets = [];
   if(wave === 5){
-    /* W5: 小型ボスのみ */
     spawnQueue = 0; spawnTimer = 0;
-    spawnMiniCharger();
+    triggerBossWarning('MINI BOSS', 'CHARGER', spawnMiniCharger);
+  } else if(wave === 10 || wave === 30){
+    spawnQueue = 0; spawnTimer = 0;
+    var _w10 = wave;
+    triggerBossWarning('BOSS', _w10 === 30 ? 'CHARGER  II' : 'CHARGER', function(){ spawnCharger(_w10); });
+  } else if(wave === 20 || wave === 40){
+    spawnQueue = 0; spawnTimer = 0;
+    var _w20 = wave;
+    triggerBossWarning('BOSS', _w20 === 40 ? 'SUMMONER  II' : 'SUMMONER', function(){ spawnSummoner(_w20); });
   } else {
     spawnQueue = Math.floor(CFG.WAVE_SPAWN_BASE + waveAccum(wave, CFG.WAVE_SPAWN_WAVE, CFG.WAVE_SPAWN_SCALE_EARLY, CFG.WAVE_SPAWN_SCALE_LATE));
     spawnTimer = 0;
@@ -1199,6 +1251,13 @@ function loop(t){
 
     /* 演出タイマーは倍速に無関係、等倍で進める */
     if(flashTimer > 0){ flashTimer -= dt; }
+    /* 警告タイマーも実時間(倍速無関係) */
+    if(warningTimer > 0){
+      warningTimer -= dt;
+      if(warningTimer <= 0 && bossSpawnFn !== null){
+        var fn = bossSpawnFn; bossSpawnFn = null; fn();
+      }
+    }
     if(shakeTimer > 0){
       shakeTimer -= dt;
       shakeX = (Math.random() - 0.5) * 2 * shakeMag;
@@ -1367,14 +1426,29 @@ function update(dt){
     if(f.life <= 0) floaters.splice(i, 1);
   }
 
+  /* 敵弾(サモナー) */
+  for(i = enemyBullets.length - 1; i >= 0; i--){
+    var eb = enemyBullets[i];
+    eb.x += eb.vx * dt; eb.y += eb.vy * dt; eb.life -= dt;
+    var etx = eb.x - cx(), ety = eb.y - cy();
+    if(etx * etx + ety * ety < CFG.TOWER_HIT_RADIUS * CFG.TOWER_HIT_RADIUS){
+      tower.hp -= eb.dmg;
+      burst(cx(), cy(), '#c84dff', 8);
+      enemyBullets.splice(i, 1);
+      if(tower.hp <= 0){ tower.hp = 0; endGame(false); return; }
+    } else if(eb.life <= 0 || eb.x < -120 || eb.x > W + 120 || eb.y < -120 || eb.y > H + 120){
+      enemyBullets.splice(i, 1);
+    }
+  }
+
   /* ボス処理 */
   if(boss !== null) updateBoss(dt);
 
   /* サブ砲台発射 */
   if(weapons.subTurret > 0) updateSubTurrets(dt);
 
-  /* ウェーブクリア判定 */
-  if(spawnQueue === 0 && enemies.length === 0 && boss === null && STATE === 'play'){
+  /* ウェーブクリア判定 — warningTimer>0中は保留 */
+  if(spawnQueue === 0 && enemies.length === 0 && boss === null && warningTimer <= 0 && STATE === 'play'){
     waveComplete();
   }
 }
@@ -1383,67 +1457,248 @@ function update(dt){
    小型ボス生成・更新
 ===================================================================== */
 function spawnMiniCharger(){
-  /* 軌道半径は画面サイズから決定し、ランダムな初期角度でそのまま軌道上に配置 */
   var orbitDist = Math.min(W, H) * CFG.BOSS_MINI_ORBIT_RATIO;
   var angle = Math.random() * Math.PI * 2;
   boss = {
     x: cx() + Math.cos(angle) * orbitDist,
     y: cy() + Math.sin(angle) * orbitDist,
-    isBoss: true,
+    isBoss: true, type: 'mini_charger',
     hp: CFG.BOSS_MINI_HP, maxHp: CFG.BOSS_MINI_HP,
     size: CFG.BOSS_MINI_SIZE, color: CFG.BOSS_MINI_COLOR,
     dmg: CFG.BOSS_MINI_DMG, xpReward: CFG.BOSS_MINI_XP, coinReward: CFG.COIN_BOSS,
-    rot: 0,
-    orbitAngle: angle,
-    orbitDist: orbitDist
+    rot: 0, orbitAngle: angle, orbitDist: orbitDist,
+    phase: 'wander', timer: CFG.BOSS_MINI_WANDER_DUR, dirX: 0, dirY: 0
   };
-  bossPhase = 'wander';
-  bossTimer = CFG.BOSS_MINI_WANDER_DUR;
-  showBossBar();
+  showBossBar('MINI BOSS');
 }
 
 function updateBoss(dt){
   if(!boss) return;
-  bossTimer -= dt;
+  if(boss.type === 'mini_charger') updateMiniCharger(dt);
+  else if(boss.type === 'charger')  updateCharger(dt);
+  else if(boss.type === 'summoner') updateSummoner(dt);
+}
 
-  if(bossPhase === 'wander'){
-    boss.orbitAngle += CFG.BOSS_MINI_SPEED_WANDER * dt;
-    boss.x = cx() + Math.cos(boss.orbitAngle) * boss.orbitDist;
-    boss.y = cy() + Math.sin(boss.orbitAngle) * boss.orbitDist;
-    if(bossTimer <= 0){
-      bossPhase = 'warn'; bossTimer = CFG.BOSS_MINI_WARN_DUR;
-      var dx = cx() - boss.x, dy = cy() - boss.y;
+function updateMiniCharger(dt){
+  var b = boss;
+  b.timer -= dt;
+  if(b.phase === 'wander'){
+    b.orbitAngle += CFG.BOSS_MINI_SPEED_WANDER * dt;
+    b.x = cx() + Math.cos(b.orbitAngle) * b.orbitDist;
+    b.y = cy() + Math.sin(b.orbitAngle) * b.orbitDist;
+    if(b.timer <= 0){
+      b.phase = 'warn'; b.timer = CFG.BOSS_MINI_WARN_DUR;
+      var dx = cx() - b.x, dy = cy() - b.y;
       var d  = Math.sqrt(dx * dx + dy * dy);
-      bossDirX = dx / d; bossDirY = dy / d;
+      b.dirX = dx / d; b.dirY = dy / d;
     }
-  } else if(bossPhase === 'warn'){
-    if(bossTimer <= 0){ bossPhase = 'charge'; bossTimer = CFG.BOSS_MINI_CHARGE_DUR; }
-  } else if(bossPhase === 'charge'){
-    boss.x += bossDirX * CFG.BOSS_MINI_SPEED_CHARGE * dt;
-    boss.y += bossDirY * CFG.BOSS_MINI_SPEED_CHARGE * dt;
-    var dx2 = boss.x - cx(), dy2 = boss.y - cy();
+  } else if(b.phase === 'warn'){
+    if(b.timer <= 0){ b.phase = 'charge'; b.timer = CFG.BOSS_MINI_CHARGE_DUR; }
+  } else if(b.phase === 'charge'){
+    b.x += b.dirX * CFG.BOSS_MINI_SPEED_CHARGE * dt;
+    b.y += b.dirY * CFG.BOSS_MINI_SPEED_CHARGE * dt;
+    var dx2 = b.x - cx(), dy2 = b.y - cy();
     var d2  = Math.sqrt(dx2 * dx2 + dy2 * dy2);
-    if(d2 < CFG.TOWER_HIT_RADIUS + boss.size * 0.5){
-      tower.hp -= boss.dmg;
-      burst(boss.x, boss.y, boss.color, 20);
-      /* タワーから弾き返す */
-      boss.x = cx() + bossDirX * -(CFG.TOWER_HIT_RADIUS + boss.size);
-      boss.y = cy() + bossDirY * -(CFG.TOWER_HIT_RADIUS + boss.size);
-      bossPhase = 'rest'; bossTimer = CFG.BOSS_MINI_REST_DUR;
+    if(d2 < CFG.TOWER_HIT_RADIUS + b.size * 0.5){
+      tower.hp -= b.dmg;
+      burst(b.x, b.y, b.color, 20);
+      b.x = cx() + b.dirX * -(CFG.TOWER_HIT_RADIUS + b.size);
+      b.y = cy() + b.dirY * -(CFG.TOWER_HIT_RADIUS + b.size);
+      b.phase = 'rest'; b.timer = CFG.BOSS_MINI_REST_DUR;
       if(tower.hp <= 0){ tower.hp = 0; endGame(false); return; }
     }
-    if(bossTimer <= 0){ bossPhase = 'rest'; bossTimer = CFG.BOSS_MINI_REST_DUR; }
-  } else if(bossPhase === 'rest'){
-    if(bossTimer <= 0){
-      bossPhase = 'wander'; bossTimer = CFG.BOSS_MINI_WANDER_DUR;
-      boss.orbitAngle = Math.atan2(boss.y - cy(), boss.x - cx());
+    if(b.timer <= 0){ b.phase = 'rest'; b.timer = CFG.BOSS_MINI_REST_DUR; }
+  } else if(b.phase === 'rest'){
+    if(b.timer <= 0){
+      b.phase = 'wander'; b.timer = CFG.BOSS_MINI_WANDER_DUR;
+      b.orbitAngle = Math.atan2(b.y - cy(), b.x - cx());
     }
   }
-  boss.rot += 1.2 * dt;
+  b.rot += 1.2 * dt;
   updateBossHpBar();
 }
 
-function showBossBar(){
+/* =====================================================================
+   ボス警告演出トリガー
+===================================================================== */
+function triggerBossWarning(type, name, spawnFn){
+  warningTimer = CFG.BOSS_WARNING_DUR;
+  warningLabel = type + ' : ' + name;
+  bossSpawnFn  = spawnFn;
+}
+
+/* =====================================================================
+   チャージャー (W10/W30)
+===================================================================== */
+function spawnCharger(w){
+  var hard = (w >= 30);
+  var orbitDist = Math.min(W, H) * CFG.BOSS_CHARGER_ORBIT_RATIO;
+  var angle = Math.random() * Math.PI * 2;
+  boss = {
+    x: cx() + Math.cos(angle) * orbitDist,
+    y: cy() + Math.sin(angle) * orbitDist,
+    isBoss: true, type: 'charger', hard: hard,
+    hp:    hard ? CFG.BOSS_CHARGER_HP_HARD  : CFG.BOSS_CHARGER_HP,
+    maxHp: hard ? CFG.BOSS_CHARGER_HP_HARD  : CFG.BOSS_CHARGER_HP,
+    size:  CFG.BOSS_CHARGER_SIZE, color: CFG.BOSS_CHARGER_COLOR,
+    dmg:   hard ? CFG.BOSS_CHARGER_DMG_HARD : CFG.BOSS_CHARGER_DMG,
+    xpReward:   hard ? CFG.BOSS_CHARGER_XP * 2       : CFG.BOSS_CHARGER_XP,
+    coinReward: hard ? CFG.BOSS_CHARGER_COIN_HARD     : CFG.BOSS_CHARGER_COIN,
+    rot: 0, orbitAngle: angle, orbitDist: orbitDist,
+    phase: 'wander', timer: CFG.BOSS_CHARGER_WANDER_DUR, dirX: 0, dirY: 0
+  };
+  showBossBar(hard ? 'BOSS : CHARGER II' : 'BOSS : CHARGER');
+}
+
+function updateCharger(dt){
+  var b = boss;
+  b.timer -= dt;
+  if(b.phase === 'wander'){
+    b.orbitAngle += CFG.BOSS_CHARGER_SPEED_WANDER * dt;
+    b.x = cx() + Math.cos(b.orbitAngle) * b.orbitDist;
+    b.y = cy() + Math.sin(b.orbitAngle) * b.orbitDist;
+    if(b.timer <= 0){
+      b.phase = 'warn'; b.timer = CFG.BOSS_CHARGER_WARN_DUR;
+      var dx = cx() - b.x, dy = cy() - b.y;
+      var d  = Math.sqrt(dx * dx + dy * dy);
+      b.dirX = dx / d; b.dirY = dy / d;
+    }
+  } else if(b.phase === 'warn'){
+    if(b.timer <= 0){ b.phase = 'charge'; b.timer = CFG.BOSS_CHARGER_CHARGE_DUR; }
+  } else if(b.phase === 'charge'){
+    b.x += b.dirX * CFG.BOSS_CHARGER_SPEED_CHARGE * dt;
+    b.y += b.dirY * CFG.BOSS_CHARGER_SPEED_CHARGE * dt;
+    var dx2 = b.x - cx(), dy2 = b.y - cy();
+    var d2  = Math.sqrt(dx2 * dx2 + dy2 * dy2);
+    if(d2 < CFG.TOWER_HIT_RADIUS + b.size * 0.5){
+      tower.hp -= b.dmg;
+      burst(b.x, b.y, b.color, 22);
+      if(b.hard){ bossShockwave(b); }
+      b.x = cx() + b.dirX * -(CFG.TOWER_HIT_RADIUS + b.size);
+      b.y = cy() + b.dirY * -(CFG.TOWER_HIT_RADIUS + b.size);
+      b.phase = 'rest'; b.timer = CFG.BOSS_CHARGER_REST_DUR;
+      if(tower.hp <= 0){ tower.hp = 0; endGame(false); return; }
+    }
+    if(b.timer <= 0){ b.phase = 'rest'; b.timer = CFG.BOSS_CHARGER_REST_DUR; }
+  } else if(b.phase === 'rest'){
+    if(b.timer <= 0){
+      b.phase = 'wander'; b.timer = CFG.BOSS_CHARGER_WANDER_DUR;
+      b.orbitAngle = Math.atan2(b.y - cy(), b.x - cx());
+    }
+  }
+  b.rot += 1.4 * dt;
+  updateBossHpBar();
+}
+
+function bossShockwave(b){
+  var dmg = CFG.BOSS_CHARGER_SHOCKWAVE_DMG;
+  var r2  = CFG.BOSS_CHARGER_SHOCKWAVE_R * CFG.BOSS_CHARGER_SHOCKWAVE_R;
+  var i;
+  for(i = enemies.length - 1; i >= 0; i--){
+    var e = enemies[i];
+    var ex = e.x - b.x, ey = e.y - b.y;
+    if(ex * ex + ey * ey < r2){
+      e.hp -= dmg;
+      burst(e.x, e.y, '#ff6b35', 8);
+      if(e.hp <= 0){
+        kills++; gainXP(e.xpReward); gainCoin(e.coinReward || 1, e.x, e.y);
+        enemies.splice(i, 1);
+      }
+    }
+  }
+  /* 衝撃波リング */
+  for(var k = 0; k < 32; k++){
+    var a = Math.PI * 2 / 32 * k;
+    particles.push({ x: b.x, y: b.y,
+      vx: Math.cos(a) * 200, vy: Math.sin(a) * 200,
+      life: 0.55, maxLife: 0.55, r: 4, color: '#ff6b35' });
+  }
+  floater(b.x, b.y - b.size - 14, 'SHOCKWAVE', '#ff6b35');
+}
+
+/* =====================================================================
+   サモナー (W20/W40)
+===================================================================== */
+function spawnSummoner(w){
+  var hard = (w >= 40);
+  var orbitDist = Math.min(W, H) * CFG.BOSS_SUMMONER_ORBIT_RATIO;
+  var angle = Math.random() * Math.PI * 2;
+  boss = {
+    x: cx() + Math.cos(angle) * orbitDist,
+    y: cy() + Math.sin(angle) * orbitDist,
+    isBoss: true, type: 'summoner', hard: hard,
+    hp:    hard ? CFG.BOSS_SUMMONER_HP_HARD : CFG.BOSS_SUMMONER_HP,
+    maxHp: hard ? CFG.BOSS_SUMMONER_HP_HARD : CFG.BOSS_SUMMONER_HP,
+    size:  CFG.BOSS_SUMMONER_SIZE, color: CFG.BOSS_SUMMONER_COLOR,
+    dmg: 0,
+    xpReward:   hard ? CFG.BOSS_SUMMONER_XP * 2      : CFG.BOSS_SUMMONER_XP,
+    coinReward: hard ? CFG.BOSS_SUMMONER_COIN_HARD    : CFG.BOSS_SUMMONER_COIN,
+    rot: 0, orbitAngle: angle, orbitDist: orbitDist,
+    summonTimer: CFG.BOSS_SUMMONER_SUMMON_INTERVAL,
+    bulletTimer: CFG.BOSS_SUMMONER_BULLET_INTERVAL
+  };
+  showBossBar(hard ? 'BOSS : SUMMONER II' : 'BOSS : SUMMONER');
+}
+
+function updateSummoner(dt){
+  var b = boss;
+  b.orbitAngle += CFG.BOSS_SUMMONER_SPEED_ORBIT * dt;
+  b.x = cx() + Math.cos(b.orbitAngle) * b.orbitDist;
+  b.y = cy() + Math.sin(b.orbitAngle) * b.orbitDist;
+
+  b.summonTimer -= dt;
+  if(b.summonTimer <= 0){
+    var cnt = b.hard ? CFG.BOSS_SUMMONER_SUMMON_COUNT_HARD : CFG.BOSS_SUMMONER_SUMMON_COUNT;
+    var si;
+    for(si = 0; si < cnt; si++){ spawnSummonerMinion(b.x, b.y); }
+    b.summonTimer = CFG.BOSS_SUMMONER_SUMMON_INTERVAL;
+    burst(b.x, b.y, b.color, 14);
+    floater(b.x, b.y - b.size - 10, 'SUMMON!', b.color);
+  }
+
+  b.bulletTimer -= dt;
+  if(b.bulletTimer <= 0){
+    var bcount = b.hard ? CFG.BOSS_SUMMONER_BULLET_COUNT_HARD : CFG.BOSS_SUMMONER_BULLET_COUNT;
+    fireSummonerBullets(b, bcount);
+    b.bulletTimer = CFG.BOSS_SUMMONER_BULLET_INTERVAL;
+  }
+
+  b.rot += 0.8 * dt;
+  updateBossHpBar();
+}
+
+function spawnSummonerMinion(sx, sy){
+  var hp = CFG.ENEMY_RED_HP_BASE + waveAccum(wave, CFG.ENEMY_RED_HP_WAVE, CFG.WAVE_HP_SCALE_EARLY, CFG.WAVE_HP_SCALE_LATE);
+  enemies.push({
+    x: sx + (Math.random() - 0.5) * 24,
+    y: sy + (Math.random() - 0.5) * 24,
+    hp: hp, maxHp: hp,
+    speed: CFG.ENEMY_RED_SPEED_BASE * 1.3,
+    size: CFG.ENEMY_RED_SIZE, color: '#c84dff',
+    rot: Math.random() * Math.PI * 2, rotSpd: (Math.random() - 0.5) * 2.5,
+    dmg: CFG.ENEMY_RED_DMG, xpReward: CFG.XP_PER_RED, coinReward: CFG.COIN_RED
+  });
+}
+
+function fireSummonerBullets(b, count){
+  var baseAngle = Math.atan2(cy() - b.y, cx() - b.x);
+  var spread    = Math.PI / 9;
+  var i;
+  for(i = 0; i < count; i++){
+    var a = count === 1 ? baseAngle :
+      baseAngle - spread + spread * 2 / (count - 1) * i;
+    enemyBullets.push({
+      x: b.x, y: b.y,
+      vx: Math.cos(a) * CFG.BOSS_SUMMONER_BULLET_SPEED,
+      vy: Math.sin(a) * CFG.BOSS_SUMMONER_BULLET_SPEED,
+      life: 4.0, dmg: CFG.BOSS_SUMMONER_BULLET_DMG,
+      color: '#c84dff', r: 7
+    });
+  }
+}
+
+function showBossBar(name){
+  document.getElementById('bossLabel').textContent = name || 'BOSS';
   document.getElementById('bossBar').style.display = 'block';
   document.getElementById('bossFill').style.width = '100%';
 }
@@ -1637,23 +1892,62 @@ function draw(tm, dt){
 
   /* ボス */
   if(boss !== null){
+    /* サモナー: 巡回軌道リング */
+    if(boss.type === 'summoner'){
+      ctx.save();
+      ctx.strokeStyle = 'rgba(200,77,255,0.18)'; ctx.lineWidth = boss.size * 2.2;
+      ctx.setLineDash([6, 14]);
+      ctx.beginPath(); ctx.arc(cx(), cy(), boss.orbitDist, 0, Math.PI * 2); ctx.stroke();
+      ctx.setLineDash([]);
+      ctx.restore();
+    }
+    /* チャージャー系: 突進予告帯 */
+    if((boss.type === 'charger' || boss.type === 'mini_charger') && boss.phase === 'warn'){
+      var bperpX = -boss.dirY, bperpY = boss.dirX;
+      var bHW    = boss.size * 1.4;
+      var bfarX  = boss.x + boss.dirX * (W + H);
+      var bfarY  = boss.y + boss.dirY * (W + H);
+      var warnAlpha = boss.type === 'charger'
+        ? (0.35 + 0.28 * Math.abs(Math.sin(tm * Math.PI * 12)))
+        : (0.45 + 0.35 * Math.abs(Math.sin(tm * Math.PI * 10)));
+      ctx.globalAlpha = warnAlpha;
+      ctx.fillStyle = boss.type === 'charger' ? 'rgba(255,107,53,0.55)' : 'rgba(255,61,129,0.45)';
+      ctx.beginPath();
+      ctx.moveTo(boss.x + bperpX * bHW, boss.y + bperpY * bHW);
+      ctx.lineTo(bfarX  + bperpX * bHW, bfarY  + bperpY * bHW);
+      ctx.lineTo(bfarX  - bperpX * bHW, bfarY  - bperpY * bHW);
+      ctx.lineTo(boss.x - bperpX * bHW, boss.y - bperpY * bHW);
+      ctx.closePath(); ctx.fill();
+      ctx.globalAlpha = 1;
+      ctx.strokeStyle = boss.type === 'charger' ? '#ff6b35' : '#ff3d81';
+      ctx.lineWidth = 1.5; ctx.setLineDash([8, 6]);
+      ctx.beginPath(); ctx.moveTo(boss.x, boss.y); ctx.lineTo(bfarX, bfarY); ctx.stroke();
+      ctx.setLineDash([]); ctx.globalAlpha = 1;
+    }
+    /* ボス本体 */
     ctx.save(); ctx.translate(boss.x, boss.y); ctx.rotate(boss.rot);
-    ctx.shadowColor = boss.color; ctx.shadowBlur = 24;
+    ctx.shadowColor = boss.color; ctx.shadowBlur = 26;
     ctx.strokeStyle = boss.color; ctx.lineWidth = 4;
     hexPath(boss.size, 0); ctx.stroke();
+    /* サモナーは内側に逆回転リングを追加 */
+    if(boss.type === 'summoner'){
+      ctx.strokeStyle = 'rgba(200,77,255,0.5)'; ctx.lineWidth = 2;
+      hexPath(boss.size * 0.6, -boss.rot * 2); ctx.stroke();
+    }
     ctx.globalAlpha = 0.18; ctx.fillStyle = boss.color;
     hexPath(boss.size, 0); ctx.fill();
     ctx.globalAlpha = 1; ctx.restore();
-    /* warn: 予告線 */
-    if(bossPhase === 'warn'){
-      var warnAlpha = 0.5 + 0.45 * Math.sin(tm * Math.PI * 10);
-      ctx.globalAlpha = warnAlpha;
-      ctx.strokeStyle = '#ff3d81'; ctx.lineWidth = 2;
-      ctx.setLineDash([8, 6]);
-      ctx.beginPath(); ctx.moveTo(boss.x, boss.y);
-      ctx.lineTo(boss.x + bossDirX * (W + H), boss.y + bossDirY * (W + H));
-      ctx.stroke(); ctx.setLineDash([]); ctx.globalAlpha = 1;
-    }
+  }
+
+  /* 敵弾(サモナー弾) */
+  var j2;
+  for(j2 = 0; j2 < enemyBullets.length; j2++){
+    var eb2 = enemyBullets[j2];
+    ctx.save();
+    ctx.shadowColor = eb2.color; ctx.shadowBlur = 14;
+    ctx.fillStyle = eb2.color; ctx.globalAlpha = 0.88;
+    ctx.beginPath(); ctx.arc(eb2.x, eb2.y, eb2.r, 0, Math.PI * 2); ctx.fill();
+    ctx.globalAlpha = 1; ctx.restore();
   }
 
   /* 弾 */
@@ -1739,6 +2033,29 @@ function draw(tm, dt){
     ctx.fillText(fl.text, fl.x, fl.y);
   }
   ctx.globalAlpha = 1;
+
+  /* WARNING演出 */
+  if(warningTimer > 0){
+    var wFade = warningTimer < 0.35 ? warningTimer / 0.35 : 1.0;
+    var wPulse = 0.5 + 0.5 * Math.abs(Math.sin(tm * Math.PI * 3.5));
+    ctx.globalAlpha = wFade * 0.18 * wPulse;
+    ctx.fillStyle = '#ff0044';
+    ctx.fillRect(0, 0, W, H);
+    ctx.globalAlpha = wFade;
+    ctx.save();
+    ctx.textAlign = 'center';
+    ctx.shadowColor = '#ff0044'; ctx.shadowBlur = 32;
+    ctx.fillStyle = '#ff3d81';
+    ctx.font = '700 ' + Math.floor(Math.min(W, H) * 0.088) + 'px "Chakra Petch", Arial';
+    ctx.fillText('!! WARNING !!', cx(), cy() - 22);
+    ctx.shadowColor = '#ffd257'; ctx.shadowBlur = 18;
+    ctx.fillStyle = '#ffd257';
+    ctx.font = '600 ' + Math.floor(Math.min(W, H) * 0.044) + 'px "Chakra Petch", Arial';
+    ctx.fillText(warningLabel, cx(), cy() + 32);
+    ctx.shadowBlur = 0;
+    ctx.restore();
+    ctx.globalAlpha = 1;
+  }
 
   /* 必殺フラッシュ */
   if(flashTimer > 0){
@@ -1840,8 +2157,8 @@ function suspendRun(){
 
   STATE = 'title'; /* ループ停止 */
   hideScreen('scrPause');
-  enemies = []; bullets = []; particles = []; floaters = []; healItems = [];
-  boss = null; hideBossBar();
+  enemies = []; bullets = []; particles = []; floaters = []; healItems = []; enemyBullets = [];
+  boss = null; warningTimer = 0; bossSpawnFn = null; hideBossBar();
   document.getElementById('hudEl').style.display = 'none';
   document.getElementById('specialBtn').style.display = 'none';
   showScreen('scrTitle');
@@ -1853,8 +2170,8 @@ function resumeRun(){
   if(!sr) return;
 
   /* 戦闘状態リセット */
-  enemies = []; bullets = []; particles = []; floaters = []; healItems = [];
-  boss = null; bossPhase = 'wander'; bossTimer = 0;
+  enemies = []; bullets = []; particles = []; floaters = []; healItems = []; enemyBullets = [];
+  boss = null; warningTimer = 0; bossSpawnFn = null;
   subTurretAngles = [0, 0]; subTurretFireTimers = [0, 0];
   pendingLevelUps = 0; pendingSteps = 0;
   flashTimer = 0; shakeTimer = 0; hideBossBar();
