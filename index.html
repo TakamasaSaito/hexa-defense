@@ -572,11 +572,18 @@ var CFG = {
   PULSE_SHAKE_DUR:        0.3,
   PULSE_SHAKE_MAG:        8,
 
-  /* RAILGUN(W10解放、コスト50%、CD6s) */
-  RAILGUN_COST:         500,
-  RAILGUN_CD:           6,
-  RAILGUN_DMG_MULT:     20,
-  RAILGUN_HIT_MARGIN:   28,
+  /* RAILGUN(W10解放、コスト50%、#17ボスキラー再設計) */
+  RAILGUN_COST:              500,
+  RAILGUN_CD:                12,    /* 6→12: 高火力単発に見合う長さ */
+  RAILGUN_DMG_MULT:          16,    /* 20→16: 通常敵倍率 */
+  RAILGUN_BOSS_DMG_MULT:     2.2,   /* 新規: ボス専用追加倍率(通常×2.2) */
+  RAILGUN_HIT_MARGIN:        28,
+  RAILGUN_CHARGE_DUR:        0.28,  /* 新規: チャージ予兆秒数 */
+  RAILGUN_BEAM_DUR:          0.55,  /* 新規: ビーム表示秒数 */
+  RAILGUN_FLASH_DUR:         0.55,  /* 新規: フラッシュ秒数 */
+  RAILGUN_SHAKE_DUR:         0.60,  /* 新規: シェイク秒数 */
+  RAILGUN_SHAKE_MAG:         22,    /* 新規: シェイク強度 */
+  RAILGUN_BOSS_FLOATER_SZ:   26,    /* 新規: ボス命中floaterフォントサイズ */
 
   /* OVERDRIVE(W20解放、コスト100%、CD15s) */
   OVERDRIVE_COST:       1000,
@@ -994,6 +1001,7 @@ var specials = {
 };
 var overdriveTimer = 0;
 var overdriveSavedInterval = 0, overdriveSavedDmg = 0, overdriveSavedRange = 0;
+var railgunCharge = null; /* { timer, maxTimer, ang } */
 var railgunBeam = null;
 var beamTimer = 0;
 var beamAngle = 0;   /* BEAMの向き(ラジアン) */
@@ -1305,10 +1313,17 @@ function sndBarrierBreak(){
   noisePlay(0.20, 0.12);
 }
 
+function sndRailgunCharge(){
+  /* チャージ予兆: 上昇スイープ */
+  oscPlay('sine',     600, 3000, 0.12, CFG.RAILGUN_CHARGE_DUR);
+  oscPlay('triangle', 300, 1500, 0.08, CFG.RAILGUN_CHARGE_DUR);
+}
 function sndRailgun(){
-  oscPlay('sawtooth', 3200, 400, 0.30, 0.18);
-  oscPlay('sine',     2000, 800, 0.20, 0.22);
-  noisePlay(0.10, 0.12);
+  /* 発射: 重低音インパクト */
+  oscPlay('sawtooth', 60,  25, 0.60, 0.55);
+  oscPlay('sine',     90,  35, 0.45, 0.65);
+  noisePlay(0.32, 0.40);
+  oscPlay('square',   800, 100, 0.10, 0.18);
 }
 
 function sndOverdrive(){
@@ -1738,37 +1753,47 @@ function firePulse(){
 function fireRailgun(){
   if(!specials.railgun.unlocked || specials.railgun.cd > 0 || STATE !== 'play') return;
   if(specialGauge < CFG.RAILGUN_COST) return;
+  if(railgunCharge) return;
+
+  /* ボス優先→最HP敵 */
+  var target = boss || null;
+  if(!target){
+    var maxHp = -1, i;
+    for(i = 0; i < enemies.length; i++){
+      if(enemies[i].hp > maxHp){ maxHp = enemies[i].hp; target = enemies[i]; }
+    }
+  }
+  if(!target) return;
+
   specialGauge -= CFG.RAILGUN_COST;
   specials.railgun.cd = CFG.RAILGUN_CD;
   updateSpecialHud();
 
-  /* 最遠の敵(ボス含む)を探す */
-  var target = null, farthest = -1, i;
-  for(i = 0; i < enemies.length; i++){
-    var ex = enemies[i].x - cx(), ey = enemies[i].y - cy();
-    var d = Math.sqrt(ex * ex + ey * ey);
-    if(d > farthest){ farthest = d; target = enemies[i]; }
-  }
-  if(boss){ var bx = boss.x - cx(), by = boss.y - cy(); var bd = Math.sqrt(bx*bx+by*by); if(bd > farthest){ target = boss; } }
-  if(!target) return;
-
   var ang = Math.atan2(target.y - cy(), target.x - cx());
+  railgunCharge = { timer: 0, maxTimer: CFG.RAILGUN_CHARGE_DUR, ang: ang };
+  sndRailgunCharge();
+}
+
+function executeRailgunBeam(ang){
   var ca = Math.cos(ang), sa = Math.sin(ang);
-  var dmg = tower.dmg * CFG.RAILGUN_DMG_MULT;
+  var normalDmg = tower.dmg * CFG.RAILGUN_DMG_MULT;
+  var bossDmg   = normalDmg * CFG.RAILGUN_BOSS_DMG_MULT;
   var thr = CFG.RAILGUN_HIT_MARGIN;
   var beamLen = Math.sqrt(W * W + H * H);
-  railgunBeam = { x1:cx(), y1:cy(), x2:cx()+ca*beamLen, y2:cy()+sa*beamLen, timer:0.45, maxTimer:0.45 };
+  railgunBeam = { x1:cx(), y1:cy(), x2:cx()+ca*beamLen, y2:cy()+sa*beamLen,
+                  timer: CFG.RAILGUN_BEAM_DUR, maxTimer: CFG.RAILGUN_BEAM_DUR };
 
+  var i;
   for(i = enemies.length - 1; i >= 0; i--){
     var e = enemies[i];
-    var t = (e.x - cx()) * ca + (e.y - cy()) * sa;
-    if(t < 0) continue;
-    var px = cx() + t * ca, py = cy() + t * sa;
+    var t2 = (e.x - cx()) * ca + (e.y - cy()) * sa;
+    if(t2 < 0) continue;
+    var px = cx() + t2 * ca, py = cy() + t2 * sa;
     var dist = Math.sqrt((e.x-px)*(e.x-px) + (e.y-py)*(e.y-py));
     if(dist < thr + e.size * 0.5){
-      e.hp -= dmg;
-      floater(e.x, e.y - e.size, '-' + Math.round(dmg), '#4df3ff');
-      burst(e.x, e.y, '#4df3ff', 12);
+      e.hp -= normalDmg;
+      floater(e.x, e.y - e.size, '-' + String(Math.round(normalDmg)), '#4df3ff');
+      burst(e.x, e.y, '#4df3ff', 14);
       if(e.hp <= 0){
         kills++; gainXP(e.xpReward); gainCoin(e.coinReward || 1, e.x, e.y);
         enemies.splice(i, 1);
@@ -1781,9 +1806,10 @@ function fireRailgun(){
       var bpx = cx() + bt * ca, bpy = cy() + bt * sa;
       var bdist = Math.sqrt((boss.x-bpx)*(boss.x-bpx) + (boss.y-bpy)*(boss.y-bpy));
       if(bdist < thr + boss.size * 0.5){
-        boss.hp -= dmg;
-        floater(boss.x, boss.y - boss.size, '-' + Math.round(dmg), '#4df3ff');
-        burst(boss.x, boss.y, '#4df3ff', 16);
+        boss.hp -= bossDmg;
+        floater(boss.x, boss.y - boss.size - 10,
+                '-' + String(Math.round(bossDmg)), '#4df3ff', CFG.RAILGUN_BOSS_FLOATER_SZ);
+        burst(boss.x, boss.y, '#4df3ff', 32);
         updateBossHpBar();
         if(boss.hp <= 0){
           burst(boss.x, boss.y, boss.color, 40);
@@ -1794,7 +1820,9 @@ function fireRailgun(){
       }
     }
   }
-  flashTimer = 0.2;
+  flashTimer = CFG.RAILGUN_FLASH_DUR;
+  shakeTimer = CFG.RAILGUN_SHAKE_DUR;
+  shakeMag   = CFG.RAILGUN_SHAKE_MAG;
   playSound('railgun');
 }
 
@@ -1858,7 +1886,7 @@ function resetGame(){
   specials.beam.unlocked     = false; specials.beam.cd     = 0;
   overdriveTimer = 0; beamTimer = 0;
   overdriveSavedInterval = 0; overdriveSavedDmg = 0; overdriveSavedRange = 0;
-  railgunBeam = null; specialHudTimer = 0;
+  railgunCharge = null; railgunBeam = null; specialHudTimer = 0;
   coins = 0; healItems = []; rareItems = [];
   upgradeCounts = { rate: 0, dmg: 0, range: 0, speed: 0, barrier: 0, heal: 0 };
   barrierCount = 0; barrierBreakTimer = 0;
@@ -2075,8 +2103,8 @@ function burst(x, y, color, n){
   }
 }
 
-function floater(x, y, text, color){
-  floaters.push({ x: x, y: y, text: text, color: color, life: 0.8 });
+function floater(x, y, text, color, size){
+  floaters.push({ x: x, y: y, text: text, color: color, life: 0.8, size: size });
 }
 
 /* =====================================================================
@@ -2973,6 +3001,13 @@ function update(dt){
   }
 
   /* レールガンビームフェード */
+  if(railgunCharge){
+    railgunCharge.timer += dt;
+    if(railgunCharge.timer >= railgunCharge.maxTimer){
+      executeRailgunBeam(railgunCharge.ang);
+      railgunCharge = null;
+    }
+  }
   if(railgunBeam){ railgunBeam.timer -= dt; if(railgunBeam.timer <= 0) railgunBeam = null; }
 
   /* 必殺HUD更新(0.25秒ごと) */
@@ -3819,16 +3854,44 @@ function draw(tm, dt){
     ctx.globalAlpha = 1; ctx.shadowBlur = 0; ctx.restore();
   }
 
-  /* レールガンビーム */
+  /* レールガンチャージ予兆 */
+  if(railgunCharge){
+    var rcFrac = railgunCharge.timer / railgunCharge.maxTimer;
+    var rcAng  = railgunCharge.ang;
+    var rcCa   = Math.cos(rcAng), rcSa = Math.sin(rcAng);
+    var rcLen  = Math.sqrt(W * W + H * H);
+    ctx.save();
+    ctx.strokeStyle = '#4df3ff'; ctx.shadowColor = '#4df3ff';
+    /* 照準線(点線) */
+    ctx.globalAlpha = rcFrac * 0.55;
+    ctx.lineWidth = 1; ctx.shadowBlur = 12;
+    ctx.setLineDash([10, 10]);
+    ctx.beginPath(); ctx.moveTo(cx(), cy()); ctx.lineTo(cx() + rcCa * rcLen, cy() + rcSa * rcLen); ctx.stroke();
+    ctx.setLineDash([]);
+    /* 充電リング(タワー中心で拡大) */
+    ctx.globalAlpha = rcFrac * 0.9;
+    ctx.lineWidth = 2 + rcFrac * 5;
+    ctx.shadowBlur = 20 + rcFrac * 55;
+    ctx.beginPath(); ctx.arc(cx(), cy(), 8 + rcFrac * 28, 0, Math.PI * 2); ctx.stroke();
+    ctx.restore(); ctx.globalAlpha = 1; ctx.shadowBlur = 0;
+  }
+
+  /* レールガンビーム(極太3層) */
   if(railgunBeam && railgunBeam.timer > 0){
     var rbAlpha = railgunBeam.timer / railgunBeam.maxTimer;
     ctx.save();
-    ctx.globalAlpha = rbAlpha;
-    ctx.strokeStyle = '#4df3ff';
-    ctx.lineWidth = 3;
-    ctx.shadowColor = '#4df3ff'; ctx.shadowBlur = 24;
+    ctx.strokeStyle = '#4df3ff'; ctx.shadowColor = '#4df3ff';
+    /* 外周アンビエント */
+    ctx.globalAlpha = rbAlpha * 0.12;
+    ctx.lineWidth = 34; ctx.shadowBlur = 0;
     ctx.beginPath(); ctx.moveTo(railgunBeam.x1, railgunBeam.y1); ctx.lineTo(railgunBeam.x2, railgunBeam.y2); ctx.stroke();
-    ctx.lineWidth = 8; ctx.globalAlpha = rbAlpha * 0.25;
+    /* 中間グロー */
+    ctx.globalAlpha = rbAlpha * 0.35;
+    ctx.lineWidth = 16; ctx.shadowBlur = 50;
+    ctx.beginPath(); ctx.moveTo(railgunBeam.x1, railgunBeam.y1); ctx.lineTo(railgunBeam.x2, railgunBeam.y2); ctx.stroke();
+    /* コアビーム */
+    ctx.globalAlpha = rbAlpha;
+    ctx.lineWidth = 5; ctx.shadowBlur = 45;
     ctx.beginPath(); ctx.moveTo(railgunBeam.x1, railgunBeam.y1); ctx.lineTo(railgunBeam.x2, railgunBeam.y2); ctx.stroke();
     ctx.restore(); ctx.globalAlpha = 1; ctx.shadowBlur = 0;
   }
@@ -4233,7 +4296,7 @@ function draw(tm, dt){
   for(j = 0; j < floaters.length; j++){
     var fl = floaters[j];
     ctx.globalAlpha = Math.max(0, fl.life / 0.8);
-    ctx.font = '700 15px "Chakra Petch", Arial';
+    ctx.font = '700 ' + String(fl.size || 15) + 'px "Chakra Petch", Arial';
     ctx.fillStyle = fl.color;
     ctx.fillText(fl.text, fl.x, fl.y);
   }
@@ -4462,7 +4525,7 @@ function resumeRun(){
   specials.overdrive.unlocked= sr.specials ? !!sr.specials.overdriveUnlocked : false;
   specials.beam.unlocked     = sr.specials ? !!sr.specials.beamUnlocked      : false;
   specials.beam.cd = 0;
-  overdriveTimer = 0; beamTimer = 0; railgunBeam = null;
+  overdriveTimer = 0; beamTimer = 0; railgunCharge = null; railgunBeam = null;
   weapons         = { subTurret: sr.weapons.subTurret, pierce: sr.weapons.pierce,
                       attrFire: sr.weapons.attrFire || 0, attrIce: sr.weapons.attrIce || 0,
                       attrLightning: sr.weapons.attrLightning || 0,
