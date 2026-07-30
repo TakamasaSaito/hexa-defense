@@ -173,17 +173,35 @@ CONFIGオブジェクトは `index.html` 冒頭にまとめる。マジックナ
 ## コイン経済
 | キー | 値 | 説明 |
 |---|---|---|
-| `META_COIN_RATE` | **0.6** | ラン終了コインのメタコイン変換率(旧0.5) |
-| `PERM_MAX_LEVEL` | 5 | 各系統の最大レベル |
-| `PERM_BASE_PRICE` | **25** | Tier1価格(メタコイン)(旧20) |
-| `PERM_PRICE_SCALE` | 1.8 | レベルごと価格倍率 |
-| `PERM_DMG_PER_LV` | **0.20** | ダメージ+20%/LV(旧0.15) |
-| `PERM_RATE_PER_LV` | **0.15** | 発射間隔-15%/LV(旧0.12) |
-| `PERM_HP_PER_LV` | **25** | 最大HP+25/LV(旧20) |
-| `PERM_RANGE_PER_LV` | **0.10** | 射程+10%/LV(旧0.08) |
-| `PERM_COIN_GAIN_PER_LV` | **0.18** | コイン獲得量+18%/LV(旧0.15) |
+| `META_COIN_RATE` | **0.6** | ラン終了コインのメタコイン変換率 |
+| `PERM_MAX_LEVEL` | **10** | 既存5系統の最大レベル(旧5, #14) |
+| `PERM_LEVEL_BREAK` | 5 | 前半/後半ティアの境界 |
+| `PERM_BASE_PRICE` | **25** | 前半Lv1〜5 Tier1価格 |
+| `PERM_PRICE_SCALE` | 1.8 | 前半価格倍率 |
+| `PERM_BASE_LATE` | 80 | 後半Lv6〜10 ベース価格 (#14) |
+| `PERM_PRICE_SCALE_LATE` | 1.4 | 後半価格倍率 (#14) |
+| `PERM_DMG_PER_LV` | 0.20 | ダメージ+20%/LV(Lv1〜5) |
+| `PERM_DMG_PER_LV_LATE` | 0.30 | ダメージ+30%/LV(Lv6〜10, #14) |
+| `PERM_RATE_PER_LV` | 0.15 | 発射間隔-15%/LV(Lv1〜5) |
+| `PERM_RATE_PER_LV_LATE` | 0.20 | 発射間隔-20%/LV(Lv6〜10, #14) |
+| `PERM_HP_PER_LV` | 25 | HP+25/LV(Lv1〜5) |
+| `PERM_HP_PER_LV_LATE` | 50 | HP+50/LV(Lv6〜10, #14) |
+| `PERM_RANGE_PER_LV` | 0.10 | 射程+10%/LV(Lv1〜5) |
+| `PERM_RANGE_PER_LV_LATE` | 0.15 | 射程+15%/LV(Lv6〜10, #14) |
+| `PERM_COIN_GAIN_PER_LV` | 0.18 | コイン獲得+18%/LV(Lv1〜5) |
+| `PERM_COIN_GAIN_PER_LV_LATE` | 0.25 | コイン獲得+25%/LV(Lv6〜10, #14) |
+| `PERM_BARRIER_BASE` | 200 | 初期バリア Tier1価格 (#14) |
+| `PERM_BARRIER_SCALE` | 1.8 | 初期バリア価格倍率 (#14) |
+| `PERM_BARRIER_MAX` | 3 | 初期バリア最大段数 (#14) |
+| `PERM_GAUGE_RATE_PER_LV` | 0.20 | 必殺ゲージ効率+20%/LV (#14) |
+| `PERM_GAUGE_RATE_MAX` | 5 | ゲージ効率最大段数 (#14) |
+| `PERM_ELEM_START_MAX` | 2 | 初期属性Lv最大段数 (#14) |
+| `ELEM_CHOICE_PRIORITY` | 3 | 選択属性の報酬プール重み (#14) |
 
-**価格:** Tier1: 25, T2: 45, T3: 81, T4: 146, T5: 263 (×1.8倍逓増)
+**前半価格(Lv1〜5):** 25, 45, 81, 146, 263 (合計560/系統)
+**後半価格(Lv6〜10):** 80, 112, 157, 220, 307 (合計876/系統)
+**初期バリア:** 200, 360, 648 (合計1208)
+**フルコンプ総コスト目安:** 約9400メタコイン
 
 **経済目標:** W5前後敗北ランで60〜80コイン → メタコイン36〜48 → 2ランに1個ペースでTier1購入
 
