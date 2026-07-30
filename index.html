@@ -267,6 +267,15 @@ html, body { width:100%; height:100%; overflow:hidden; background:#05090f; touch
   padding:7px 11px; cursor:pointer;
   clip-path:polygon(8px 0,100% 0,100% calc(100% - 8px),calc(100% - 8px) 100%,0 100%,0 8px); }
 
+/* ミュートボタン(HUD) */
+#muteBtn { pointer-events:auto; display:flex; align-items:center; justify-content:center;
+  font-family:'Chakra Petch',sans-serif; font-size:10px; font-weight:700; letter-spacing:2px;
+  color:rgba(140,210,240,0.7); background:rgba(77,243,255,0.05); border:1px solid rgba(77,243,255,0.28);
+  padding:7px 10px; cursor:pointer;
+  clip-path:polygon(8px 0,100% 0,100% calc(100% - 8px),calc(100% - 8px) 100%,0 100%,0 8px); }
+#muteBtn.muted { color:rgba(255,90,90,0.9); border-color:rgba(255,80,80,0.55);
+  background:rgba(255,60,60,0.07); }
+
 /* リトライ2ボタンレイアウト */
 .res-actions { display:flex; gap:12px; flex-wrap:wrap; justify-content:center; }
 .upgrade-btn-res { pointer-events:auto; border:none; cursor:pointer;
@@ -321,6 +330,7 @@ html, body { width:100%; height:100%; overflow:hidden; background:#05090f; touch
           <span class="chex" style="width:15px;height:15px"></span><span id="coinNum">0</span>
         </div>
         <div style="display:flex;gap:6px">
+          <button id="muteBtn">SND</button>
           <button id="speedBtn">x1</button>
           <button id="pauseBtn">II</button>
         </div>
@@ -883,9 +893,138 @@ var saveData = storage.load();
 var bestWave = saveData.bestWave;
 var settings = saveData.settings;
 
+/* サウンドスロットル変数 */
+var audioCtx        = null;
+var shootSoundTimer = 0;
+var hitSoundTimer   = 0;
+var coinSoundTimer  = 0;
+var killSoundTimer  = 0;
+
 function persistSave(){ saveData.bestWave = bestWave; storage.save(saveData); }
 function saveBestWave(){ persistSave(); }
 function saveSettings(){ persistSave(); }
+
+/* =====================================================================
+   サウンド(Web Audio API — 外部ファイル不使用)
+===================================================================== */
+function initAudio(){
+  if(audioCtx) return;
+  try { audioCtx = new (window.AudioContext || window.webkitAudioContext)(); }
+  catch(err){ audioCtx = null; }
+}
+
+function resumeAudio(){
+  initAudio();
+  if(audioCtx && audioCtx.state === 'suspended') audioCtx.resume();
+}
+
+function playSound(id){
+  if(settings.mute) return;
+  if(!audioCtx){ initAudio(); if(!audioCtx) return; }
+  if(audioCtx.state === 'suspended') audioCtx.resume();
+  if(id === 'shoot')   sndShoot();
+  else if(id === 'hit')     sndHit();
+  else if(id === 'kill')    sndKill();
+  else if(id === 'coin')    sndCoin();
+  else if(id === 'levelup') sndLevelup();
+  else if(id === 'special') sndSpecial();
+  else if(id === 'boss')    sndBoss();
+  else if(id === 'damage')  sndDamage();
+  else if(id === 'button')  sndButton();
+}
+
+function oscPlay(type, freq, freqEnd, gainStart, dur){
+  var t = audioCtx.currentTime;
+  var osc = audioCtx.createOscillator();
+  var g = audioCtx.createGain();
+  osc.type = type;
+  osc.frequency.setValueAtTime(freq, t);
+  if(freqEnd > 0) osc.frequency.exponentialRampToValueAtTime(freqEnd, t + dur);
+  g.gain.setValueAtTime(gainStart, t);
+  g.gain.exponentialRampToValueAtTime(0.001, t + dur);
+  osc.connect(g); g.connect(audioCtx.destination);
+  osc.start(t); osc.stop(t + dur + 0.01);
+}
+
+function noisePlay(gainStart, dur){
+  var t = audioCtx.currentTime;
+  var bufLen = Math.ceil(audioCtx.sampleRate * dur);
+  var buf = audioCtx.createBuffer(1, bufLen, audioCtx.sampleRate);
+  var d = buf.getChannelData(0);
+  for(var ni = 0; ni < bufLen; ni++) d[ni] = Math.random() * 2 - 1;
+  var src = audioCtx.createBufferSource();
+  src.buffer = buf;
+  var gn = audioCtx.createGain();
+  gn.gain.setValueAtTime(gainStart, t);
+  gn.gain.exponentialRampToValueAtTime(0.001, t + dur);
+  src.connect(gn); gn.connect(audioCtx.destination);
+  src.start(t); src.stop(t + dur + 0.01);
+}
+
+function sndShoot(){
+  var mult = CFG.SPEED_STEPS[settings.speedIdx];
+  if(mult >= 10 && shootSoundTimer > 0) return;
+  if(mult >= 10) shootSoundTimer = 0.15;
+  else if(mult >= 3) shootSoundTimer = 0.05;
+  oscPlay('sine', 520, 260, 0.09, 0.07);
+}
+
+function sndHit(){
+  var mult = CFG.SPEED_STEPS[settings.speedIdx];
+  if(mult >= 3 && hitSoundTimer > 0) return;
+  if(mult >= 10) hitSoundTimer = 0.08;
+  else if(mult >= 3) hitSoundTimer = 0.04;
+  noisePlay(0.06, 0.05);
+}
+
+function sndKill(){
+  if(killSoundTimer > 0) return;
+  killSoundTimer = 0.10;
+  oscPlay('sine', 300, 80, 0.20, 0.18);
+}
+
+function sndCoin(){
+  if(coinSoundTimer > 0) return;
+  coinSoundTimer = 0.12;
+  oscPlay('sine', 1046, 1318, 0.20, 0.15);
+}
+
+function sndLevelup(){
+  var t = audioCtx.currentTime;
+  function note(delay, freq){
+    var osc = audioCtx.createOscillator();
+    var g = audioCtx.createGain();
+    osc.type = 'sine';
+    osc.frequency.setValueAtTime(freq, t + delay);
+    g.gain.setValueAtTime(0.28, t + delay);
+    g.gain.exponentialRampToValueAtTime(0.001, t + delay + 0.12);
+    osc.connect(g); g.connect(audioCtx.destination);
+    osc.start(t + delay); osc.stop(t + delay + 0.13);
+  }
+  note(0.00, 523);
+  note(0.10, 659);
+  note(0.20, 784);
+}
+
+function sndSpecial(){
+  oscPlay('sawtooth', 60, 30, 0.32, 0.60);
+  oscPlay('sine', 440, 1320, 0.22, 0.40);
+  noisePlay(0.16, 0.28);
+}
+
+function sndBoss(){
+  oscPlay('sawtooth', 110, 55, 0.28, 1.20);
+  oscPlay('sine', 220, 110, 0.11, 0.80);
+}
+
+function sndDamage(){
+  oscPlay('sawtooth', 120, 30, 0.36, 0.12);
+  noisePlay(0.13, 0.08);
+}
+
+function sndButton(){
+  oscPlay('sine', 1200, 600, 0.13, 0.04);
+}
 
 /* =====================================================================
    XP / レベルアップ
@@ -918,6 +1057,7 @@ function updateXPHud(){
 }
 
 function doLevelUp(){
+  playSound('levelup');
   STATE = 'levelup';
   renderLvCards();
   showScreen('scrLevelup');
@@ -951,6 +1091,7 @@ function renderLvCards(){
 }
 
 function onCardClick(){
+  playSound('button');
   var id = this.getAttribute('data-up');
   applyUpgrade(id);
   pendingLevelUps--;
@@ -997,6 +1138,7 @@ function gainCoin(amount, x, y){
   coins += actual;
   updateCoinHud();
   floater(x, y - 18, '+' + actual, '#ffd257');
+  playSound('coin');
 }
 
 function updateCoinHud(){
@@ -1108,6 +1250,7 @@ function fireSpecial(){
   flashTimer = CFG.SPECIAL_FLASH_DUR;
   shakeTimer = CFG.SPECIAL_SHAKE_DUR;
   shakeMag   = CFG.SPECIAL_SHAKE_MAG;
+  playSound('special');
 
   /* 衝撃波パーティクル ring */
   for(var k = 0; k < 48; k++){
@@ -1371,6 +1514,11 @@ function loop(t){
 
     /* 演出タイマーは倍速に無関係、等倍で進める */
     if(flashTimer > 0){ flashTimer -= dt; }
+    /* サウンドスロットルも実時間 */
+    if(shootSoundTimer > 0) shootSoundTimer -= dt;
+    if(hitSoundTimer > 0) hitSoundTimer -= dt;
+    if(coinSoundTimer > 0) coinSoundTimer -= dt;
+    if(killSoundTimer > 0) killSoundTimer -= dt;
     /* 警告タイマーも実時間(倍速無関係) */
     if(warningTimer > 0){
       warningTimer -= dt;
@@ -1414,6 +1562,7 @@ function update(dt){
     var d  = Math.sqrt(dx * dx + dy * dy);
     if(d < CFG.TOWER_HIT_RADIUS){
       tower.hp -= e.dmg;
+      playSound('damage');
       burst(e.x, e.y, e.color, 14);
       enemies.splice(i, 1);
       if(tower.hp <= 0){ tower.hp = 0; endGame(false); return; }
@@ -1462,6 +1611,7 @@ function update(dt){
         vy: Math.sin(turretAngle) * tower.bulletSpeed,
         life: CFG.BULLET_LIFE, dmg: tower.dmg, pierceLeft: pierceMax
       });
+      playSound('shoot');
     }
   }
 
@@ -1484,12 +1634,14 @@ function update(dt){
         var bdmg = b.dmg !== undefined ? b.dmg : tower.dmg;
         ct.hp -= bdmg;
         gainSpecial(bdmg);
+        playSound('hit');
         floater(ct.x, ct.y - ct.size, String(Math.round(bdmg)), ct.isBoss ? '#4df3ff' : '#ffef9a');
         burst(b.x, b.y, ct.color, ct.isBoss ? 4 : 6);
         b.pierceLeft--;
         if(ct.hp <= 0){
           burst(ct.x, ct.y, ct.color, ct.isBoss ? 40 : 22);
           kills++;
+          playSound('kill');
           gainXP(ct.xpReward);
           gainCoin(ct.coinReward || 1, ct.x, ct.y);
           if(ct.isBoss){
@@ -1589,6 +1741,7 @@ function update(dt){
     var etx = eb.x - cx(), ety = eb.y - cy();
     if(etx * etx + ety * ety < CFG.TOWER_HIT_RADIUS * CFG.TOWER_HIT_RADIUS){
       tower.hp -= eb.dmg;
+      playSound('damage');
       burst(cx(), cy(), eb.color || '#c84dff', 8);
       enemyBullets.splice(i, 1);
       if(tower.hp <= 0){ tower.hp = 0; endGame(false); return; }
@@ -1742,6 +1895,7 @@ function triggerBossWarning(type, name, spawnFn){
   warningTimer = CFG.BOSS_WARNING_DUR;
   warningLabel = type + ' : ' + name;
   bossSpawnFn  = spawnFn;
+  playSound('boss');
 }
 
 /* =====================================================================
@@ -1960,6 +2114,7 @@ function updateSubTurrets(dt){
           vy: Math.sin(sAng) * tower.bulletSpeed,
           life: CFG.BULLET_LIFE, dmg: sDmg, pierceLeft: spMax
         });
+        playSound('shoot');
       }
     }
   }
@@ -2012,6 +2167,7 @@ function makeWpnCard(id, icon, name, desc, disabled){
 }
 
 function onWeaponSelect(){
+  playSound('button');
   var id = this.getAttribute('data-wpn');
   if(id === 'sub_turret') weapons.subTurret = Math.min(weapons.subTurret + 1, 2);
   if(id === 'pierce')     weapons.pierce    = Math.min(weapons.pierce    + 1, CFG.PIERCE_LV.length - 1);
@@ -2646,6 +2802,8 @@ function showGameUI(){
 }
 
 document.getElementById('playBtn').addEventListener('click', function(){
+  resumeAudio();
+  playSound('button');
   showGameUI();
   resetGame();
   startWave();
@@ -2654,6 +2812,8 @@ document.getElementById('playBtn').addEventListener('click', function(){
 });
 
 document.getElementById('retryBtn').addEventListener('click', function(){
+  resumeAudio();
+  playSound('button');
   hideScreen('scrResult');
   showGameUI();
   resetGame();
@@ -2666,6 +2826,8 @@ document.getElementById('upgradeBtn').addEventListener('click', function(){
 });
 
 document.getElementById('continueBtn').addEventListener('click', function(){
+  resumeAudio();
+  playSound('button');
   hideScreen('scrTitle');
   document.getElementById('hudEl').style.display = 'block';
   document.getElementById('specialBtn').style.display = 'block';
@@ -2681,14 +2843,17 @@ document.getElementById('cpCloseBtn').addEventListener('click', function(){
 });
 
 document.getElementById('pauseBtn').addEventListener('click', function(){
+  playSound('button');
   openPauseScreen();
 });
 
 document.getElementById('resumeBtn').addEventListener('click', function(){
+  playSound('button');
   closePauseScreen();
 });
 
 document.getElementById('suspendBtn').addEventListener('click', function(){
+  playSound('button');
   suspendRun();
 });
 
@@ -2708,10 +2873,12 @@ document.getElementById('specialBtn').addEventListener('click', function(){
 });
 
 document.getElementById('shopBtn').addEventListener('click', function(){
+  playSound('button');
   openShop();
 });
 
 document.getElementById('shopCloseBtn').addEventListener('click', function(){
+  playSound('button');
   closeShop();
 });
 
@@ -2728,8 +2895,28 @@ function updateSpeedBtn(){
   if(settings.speedIdx > 0){ btn.classList.add('active'); } else { btn.classList.remove('active'); }
 }
 
+function updateMuteBtn(){
+  var btn = document.getElementById('muteBtn');
+  if(settings.mute){
+    btn.textContent = 'MUTE';
+    btn.classList.add('muted');
+  } else {
+    btn.textContent = 'SND';
+    btn.classList.remove('muted');
+  }
+}
+
+document.getElementById('muteBtn').addEventListener('click', function(){
+  settings.mute = !settings.mute;
+  updateMuteBtn();
+  saveSettings();
+  resumeAudio();
+  if(!settings.mute) playSound('button');
+});
+
 updateTitleScreen();
 updateSpeedBtn();
+updateMuteBtn();
 
 /* =====================================================================
    ゲームループ開始
