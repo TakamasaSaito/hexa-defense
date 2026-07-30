@@ -544,11 +544,11 @@ var CFG = {
   WAVE_SPAWN_INTERVAL_MIN:  0.18,
   WAVE_HEAL_ON_CLEAR:       20,
 
-  /* 5帯難度スケール [W1-10 / W11-20 / W21-30 / W31-40 / W41-50] */
-  /* #15 W1-20帯を約20〜25%引き下げ: 恒久強化数回でW15到達可能に(W21〜の急峻さ維持) */
-  WAVE_HP_SCALES:    [1.0, 1.35, 2.4, 4.0, 6.0],
-  WAVE_SPEED_SCALES: [1.0, 1.15, 1.7, 2.4, 3.2],
-  WAVE_SPAWN_SCALES: [1.0, 1.2,  1.8, 2.4, 3.1],
+  /* 5帯難度スケール [W1-10=立上げ / W11-20=拡張 / W21-30=拡張 / W31-40=最難関 / W41-50=爽快] */
+  /* #16 帯別体験再設計: W31-40を最難関(HP最高・高速)、W41-50は大群一掃の爽快感(スポーン最大) */
+  WAVE_HP_SCALES:    [1.0, 1.3, 2.5, 6.0, 4.5],
+  WAVE_SPEED_SCALES: [1.0, 1.1, 1.6, 3.2, 2.6],
+  WAVE_SPAWN_SCALES: [1.0, 1.3, 2.0, 3.2, 5.0],
 
   /* XP */
   XP_BASE:        50,
@@ -658,7 +658,7 @@ var CFG = {
   /* チャージャー (W10/W25/W45) */
   BOSS_CHARGER_HP:             2200,
   BOSS_CHARGER_HP_HARD:        4200,
-  BOSS_CHARGER_HP_ULTRA:       7000,
+  BOSS_CHARGER_HP_ULTRA:       9500,  /* W45: 爽快帯でも手応えあり */
   BOSS_CHARGER_SIZE:           28,
   BOSS_CHARGER_COLOR:          '#ff6b35',
   BOSS_CHARGER_DMG:            38,
@@ -684,8 +684,8 @@ var CFG = {
 
   /* サモナー (W20/W40/W50) */
   BOSS_SUMMONER_HP:                 3000,
-  BOSS_SUMMONER_HP_HARD:            5500,
-  BOSS_SUMMONER_HP_ULTRA:           9000,
+  BOSS_SUMMONER_HP_HARD:            8000,  /* W40: 最難関帯ラスト */
+  BOSS_SUMMONER_HP_ULTRA:           12000, /* W50: FINAL BOSS */
   BOSS_SUMMONER_SIZE:               30,
   BOSS_SUMMONER_COLOR:              '#c84dff',
   BOSS_SUMMONER_ORBIT_RATIO:        0.45,
@@ -713,7 +713,8 @@ var CFG = {
 
   /* 弾幕型ボス BARRAGE (W15/W35) */
   BOSS_BARRAGE_HP:               1600,
-  BOSS_BARRAGE_HP_HARD:          3400,
+  BOSS_BARRAGE_HP_HARD:          5500,  /* W35: 最難関帯の中間ボス */
+  BOSS_BARRAGE_BULLET_INTERVAL_HARD: 1.7, /* W35ハード: 初期弾幕間隔短縮(通常2.2) */
   BOSS_BARRAGE_SIZE:             26,
   BOSS_BARRAGE_COLOR:            '#ff4488',
   BOSS_BARRAGE_ORBIT_RATIO:      0.40,
@@ -730,7 +731,7 @@ var CFG = {
   BOSS_BARRAGE_COIN_HARD:        130,
 
   /* 分裂型ボス DIVIDER (W30) */
-  BOSS_DIVIDER_HP:              2800,
+  BOSS_DIVIDER_HP:              4200,  /* W30: 最難関帯前哨 */
   BOSS_DIVIDER_SIZE:            32,
   BOSS_DIVIDER_COLOR:           '#00ffcc',
   BOSS_DIVIDER_DMG:             32,
@@ -802,7 +803,7 @@ var CFG = {
   /* 特殊武器 */
   SUB_TURRET_DMG_RATIO:  0.5,
   SUB_TURRET_FIRE_RATIO: 0.65,
-  SUB_TURRET_OFFSETS: [{ dx: 52, dy: -36 }, { dx: -52, dy: -36 }],
+  SUB_TURRET_OFFSETS: [{ dx: 52, dy: -36 }, { dx: -52, dy: -36 }, { dx: 52, dy: 36 }, { dx: -52, dy: 36 }],
   PIERCE_LV: [1, 2, 3, 999],
 
   /* 属性システム */
@@ -922,6 +923,16 @@ var CFG = {
     { id:'barrier',  icon:'&#11035;', name:'バリア+1',   desc:'ダメージを<br>1回無効化' },
     { id:'attrLv',   icon:'&#9733;',  name:'属性強化',   desc:'選択属性<br>+1Lv(最大3)' },
     { id:'attrRange',icon:'&#8596;',  name:'属性範囲',   desc:'属性効果<br>範囲+20%' }
+  ],
+
+  /* W11以降にXPプールへ追加されるサブウェポンカード */
+  CARD_SUB_WAVE:   11,
+  CARD_SUB_WEIGHT: 2,
+  CARD_POOL_SUB: [
+    { id:'cardOrbital',   icon:'&#9899;',  name:'公転球+',   desc:'公転球を<br>1個追加(最大6)' },
+    { id:'cardSatellite', icon:'&#127760;',name:'衛星砲台+', desc:'衛星砲台を<br>1基追加(最大5)' },
+    { id:'cardField',     icon:'&#9889;',  name:'フィールド+',desc:'設置数を<br>+1(最大5)' },
+    { id:'cardTurret',    icon:'&#128302;',name:'サブ砲台+', desc:'サブ砲台を<br>1基追加(最大4)' }
   ]
 };
 
@@ -1019,8 +1030,8 @@ var gaugeRateMult  = 1;
 var elemStartBonus = 0;
 /* 属性効果範囲倍率(レベルアップカード「属性範囲」で増加) */
 var attrRangeMult  = 1.0;
-var subTurretAngles    = [0, 0];
-var subTurretFireTimers = [0, 0];
+var subTurretAngles    = [0, 0, 0, 0];
+var subTurretFireTimers = [0, 0, 0, 0];
 var orbitals = [];          /* オービタル球: { angle, hitCds[] } */
 var lightningFlashes = [];  /* 稲妻描画: { x1,y1,x2,y2,timer,maxTimer } */
 var explosionFlashes = [];  /* 爆発リング: { x,y,r,timer,maxTimer } */
@@ -1360,6 +1371,9 @@ function spawnRareItem(x, y){
   for(pi = 0; pi < RARE_EFFECT_POOL.length; pi++){
     var ef = RARE_EFFECT_POOL[pi];
     if((ef === 'attrPower' || ef === 'attrRange') && !chosenElement) continue;
+    if(ef === 'orbital'   && weapons.orbital   >= 6) continue;
+    if(ef === 'satellite' && weapons.satellite  >= 5) continue;
+    if(ef === 'field'     && weapons.field      >= 5) continue;
     pool.push(ef);
   }
   if(pool.length === 0) pool = ['barrier'];
@@ -1378,14 +1392,14 @@ function applyRareEffect(effect, ix, iy){
     attrRangeMult = attrRangeMult * 1.15;
     label = 'ATTR RNG+';
   } else if(effect === 'orbital'){
-    weapons.orbital = Math.min(3, (weapons.orbital || 0) + 1);
+    weapons.orbital = Math.min(6, (weapons.orbital || 0) + 1);
     rebuildOrbitals();
     label = 'ORBITAL+1';
   } else if(effect === 'field'){
-    weapons.field = Math.min(3, (weapons.field || 0) + 1);
+    weapons.field = Math.min(5, (weapons.field || 0) + 1);
     label = 'FIELD+1';
   } else if(effect === 'satellite'){
-    weapons.satellite = Math.min(3, (weapons.satellite || 0) + 1);
+    weapons.satellite = Math.min(5, (weapons.satellite || 0) + 1);
     rebuildSatellites();
     label = 'SATELLITE+1';
   } else if(effect === 'barrier'){
@@ -1439,9 +1453,23 @@ function renderLvCards(){
   /* 属性未選択の場合は attrLv を除外 */
   var pool = [];
   var src = CFG.CARD_POOL;
-  for(var si = 0; si < src.length; si++){
+  var si;
+  for(si = 0; si < src.length; si++){
     if(src[si].id === 'attrLv' && !chosenElement) continue;
     pool.push(src[si]);
+  }
+  /* W11以降: サブウェポンカードを高重みで追加(上限済みは除外) */
+  if(wave >= CFG.CARD_SUB_WAVE){
+    var sub = CFG.CARD_POOL_SUB;
+    for(si = 0; si < sub.length; si++){
+      var c = sub[si];
+      if(c.id === 'cardOrbital'   && weapons.orbital   >= 6) continue;
+      if(c.id === 'cardSatellite' && weapons.satellite  >= 5) continue;
+      if(c.id === 'cardField'     && weapons.field      >= 5) continue;
+      if(c.id === 'cardTurret'    && weapons.subTurret  >= 4) continue;
+      var wt = CFG.CARD_SUB_WEIGHT, wi;
+      for(wi = 0; wi < wt; wi++) pool.push(c);
+    }
   }
   /* shuffle */
   for(var i = pool.length - 1; i > 0; i--){
@@ -1497,6 +1525,10 @@ function applyUpgrade(id){
     weapons[attrKey] = Math.min(3, (weapons[attrKey] || 0) + 1);
   }
   if(id === 'attrRange'){ attrRangeMult = attrRangeMult * 1.20; }
+  if(id === 'cardOrbital')  { weapons.orbital   = Math.min(6, (weapons.orbital  ||0)+1); rebuildOrbitals();  }
+  if(id === 'cardSatellite'){ weapons.satellite  = Math.min(5, (weapons.satellite||0)+1); rebuildSatellites(); }
+  if(id === 'cardField')    { weapons.field      = Math.min(5, (weapons.field    ||0)+1); }
+  if(id === 'cardTurret')   { weapons.subTurret  = Math.min(4, (weapons.subTurret||0)+1); }
   if(typeof upgradeCounts[id] !== 'undefined') upgradeCounts[id]++;
 }
 
@@ -1836,7 +1868,7 @@ function resetGame(){
   weapons = { subTurret: 0, pierce: 0, attrFire: 0, attrIce: 0, attrLightning: 0, orbital: 0, explosion: 0, satellite: 0, field: 0 };
   chosenElement = null;
   attrRangeMult = 1.0;
-  subTurretAngles = [0, 0]; subTurretFireTimers = [0, 0];
+  subTurretAngles = [0, 0, 0, 0]; subTurretFireTimers = [0, 0, 0, 0];
   orbitals = []; lightningFlashes = []; explosionFlashes = [];
   satellites = []; fields = []; fieldCooldown = 0;
   pendingSteps = 0;
@@ -2320,25 +2352,34 @@ function updateFields(dt){
 
 /* 武器報酬プール */
 var WEAPON_CARD_DEFS = {
-  sub_turret:    { icon: '&#128302;', names: ['サブ砲台',    'サブ砲台Lv2'],   descs: ['小型砲台を<br>1基追加',  '2基目を<br>追加'] },
-  pierce:        { icon: '&#11014;',  names: ['貫通弾Lv1',  '貫通弾Lv2',   '貫通弾Lv3'], descs: ['弾が1体<br>貫通', '2体貫通<br>に強化', '無限貫通<br>に強化'] },
-  attr_fire:     { icon: '&#128293;', names: ['炎属性Lv1',  '炎属性Lv2',   '炎属性Lv3'], descs: ['着弾後に<br>継続ダメージ', 'DoT<br>強化', 'DoT<br>最大強化'] },
-  attr_ice:      { icon: '&#10052;',  names: ['氷属性Lv1',  '氷属性Lv2',   '氷属性Lv3'], descs: ['命中で<br>敵を減速', '減速<br>強化', '減速<br>最大強化'] },
-  attr_lightning:{ icon: '&#9888;',   names: ['雷属性Lv1',  '雷属性Lv2',   '雷属性Lv3'], descs: ['1体へ<br>電撃連鎖', '2体へ<br>電撃連鎖', '3体へ<br>電撃連鎖'] },
-  orbital:       { icon: '&#9711;',   names: ['オービタルLv1','オービタルLv2','オービタルLv3'], descs: ['公転球<br>1個', '公転球<br>2個', '公転球<br>3個'] },
-  explosion:     { icon: '&#10038;',  names: ['爆発弾Lv1',  '爆発弾Lv2',   '爆発弾Lv3'], descs: ['着弾時に<br>小範囲爆発', '爆発範囲<br>中', '爆発範囲<br>大'] },
-  satellite:     { icon: '&#127760;', names: ['衛星砲台Lv1','衛星砲台Lv2','衛星砲台Lv3'], descs: ['射程外の<br>敵を狙撃', '2基に<br>強化', '3基に<br>強化'] },
-  field:         { icon: '&#9889;',   names: ['設置フィールドLv1','設置フィールドLv2','設置フィールドLv3'], descs: ['タップ位置に<br>ダメージ床設置', '2個同時<br>設置可', '3個同時<br>設置可'] }
+  sub_turret:    { icon: '&#128302;', names: ['サブ砲台','サブ砲台Lv2','サブ砲台Lv3','サブ砲台Lv4'],
+                   descs: ['小型砲台を<br>1基追加','2基目を<br>追加','3基目を<br>追加','4基目を<br>追加'] },
+  pierce:        { icon: '&#11014;',  names: ['貫通弾Lv1','貫通弾Lv2','貫通弾Lv3'],
+                   descs: ['弾が1体<br>貫通','2体貫通<br>に強化','無限貫通<br>に強化'] },
+  attr_fire:     { icon: '&#128293;', names: ['炎属性Lv1','炎属性Lv2','炎属性Lv3'],
+                   descs: ['着弾後に<br>継続ダメージ','DoT<br>強化','DoT<br>最大強化'] },
+  attr_ice:      { icon: '&#10052;',  names: ['氷属性Lv1','氷属性Lv2','氷属性Lv3'],
+                   descs: ['命中で<br>敵を減速','減速<br>強化','減速<br>最大強化'] },
+  attr_lightning:{ icon: '&#9888;',   names: ['雷属性Lv1','雷属性Lv2','雷属性Lv3'],
+                   descs: ['1体へ<br>電撃連鎖','2体へ<br>電撃連鎖','3体へ<br>電撃連鎖'] },
+  orbital:       { icon: '&#9711;',   names: ['オービタルLv1','オービタルLv2','オービタルLv3','オービタルLv4','オービタルLv5','オービタルLv6'],
+                   descs: ['公転球<br>1個','公転球<br>2個','公転球<br>3個','公転球<br>4個','公転球<br>5個','公転球<br>6個'] },
+  explosion:     { icon: '&#10038;',  names: ['爆発弾Lv1','爆発弾Lv2','爆発弾Lv3'],
+                   descs: ['着弾時に<br>小範囲爆発','爆発範囲<br>中','爆発範囲<br>大'] },
+  satellite:     { icon: '&#127760;', names: ['衛星砲台Lv1','衛星砲台Lv2','衛星砲台Lv3','衛星砲台Lv4','衛星砲台Lv5'],
+                   descs: ['射程外の<br>敵を狙撃','2基に<br>強化','3基に<br>強化','4基に<br>強化','5基に<br>強化'] },
+  field:         { icon: '&#9889;',   names: ['設置フィールドLv1','設置フィールドLv2','設置フィールドLv3','設置フィールドLv4','設置フィールドLv5'],
+                   descs: ['タップ位置に<br>ダメージ床設置','2個同時<br>設置可','3個同時<br>設置可','4個同時<br>設置可','5個同時<br>設置可'] }
 };
 
 function buildWeaponPool(){
   var pool = [], wi, w;
-  if(weapons.subTurret < 2)     pool.push('sub_turret');
+  if(weapons.subTurret < 4)     pool.push('sub_turret');
   if(weapons.pierce < 3)        pool.push('pierce');
-  if(weapons.orbital < 3)       pool.push('orbital');
+  if(weapons.orbital < 6)       pool.push('orbital');
   if(weapons.explosion < 3)     pool.push('explosion');
-  if(weapons.satellite < 3)     pool.push('satellite');
-  if(weapons.field < 3)         pool.push('field');
+  if(weapons.satellite < 5)     pool.push('satellite');
+  if(weapons.field < 5)         pool.push('field');
 
   /* 属性: 選択属性は ELEM_CHOICE_PRIORITY 倍の重みで出現 */
   var attrIds = ['attr_fire', 'attr_ice', 'attr_lightning'];
@@ -3330,7 +3371,7 @@ function spawnBarrage(w){
     xpReward:   hard ? CFG.BOSS_BARRAGE_XP * 2 : CFG.BOSS_BARRAGE_XP,
     coinReward: hard ? CFG.BOSS_BARRAGE_COIN_HARD : CFG.BOSS_BARRAGE_COIN,
     rot: 0, orbitAngle: angle, orbitDist: orbitDist,
-    bulletTimer: CFG.BOSS_BARRAGE_BULLET_INTERVAL,
+    bulletTimer: hard ? CFG.BOSS_BARRAGE_BULLET_INTERVAL_HARD : CFG.BOSS_BARRAGE_BULLET_INTERVAL,
     spiralAngle: 0,
     stunTimer: 0
   };
@@ -3677,15 +3718,15 @@ function makeWpnCard(id, icon, name, desc, disabled){
 function onWeaponSelect(){
   playSound('button');
   var id = this.getAttribute('data-wpn');
-  if(id === 'sub_turret')    weapons.subTurret     = Math.min(weapons.subTurret     + 1, 2);
+  if(id === 'sub_turret')    weapons.subTurret     = Math.min(weapons.subTurret     + 1, 4);
   if(id === 'pierce')        weapons.pierce         = Math.min(weapons.pierce        + 1, CFG.PIERCE_LV.length - 1);
   if(id === 'attr_fire')     weapons.attrFire       = Math.min(weapons.attrFire      + 1, 3);
   if(id === 'attr_ice')      weapons.attrIce        = Math.min(weapons.attrIce       + 1, 3);
   if(id === 'attr_lightning') weapons.attrLightning = Math.min(weapons.attrLightning + 1, 3);
-  if(id === 'orbital'){      weapons.orbital        = Math.min(weapons.orbital       + 1, 3); rebuildOrbitals(); }
+  if(id === 'orbital'){      weapons.orbital        = Math.min(weapons.orbital       + 1, 6); rebuildOrbitals(); }
   if(id === 'explosion')     weapons.explosion      = Math.min(weapons.explosion     + 1, 3);
-  if(id === 'satellite'){    weapons.satellite      = Math.min(weapons.satellite     + 1, 3); rebuildSatellites(); }
-  if(id === 'field')         weapons.field          = Math.min(weapons.field         + 1, 3);
+  if(id === 'satellite'){    weapons.satellite      = Math.min(weapons.satellite     + 1, 5); rebuildSatellites(); }
+  if(id === 'field')         weapons.field          = Math.min(weapons.field         + 1, 5);
   hideScreen('scrWeapon');
   proceedAfterWeaponReward();
 }
@@ -4294,6 +4335,7 @@ function unlockCheckpoint(w){
 }
 
 function openCheckpointScreen(){
+  hideScreen('scrTitle');
   renderCheckpointScreen();
   showScreen('scrCheckpoint');
 }
@@ -4396,7 +4438,7 @@ function resumeRun(){
   enemies = []; bullets = []; missiles = []; particles = []; floaters = []; healItems = []; rareItems = []; enemyBullets = [];
   missileTimer = 0;
   boss = null; warningTimer = 0; bossSpawnFn = null; newEnemyAlert = null;
-  subTurretAngles = [0, 0]; subTurretFireTimers = [0, 0];
+  subTurretAngles = [0, 0, 0, 0]; subTurretFireTimers = [0, 0, 0, 0];
   pendingLevelUps = 0; pendingSteps = 0;
   flashTimer = 0; shakeTimer = 0; hideBossBar();
 
@@ -4744,6 +4786,7 @@ document.getElementById('checkpointBtn').addEventListener('click', function(){
 
 document.getElementById('cpCloseBtn').addEventListener('click', function(){
   hideScreen('scrCheckpoint');
+  showScreen('scrTitle');
 });
 
 document.getElementById('pauseBtn').addEventListener('click', function(){
