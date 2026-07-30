@@ -252,6 +252,7 @@ html, body { width:100%; height:100%; overflow:hidden; background:#05090f; touch
 .perma-pip { width:11px; height:5px; background:rgba(77,243,255,0.12); border:1px solid rgba(77,243,255,0.25); }
 .perma-pip.on { background:#4df3ff; box-shadow:0 0 6px rgba(77,243,255,0.8); }
 .perma-pip.on-late { background:#ffd257; box-shadow:0 0 6px rgba(255,210,87,0.85); }
+.perma-lv-badge { font-family:'Chakra Petch',sans-serif; font-size:11px; color:#ffd257; font-weight:700; margin-left:6px; letter-spacing:1px; }
 .perma-price-col { font-family:'Chakra Petch',sans-serif; font-size:13px; font-weight:700;
   color:#ffd257; white-space:nowrap; display:flex; align-items:center; gap:4px; }
 
@@ -538,10 +539,10 @@ var CFG = {
   WAVE_HEAL_ON_CLEAR:       20,
 
   /* 5帯難度スケール [W1-10 / W11-20 / W21-30 / W31-40 / W41-50] */
-  /* #12 新武器追加に伴い帯係数を下方修正(約15%): W50フルコンプクリア可能に */
-  WAVE_HP_SCALES:    [1.0, 1.8, 3.0, 4.5, 6.5],
-  WAVE_SPEED_SCALES: [1.0, 1.4, 2.0, 2.7, 3.5],
-  WAVE_SPAWN_SCALES: [1.0, 1.4, 1.9, 2.5, 3.2],
+  /* #15 W1-20帯を約20〜25%引き下げ: 恒久強化数回でW15到達可能に(W21〜の急峻さ維持) */
+  WAVE_HP_SCALES:    [1.0, 1.35, 2.4, 4.0, 6.0],
+  WAVE_SPEED_SCALES: [1.0, 1.15, 1.7, 2.4, 3.2],
+  WAVE_SPAWN_SCALES: [1.0, 1.2,  1.8, 2.4, 3.1],
 
   /* XP */
   XP_BASE:        50,
@@ -607,6 +608,12 @@ var CFG = {
   DROP_HEAL_CHANCE: 0.05,
   DROP_HEAL_AMOUNT: 15,
   DROP_SPEED:       40,
+
+  /* レアドロップ(金色六角形) */
+  DROP_RARE_CHANCE: 0.05,   /* 通常敵からのドロップ率(1ランで数個) */
+  DROP_RARE_LIFE:   10.0,   /* 消滅までの秒数 */
+  DROP_RARE_SIZE:   11,     /* 六角形の半径 */
+  DROP_RARE_SPEED:  38,     /* タワーへの漂い速度 */
 
   /* 報酬ウェーブ — ボス全W5刻み(W10=RAILGUN固定, W20=OVERDRIVE固定, W50はゲーム終了) */
   REWARD_WAVES: [5, 10, 15, 20, 25, 30, 35, 40, 45],
@@ -838,22 +845,28 @@ var CFG = {
 
   /* 恒久強化 */
   META_COIN_RATE:              0.6,
-  PERM_MAX_LEVEL:              10,   /* 既存5系統の最大段数 */
+  PERM_MAX_LEVEL:              10,   /* ピップ表示の上限(Lv11〜は数値表示) */
   PERM_LEVEL_BREAK:            5,    /* 前半/後半の境界 */
+  PERM_LEVEL_ULTRA:            10,   /* 後半/超後半(逓減)の境界 */
   PERM_BASE_PRICE:             25,
   PERM_PRICE_SCALE:            1.8,
-  PERM_BASE_LATE:              80,   /* Lv6〜のベース価格 */
+  PERM_BASE_LATE:              80,   /* Lv6〜のベース価格(以降も継続) */
   PERM_PRICE_SCALE_LATE:       1.4,
   PERM_DMG_PER_LV:             0.20,
   PERM_DMG_PER_LV_LATE:        0.30,
+  PERM_DMG_PER_LV_ULTRA:       0.08, /* Lv11〜: 逓減(LATE比1/4) */
   PERM_RATE_PER_LV:            0.15,
   PERM_RATE_PER_LV_LATE:       0.20,
+  PERM_RATE_PER_LV_ULTRA:      0.05,
   PERM_HP_PER_LV:              25,
   PERM_HP_PER_LV_LATE:         50,
+  PERM_HP_PER_LV_ULTRA:        15,
   PERM_RANGE_PER_LV:           0.10,
   PERM_RANGE_PER_LV_LATE:      0.15,
+  PERM_RANGE_PER_LV_ULTRA:     0.04,
   PERM_COIN_GAIN_PER_LV:       0.18,
   PERM_COIN_GAIN_PER_LV_LATE:  0.25,
+  PERM_COIN_GAIN_PER_LV_ULTRA: 0.08,
   PERM_BARRIER_BASE:           200,  /* 初期バリア */
   PERM_BARRIER_SCALE:          1.8,
   PERM_BARRIER_MAX:            3,
@@ -887,12 +900,14 @@ var CFG = {
 
   /* XPカードプール */
   CARD_POOL: [
-    { id:'rate',    icon:'&#9889;',  name:'連射速度',  desc:'弾+1条<br>(DPS維持)' },
-    { id:'dmg',     icon:'&#128165;',name:'ダメージ',  desc:'攻撃力+40%<br>弾が強化' },
-    { id:'range',   icon:'&#127919;',name:'射程距離',  desc:'射程<br>+15%' },
-    { id:'speed',   icon:'&#128192;',name:'弾速',      desc:'弾速<br>+15%' },
-    { id:'heal',    icon:'&#10010;', name:'HP回復',    desc:'+30 HP<br>即時回復' },
-    { id:'barrier', icon:'&#11035;', name:'バリア+1',  desc:'ダメージを<br>1回無効化' }
+    { id:'rate',     icon:'&#9889;',  name:'連射速度',   desc:'弾+1条<br>(DPS維持)' },
+    { id:'dmg',      icon:'&#128165;',name:'ダメージ',   desc:'攻撃力+40%<br>弾が強化' },
+    { id:'range',    icon:'&#127919;',name:'射程距離',   desc:'射程<br>+15%' },
+    { id:'speed',    icon:'&#128192;',name:'弾速',       desc:'弾速<br>+15%' },
+    { id:'heal',     icon:'&#10010;', name:'HP回復',     desc:'+30 HP<br>即時回復' },
+    { id:'barrier',  icon:'&#11035;', name:'バリア+1',   desc:'ダメージを<br>1回無効化' },
+    { id:'attrLv',   icon:'&#9733;',  name:'属性強化',   desc:'選択属性<br>+1Lv(最大3)' },
+    { id:'attrRange',icon:'&#8596;',  name:'属性範囲',   desc:'属性効果<br>範囲+20%' }
   ]
 };
 
@@ -985,6 +1000,8 @@ var chosenElement = null;
 /* 恒久強化から適用される倍率 */
 var gaugeRateMult  = 1;
 var elemStartBonus = 0;
+/* 属性効果範囲倍率(レベルアップカード「属性範囲」で増加) */
+var attrRangeMult  = 1.0;
 var subTurretAngles    = [0, 0];
 var subTurretFireTimers = [0, 0];
 var orbitals = [];          /* オービタル球: { angle, hitCds[] } */
@@ -999,6 +1016,7 @@ var fieldCooldown = 0;
 /* コイン・アイテム・強化カウント */
 var coins = 0;
 var healItems = [];
+var rareItems = [];  /* レアドロップ: { x,y,life,effect } */
 var upgradeCounts = { rate: 0, dmg: 0, range: 0, speed: 0, barrier: 0, heal: 0 };
 var barrierCount = 0;
 var barrierBreakTimer = 0;
@@ -1158,6 +1176,7 @@ function playSound(id){
   else if(id === 'damage')  sndDamage();
   else if(id === 'barrier') sndBarrierBreak();
   else if(id === 'button')  sndButton();
+  else if(id === 'rare')    sndRare();
 }
 
 function oscPlay(type, freq, freqEnd, gainStart, dur){
@@ -1282,6 +1301,13 @@ function sndOverdrive(){
   oc('square', 110, 440, 0.12, 0.45);
 }
 
+function sndRare(){
+  /* 上昇スイープ3音: 金色アイテム取得の明るい演出 */
+  oscPlay('sine', 440, 1320, 0.28, 0.30);
+  oscPlay('sine', 660, 1980, 0.18, 0.28);
+  oscPlay('triangle', 880, 2640, 0.12, 0.22);
+}
+
 /* =====================================================================
    バリア・ダメージ処理
 ===================================================================== */
@@ -1303,6 +1329,55 @@ function takeDamage(dmg){
   playSound('damage');
   if(tower.hp <= 0){ tower.hp = 0; return true; }
   return false;
+}
+
+/* =====================================================================
+   レアドロップ
+===================================================================== */
+var RARE_EFFECT_POOL = ['attrPower', 'attrRange', 'orbital', 'field', 'satellite', 'barrier'];
+
+function spawnRareItem(x, y){
+  /* 効果プールを状況に合わせてフィルタ */
+  var pool = [];
+  var pi;
+  for(pi = 0; pi < RARE_EFFECT_POOL.length; pi++){
+    var ef = RARE_EFFECT_POOL[pi];
+    if((ef === 'attrPower' || ef === 'attrRange') && !chosenElement) continue;
+    pool.push(ef);
+  }
+  if(pool.length === 0) pool = ['barrier'];
+  var effect = pool[Math.floor(Math.random() * pool.length)];
+  rareItems.push({ x: x, y: y, life: CFG.DROP_RARE_LIFE, effect: effect });
+}
+
+function applyRareEffect(effect, ix, iy){
+  var label = '';
+  if(effect === 'attrPower' && chosenElement){
+    var key = 'attr' + chosenElement.charAt(0).toUpperCase() + chosenElement.slice(1);
+    var oldLv = weapons[key] || 0;
+    weapons[key] = Math.min(3, oldLv + 1);
+    label = chosenElement.toUpperCase() + ' PWR+';
+  } else if(effect === 'attrRange'){
+    attrRangeMult = attrRangeMult * 1.15;
+    label = 'ATTR RNG+';
+  } else if(effect === 'orbital'){
+    weapons.orbital = Math.min(3, (weapons.orbital || 0) + 1);
+    rebuildOrbitals();
+    label = 'ORBITAL+1';
+  } else if(effect === 'field'){
+    weapons.field = Math.min(3, (weapons.field || 0) + 1);
+    label = 'FIELD+1';
+  } else if(effect === 'satellite'){
+    weapons.satellite = Math.min(3, (weapons.satellite || 0) + 1);
+    rebuildSatellites();
+    label = 'SATELLITE+1';
+  } else if(effect === 'barrier'){
+    barrierCount = Math.min(CFG.BARRIER_MAX, barrierCount + 1);
+    label = 'BARRIER+1';
+  }
+  if(label !== '') floater(ix, iy - 20, label, '#ffd257');
+  playSound('rare');
+  burst(ix, iy, '#ffd257', 16);
 }
 
 /* =====================================================================
@@ -1344,7 +1419,13 @@ function doLevelUp(){
 
 /* カードプールからランダム3択 */
 function renderLvCards(){
-  var pool = CFG.CARD_POOL.slice();
+  /* 属性未選択の場合は attrLv を除外 */
+  var pool = [];
+  var src = CFG.CARD_POOL;
+  for(var si = 0; si < src.length; si++){
+    if(src[si].id === 'attrLv' && !chosenElement) continue;
+    pool.push(src[si]);
+  }
   /* shuffle */
   for(var i = pool.length - 1; i > 0; i--){
     var j = Math.floor(Math.random() * (i + 1));
@@ -1394,6 +1475,11 @@ function applyUpgrade(id){
   if(id === 'speed')   { tower.bulletSpeed = tower.bulletSpeed * 1.15; }
   if(id === 'heal')    { tower.hp = Math.min(tower.maxHp, tower.hp + 30); }
   if(id === 'barrier') { barrierCount = Math.min(CFG.BARRIER_MAX, barrierCount + 1); }
+  if(id === 'attrLv' && chosenElement){
+    var attrKey = 'attr' + chosenElement.charAt(0).toUpperCase() + chosenElement.slice(1);
+    weapons[attrKey] = Math.min(3, (weapons[attrKey] || 0) + 1);
+  }
+  if(id === 'attrRange'){ attrRangeMult = attrRangeMult * 1.20; }
   if(typeof upgradeCounts[id] !== 'undefined') upgradeCounts[id]++;
 }
 
@@ -1637,6 +1723,7 @@ function fireRailgun(){
         if(boss.hp <= 0){
           burst(boss.x, boss.y, boss.color, 40);
           kills++; gainXP(boss.xpReward); gainCoin(boss.coinReward || 1, boss.x, boss.y);
+          spawnRareItem(boss.x, boss.y);
           boss = null; hideBossBar();
         }
       }
@@ -1689,7 +1776,7 @@ function resetGame(){
   overdriveTimer = 0;
   overdriveSavedInterval = 0; overdriveSavedDmg = 0; overdriveSavedRange = 0;
   railgunBeam = null; specialHudTimer = 0;
-  coins = 0; healItems = [];
+  coins = 0; healItems = []; rareItems = [];
   upgradeCounts = { rate: 0, dmg: 0, range: 0, speed: 0, barrier: 0, heal: 0 };
   barrierCount = 0; barrierBreakTimer = 0;
   enemies = []; bullets = []; missiles = []; particles = []; floaters = []; enemyBullets = [];
@@ -1697,6 +1784,7 @@ function resetGame(){
   boss = null; warningTimer = 0; bossSpawnFn = null; newEnemyAlert = null;
   weapons = { subTurret: 0, pierce: 0, attrFire: 0, attrIce: 0, attrLightning: 0, orbital: 0, explosion: 0, satellite: 0, field: 0 };
   chosenElement = null;
+  attrRangeMult = 1.0;
   subTurretAngles = [0, 0]; subTurretFireTimers = [0, 0];
   orbitals = []; lightningFlashes = []; explosionFlashes = [];
   satellites = []; fields = []; fieldCooldown = 0;
@@ -1950,7 +2038,8 @@ function applyLightningChain(source, chainDmg, chainN){
     if(te === source || te.hp <= 0) continue;
     var tdx = te.x - source.x, tdy = te.y - source.y;
     var td2 = tdx*tdx + tdy*tdy;
-    if(td2 < CFG.ATTR_LIGHTNING_RANGE * CFG.ATTR_LIGHTNING_RANGE)
+    var lr = CFG.ATTR_LIGHTNING_RANGE * attrRangeMult;
+    if(td2 < lr * lr)
       nearby.push({ e: te, d2: td2 });
   }
   nearby.sort(function(a,b){ return a.d2 - b.d2; });
@@ -1974,7 +2063,7 @@ function applyLightningChain(source, chainDmg, chainN){
 
 function triggerExplosion(hx, hy, bulletDmg){
   var lv = weapons.explosion - 1;
-  var radius  = CFG.EXPLOSION_RADII[lv];
+  var radius  = CFG.EXPLOSION_RADII[lv] * attrRangeMult;
   var exDmg   = bulletDmg * CFG.EXPLOSION_DMG_MULTS[lv];
   explosionFlashes.push({ x: hx, y: hy, r: radius, timer: 0.30, maxTimer: 0.30 });
   var all = enemies.slice();
@@ -2045,6 +2134,7 @@ function updateOrbitals(dt){
           kills++; playSound('kill'); gainXP(e.xpReward); gainCoin(e.coinReward||1, e.x, e.y);
           if(e.isBoss){
             if(e.type === 'divider') spawnDividerChildren(e);
+            spawnRareItem(e.x, e.y);
             boss = null; hideBossBar();
           } else {
             var oei = enemies.indexOf(e);
@@ -2063,6 +2153,7 @@ function updateOrbitals(dt){
               burst(e.x, e.y, e.color, 18);
             }
             if(Math.random() < CFG.DROP_HEAL_CHANCE) healItems.push({ x: e.x, y: e.y, life: 8.0 });
+            if(Math.random() < CFG.DROP_RARE_CHANCE) spawnRareItem(e.x, e.y);
           }
         }
         break;
@@ -2167,6 +2258,7 @@ function updateFields(dt){
               burst(e.x, e.y, e.color, 14);
             }
             if(Math.random() < CFG.DROP_HEAL_CHANCE) healItems.push({ x: e.x, y: e.y, life: 8.0 });
+            if(Math.random() < CFG.DROP_RARE_CHANCE) spawnRareItem(e.x, e.y);
             enemies.splice(fei, 1);
           }
         }
@@ -2328,6 +2420,7 @@ function update(dt){
         burst(e.x, e.y, e.color, 18);
       }
       if(Math.random() < CFG.DROP_HEAL_CHANCE) healItems.push({ x: e.x, y: e.y, life: 8.0 });
+      if(Math.random() < CFG.DROP_RARE_CHANCE) spawnRareItem(e.x, e.y);
       continue;
     }
 
@@ -2362,6 +2455,7 @@ function update(dt){
           burst(e.x, e.y, e.color, 18);
         }
         if(Math.random() < CFG.DROP_HEAL_CHANCE) healItems.push({ x: e.x, y: e.y, life: 8.0 });
+        if(Math.random() < CFG.DROP_RARE_CHANCE) spawnRareItem(e.x, e.y);
         continue;
       }
     }
@@ -2478,6 +2572,7 @@ function update(dt){
           gainCoin(ct.coinReward || 1, ct.x, ct.y);
           if(ct.isBoss){
             if(ct.type === 'divider'){ spawnDividerChildren(ct); }
+            spawnRareItem(ct.x, ct.y);
             boss = null; hideBossBar();
           } else {
             var ei = enemies.indexOf(ct);
@@ -2612,6 +2707,7 @@ function update(dt){
             kills++; playSound('kill'); gainXP(mc4.xpReward); gainCoin(mc4.coinReward || 1, mc4.x, mc4.y);
             if(mc4.isBoss){
               if(mc4.type === 'divider'){ spawnDividerChildren(mc4); }
+              spawnRareItem(mc4.x, mc4.y);
               boss = null; hideBossBar();
             } else {
               var mEi = enemies.indexOf(mc4);
@@ -2664,6 +2760,24 @@ function update(dt){
       healItems.splice(i, 1);
     } else if(hit.life <= 0){
       healItems.splice(i, 1);
+    }
+  }
+
+  /* レアアイテム: タワーへ漂い + タワー接触で取得 */
+  for(i = rareItems.length - 1; i >= 0; i--){
+    var ri = rareItems[i];
+    var rdx = cx() - ri.x, rdy = cy() - ri.y;
+    var rdd = Math.sqrt(rdx * rdx + rdy * rdy);
+    if(rdd > 1){
+      ri.x += rdx / rdd * CFG.DROP_RARE_SPEED * dt;
+      ri.y += rdy / rdd * CFG.DROP_RARE_SPEED * dt;
+    }
+    ri.life -= dt;
+    if(rdd < CFG.TOWER_HIT_RADIUS + 14){
+      applyRareEffect(ri.effect, ri.x, ri.y);
+      rareItems.splice(i, 1);
+    } else if(ri.life <= 0){
+      rareItems.splice(i, 1);
     }
   }
 
@@ -2847,6 +2961,7 @@ function updateBoss(dt){
       burst(boss.x, boss.y, boss.color, 40);
       kills++; playSound('kill'); gainXP(boss.xpReward); gainCoin(boss.coinReward||1, boss.x, boss.y);
       if(boss.type === 'divider') spawnDividerChildren(boss);
+      spawnRareItem(boss.x, boss.y);
       boss = null; hideBossBar(); return;
     }
   }
@@ -3806,6 +3921,23 @@ function draw(tm, dt){
     ctx.globalAlpha = 1; ctx.restore();
   }
 
+  /* レアアイテム(金色発光六角形) */
+  var rarePulse = 0.5 + 0.5 * Math.abs(Math.sin(tm * 7.0));
+  for(j = 0; j < rareItems.length; j++){
+    var ritem = rareItems[j];
+    var rlife = ritem.life / CFG.DROP_RARE_LIFE;
+    ctx.save();
+    ctx.translate(ritem.x, ritem.y);
+    ctx.rotate(tm * 2.5);
+    ctx.shadowColor = '#ffd257'; ctx.shadowBlur = 20 + 12 * rarePulse;
+    ctx.globalAlpha = (0.6 + 0.4 * rarePulse) * Math.min(1, rlife * 3);
+    ctx.strokeStyle = '#ffd257'; ctx.lineWidth = 2.5;
+    hexPath(CFG.DROP_RARE_SIZE, 0); ctx.stroke();
+    ctx.globalAlpha = (0.18 + 0.12 * rarePulse) * Math.min(1, rlife * 3);
+    ctx.fillStyle = '#ffe080'; hexPath(CFG.DROP_RARE_SIZE, 0); ctx.fill();
+    ctx.globalAlpha = 1; ctx.shadowBlur = 0; ctx.restore();
+  }
+
   /* サブ砲台 */
   for(var si = 0; si < weapons.subTurret && si < CFG.SUB_TURRET_OFFSETS.length; si++){
     var soff = CFG.SUB_TURRET_OFFSETS[si];
@@ -4120,6 +4252,7 @@ function suspendRun(){
     specials: { railgunUnlocked: specials.railgun.unlocked, overdriveUnlocked: specials.overdrive.unlocked },
     barrierCount: barrierCount,
     chosenElement: chosenElement,
+    attrRangeMult: attrRangeMult,
     upgradeCounts: {
       rate: upgradeCounts.rate, dmg: upgradeCounts.dmg, range: upgradeCounts.range,
       speed: upgradeCounts.speed, barrier: upgradeCounts.barrier, heal: upgradeCounts.heal
@@ -4129,7 +4262,7 @@ function suspendRun(){
 
   STATE = 'title'; /* ループ停止 */
   hideScreen('scrPause');
-  enemies = []; bullets = []; missiles = []; particles = []; floaters = []; healItems = []; enemyBullets = [];
+  enemies = []; bullets = []; missiles = []; particles = []; floaters = []; healItems = []; rareItems = []; enemyBullets = [];
   orbitals = []; lightningFlashes = []; explosionFlashes = [];
   satellites = []; fields = []; fieldCooldown = 0;
   missileTimer = 0;
@@ -4145,7 +4278,7 @@ function resumeRun(){
   if(!sr) return;
 
   /* 戦闘状態リセット */
-  enemies = []; bullets = []; missiles = []; particles = []; floaters = []; healItems = []; enemyBullets = [];
+  enemies = []; bullets = []; missiles = []; particles = []; floaters = []; healItems = []; rareItems = []; enemyBullets = [];
   missileTimer = 0;
   boss = null; warningTimer = 0; bossSpawnFn = null; newEnemyAlert = null;
   subTurretAngles = [0, 0]; subTurretFireTimers = [0, 0];
@@ -4182,6 +4315,7 @@ function resumeRun(){
   rebuildSatellites();
   barrierCount    = sr.barrierCount || 0;
   chosenElement   = sr.chosenElement || null;
+  attrRangeMult   = sr.attrRangeMult || 1.0;
   barrierBreakTimer = 0;
   applyPermGlobals();
   upgradeCounts   = {
@@ -4207,14 +4341,14 @@ function resumeRun(){
    恒久強化
 ===================================================================== */
 var PERM_DEFS = [
-  { id:'dmg',          max:10, icon:'&#128165;', name:'初期ダメージ',    suffix:'+20%/LV(6+30%)' },
-  { id:'rate',         max:10, icon:'&#9889;',   name:'初期連射速度',    suffix:'-15%間隔(6-20%)' },
-  { id:'hp',           max:10, icon:'&#10010;',  name:'初期HP',          suffix:'+25HP/LV(6+50)' },
-  { id:'range',        max:10, icon:'&#127919;', name:'初期射程',         suffix:'+10%/LV(6+15%)' },
-  { id:'coinGain',     max:10, icon:'&#9670;',   name:'コイン獲得量',    suffix:'+18%/LV(6+25%)' },
-  { id:'barriersStart',max:3,  icon:'&#11035;',  name:'初期バリア',       suffix:'開始時バリア+1' },
-  { id:'gaugeRate',    max:5,  icon:'&#9654;',   name:'必殺ゲージ効率',  suffix:'+20%蓄積速度/LV' },
-  { id:'elemStart',    max:2,  icon:'&#9733;',   name:'初期属性Lv',       suffix:'選択属性+1Lv開始' }
+  { id:'dmg',          max:999, icon:'&#128165;', name:'初期ダメージ',    suffix:'+20%(6:+30%, 11:+8%)' },
+  { id:'rate',         max:999, icon:'&#9889;',   name:'初期連射速度',    suffix:'-15%(6:-20%, 11:-5%)' },
+  { id:'hp',           max:999, icon:'&#10010;',  name:'初期HP',          suffix:'+25HP(6:+50, 11:+15)' },
+  { id:'range',        max:999, icon:'&#127919;', name:'初期射程',         suffix:'+10%(6:+15%, 11:+4%)' },
+  { id:'coinGain',     max:999, icon:'&#9670;',   name:'コイン獲得量',    suffix:'+18%(6:+25%, 11:+8%)' },
+  { id:'barriersStart',max:3,   icon:'&#11035;',  name:'初期バリア',       suffix:'開始時バリア+1' },
+  { id:'gaugeRate',    max:5,   icon:'&#9654;',   name:'必殺ゲージ効率',  suffix:'+20%蓄積速度/LV' },
+  { id:'elemStart',    max:2,   icon:'&#9733;',   name:'初期属性Lv',       suffix:'選択属性+1Lv開始' }
 ];
 
 function getPermPrice(id, currentLv){
@@ -4229,7 +4363,7 @@ function getPermPrice(id, currentLv){
     for(i = 0; i < currentLv; i++) price = price * CFG.PERM_PRICE_SCALE;
     return Math.floor(price);
   }
-  /* 既存5系統: 前半Lv1〜5は通常価格、後半Lv6〜10は新ティア価格 */
+  /* 主要5系統: Lv1〜5は通常価格、Lv6〜は後半価格(上限なしで逓増継続) */
   var brk = CFG.PERM_LEVEL_BREAK;
   if(currentLv < brk){
     price = CFG.PERM_BASE_PRICE;
@@ -4241,12 +4375,18 @@ function getPermPrice(id, currentLv){
   return Math.floor(price);
 }
 
-function applyPermLvMult(lv, earlyPer, latePer){
-  var m = 1, brk = CFG.PERM_LEVEL_BREAK, i;
-  var early = lv < brk ? lv : brk;
-  var late  = lv > brk ? lv - brk : 0;
-  for(i = 0; i < early; i++) m *= (1 + earlyPer);
-  for(i = 0; i < late;  i++) m *= (1 + latePer);
+function applyPermLvMult(lv, earlyPer, latePer, ultraPer){
+  var m = 1, brk = CFG.PERM_LEVEL_BREAK, ultra = CFG.PERM_LEVEL_ULTRA, i;
+  var earlyCount = lv < brk ? lv : brk;
+  var lateMax    = ultra - brk;
+  var lateRaw    = lv > brk ? lv - brk : 0;
+  var lateCount  = lateRaw < lateMax ? lateRaw : lateMax;
+  var ultraCount = lv > ultra ? lv - ultra : 0;
+  for(i = 0; i < earlyCount; i++) m *= (1 + earlyPer);
+  for(i = 0; i < lateCount;  i++) m *= (1 + latePer);
+  if(ultraPer !== undefined){
+    for(i = 0; i < ultraCount; i++) m *= (1 + ultraPer);
+  }
   return m;
 }
 
@@ -4254,7 +4394,7 @@ function applyPermLvMult(lv, earlyPer, latePer){
 function applyPermGlobals(){
   var pu = saveData.permanentUpgrades;
   var i;
-  coinGainMult = applyPermLvMult(pu.coinGain, CFG.PERM_COIN_GAIN_PER_LV, CFG.PERM_COIN_GAIN_PER_LV_LATE);
+  coinGainMult = applyPermLvMult(pu.coinGain, CFG.PERM_COIN_GAIN_PER_LV, CFG.PERM_COIN_GAIN_PER_LV_LATE, CFG.PERM_COIN_GAIN_PER_LV_ULTRA);
   gaugeRateMult = 1;
   for(i = 0; i < (pu.gaugeRate || 0); i++) gaugeRateMult *= (1 + CFG.PERM_GAUGE_RATE_PER_LV);
   elemStartBonus = pu.elemStart || 0;
@@ -4262,27 +4402,34 @@ function applyPermGlobals(){
 
 function applyPermanentUpgrades(){
   var pu = saveData.permanentUpgrades;
-  var i, brk = CFG.PERM_LEVEL_BREAK;
+  var i, brk = CFG.PERM_LEVEL_BREAK, ultra = CFG.PERM_LEVEL_ULTRA;
 
   /* ダメージ */
-  tower.dmg *= applyPermLvMult(pu.dmg, CFG.PERM_DMG_PER_LV, CFG.PERM_DMG_PER_LV_LATE);
+  tower.dmg *= applyPermLvMult(pu.dmg, CFG.PERM_DMG_PER_LV, CFG.PERM_DMG_PER_LV_LATE, CFG.PERM_DMG_PER_LV_ULTRA);
 
-  /* 発射間隔 */
+  /* 発射間隔(rate系は減少なのでultraはマイナス) */
   var rateMult = 1;
   var rateEarly = pu.rate < brk ? pu.rate : brk;
-  var rateLate  = pu.rate > brk ? pu.rate - brk : 0;
+  var rateLateMax = ultra - brk;
+  var rateLateRaw = pu.rate > brk ? pu.rate - brk : 0;
+  var rateLate  = rateLateRaw < rateLateMax ? rateLateRaw : rateLateMax;
+  var rateUltra = pu.rate > ultra ? pu.rate - ultra : 0;
   for(i = 0; i < rateEarly; i++) rateMult *= (1 - CFG.PERM_RATE_PER_LV);
   for(i = 0; i < rateLate;  i++) rateMult *= (1 - CFG.PERM_RATE_PER_LV_LATE);
+  for(i = 0; i < rateUltra; i++) rateMult *= (1 - CFG.PERM_RATE_PER_LV_ULTRA);
   tower.fireInterval *= rateMult;
 
-  /* HP */
+  /* HP(加算) */
   var hpEarly = pu.hp < brk ? pu.hp : brk;
-  var hpLate  = pu.hp > brk ? pu.hp - brk : 0;
-  tower.maxHp += hpEarly * CFG.PERM_HP_PER_LV + hpLate * CFG.PERM_HP_PER_LV_LATE;
+  var hpLateMax = ultra - brk;
+  var hpLateRaw = pu.hp > brk ? pu.hp - brk : 0;
+  var hpLate  = hpLateRaw < hpLateMax ? hpLateRaw : hpLateMax;
+  var hpUltra = pu.hp > ultra ? pu.hp - ultra : 0;
+  tower.maxHp += hpEarly * CFG.PERM_HP_PER_LV + hpLate * CFG.PERM_HP_PER_LV_LATE + hpUltra * CFG.PERM_HP_PER_LV_ULTRA;
   tower.hp = tower.maxHp;
 
   /* 射程 */
-  tower.range *= applyPermLvMult(pu.range, CFG.PERM_RANGE_PER_LV, CFG.PERM_RANGE_PER_LV_LATE);
+  tower.range *= applyPermLvMult(pu.range, CFG.PERM_RANGE_PER_LV, CFG.PERM_RANGE_PER_LV_LATE, CFG.PERM_RANGE_PER_LV_ULTRA);
 
   /* 初期バリア */
   barrierCount = Math.min(pu.barriersStart || 0, CFG.PERM_BARRIER_MAX);
@@ -4296,10 +4443,12 @@ function renderPermaScreen(){
   document.getElementById('permaCoinNum').textContent = String(saveData.metaCoins);
 
   var brk = CFG.PERM_LEVEL_BREAK;
+  var pipMax = CFG.PERM_MAX_LEVEL; /* ピップは10段まで */
   for(var d = 0; d < PERM_DEFS.length; d++){
     var def = PERM_DEFS[d];
     var lv    = saveData.permanentUpgrades[def.id] || 0;
-    var maxed = lv >= def.max;
+    var unlimited = (def.max === 999);
+    var maxed = !unlimited && lv >= def.max;
     var price = maxed ? 0 : getPermPrice(def.id, lv);
     var canAfford = !maxed && saveData.metaCoins >= price;
 
@@ -4309,13 +4458,18 @@ function renderPermaScreen(){
     else if(!canAfford) cls += ' cant-afford';
     div.className = cls;
 
-    /* ピップ: 前半=シアン, 後半(Lv6〜)=ゴールド */
+    /* ピップ: 最大10個まで描画。前半=シアン、後半(Lv6〜)=ゴールド */
+    var pipCount = unlimited ? pipMax : def.max;
     var pipsHtml = '<div class="perma-pips">';
-    for(var pi = 0; pi < def.max; pi++){
-      var isLate = (def.max === 10 && pi >= brk);
+    for(var pi = 0; pi < pipCount; pi++){
+      var isLate = (pi >= brk);
       var pipCls = 'perma-pip';
       if(pi < lv) pipCls += isLate ? ' on-late' : ' on';
       pipsHtml += '<div class="' + pipCls + '"></div>';
+    }
+    /* Lv11〜: 数値バッジを追加 */
+    if(unlimited && lv > pipMax){
+      pipsHtml += '<span class="perma-lv-badge">Lv' + lv + '</span>';
     }
     pipsHtml += '</div>';
 
