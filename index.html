@@ -601,6 +601,55 @@ var CFG = {
   BOSS_SUMMONER_COIN:              60,
   BOSS_SUMMONER_COIN_HARD:         120,
 
+  /* 敵:スナイパー(W8〜) */
+  ENEMY_SNIPER_HP_BASE:       30,
+  ENEMY_SNIPER_HP_WAVE:       8,
+  ENEMY_SNIPER_SIZE:          14,
+  ENEMY_SNIPER_COLOR:         '#9b59b6',
+  ENEMY_SNIPER_DMG:           0,
+  ENEMY_SNIPER_XP:            15,
+  ENEMY_SNIPER_COIN:          3,
+  ENEMY_SNIPER_MOVE_SPEED:    110,
+  ENEMY_SNIPER_RANGE_MULT:    1.20,
+  ENEMY_SNIPER_SHOT_DMG:      12,
+  ENEMY_SNIPER_SHOT_SPEED:    210,
+  ENEMY_SNIPER_SHOT_INTERVAL: 2.0,
+  ENEMY_SNIPER_REPOS_INTERVAL: 4.5,
+  ENEMY_SNIPER_WAVE_START:    8,
+  ENEMY_SNIPER_RATIO:         0.10,
+
+  /* 敵:分裂体(W15〜) */
+  ENEMY_SPLIT_HP_BASE:        40,
+  ENEMY_SPLIT_HP_WAVE:        10,
+  ENEMY_SPLIT_SPEED_BASE:     44,
+  ENEMY_SPLIT_SIZE:           18,
+  ENEMY_SPLIT_COLOR:          '#2ecc71',
+  ENEMY_SPLIT_DMG:            10,
+  ENEMY_SPLIT_XP:             20,
+  ENEMY_SPLIT_COIN:           2,
+  ENEMY_SPLIT_WAVE_START:     15,
+  ENEMY_SPLIT_RATIO:          0.12,
+  ENEMY_SPLIT_HP_RATIO:       0.50,
+  ENEMY_SPLIT_SPEED_MULT:     1.30,
+  ENEMY_SPLIT_SIZE_RATIO:     0.65,
+
+  /* 敵:ウィーバー(W22〜) */
+  ENEMY_WEAVER_HP_BASE:       20,
+  ENEMY_WEAVER_HP_WAVE:       7,
+  ENEMY_WEAVER_SPEED_BASE:    52,
+  ENEMY_WEAVER_SIZE:          14,
+  ENEMY_WEAVER_COLOR:         '#f1c40f',
+  ENEMY_WEAVER_DMG:           9,
+  ENEMY_WEAVER_XP:            12,
+  ENEMY_WEAVER_COIN:          2,
+  ENEMY_WEAVER_WAVE_START:    22,
+  ENEMY_WEAVER_RATIO:         0.10,
+  ENEMY_WEAVER_AMP:           58,
+  ENEMY_WEAVER_FREQ:          2.2,
+
+  /* 新敵告知(軽量、ゲーム継続) */
+  NEW_ENEMY_ALERT_DUR: 2.2,
+
   /* 特殊武器 */
   SUB_TURRET_DMG_RATIO:  0.5,            /* サブ砲台ダメージ倍率 */
   SUB_TURRET_FIRE_RATIO: 0.65,           /* メイン砲の何倍の発射間隔か */
@@ -708,8 +757,10 @@ var boss = null;
 var warningTimer = 0;
 var warningLabel = '';
 var bossSpawnFn  = null;
-/* 敵弾(サモナー用) */
+/* 敵弾(サモナー/スナイパー共通) */
 var enemyBullets = [];
+/* 新敵告知 — ゲームを止めない軽量オーバーレイ */
+var newEnemyAlert = null;
 
 /* 特殊武器 */
 var weapons = { subTurret: 0, pierce: 0 };
@@ -1085,7 +1136,7 @@ function resetGame(){
   coins = 0; healItems = [];
   upgradeCounts = { rate: 0, dmg: 0, range: 0, speed: 0, maxhp: 0, heal: 0 };
   enemies = []; bullets = []; particles = []; floaters = []; enemyBullets = [];
-  boss = null; warningTimer = 0; bossSpawnFn = null;
+  boss = null; warningTimer = 0; bossSpawnFn = null; newEnemyAlert = null;
   weapons = { subTurret: 0, pierce: 0 };
   subTurretAngles = [0, 0]; subTurretFireTimers = [0, 0];
   pendingSteps = 0;
@@ -1114,6 +1165,10 @@ function resetGame(){
 
 function startWave(){
   boss = null; hideBossBar(); enemyBullets = [];
+  /* 新敵初登場告知(ゲーム継続) */
+  if(wave === CFG.ENEMY_SNIPER_WAVE_START) triggerNewEnemyAlert('SNIPER', CFG.ENEMY_SNIPER_COLOR);
+  if(wave === CFG.ENEMY_SPLIT_WAVE_START)  triggerNewEnemyAlert('SPLITTER', CFG.ENEMY_SPLIT_COLOR);
+  if(wave === CFG.ENEMY_WEAVER_WAVE_START) triggerNewEnemyAlert('WEAVER', CFG.ENEMY_WEAVER_COLOR);
   if(wave === 5){
     spawnQueue = 0; spawnTimer = 0;
     triggerBossWarning('MINI BOSS', 'CHARGER', spawnMiniCharger);
@@ -1169,29 +1224,93 @@ function spawnEnemy(){
   else if(edge === 2){ x = Math.random() * W; y = H + m; }
   else { x = -m; y = Math.random() * H; }
 
-  var tankRatio = Math.min(CFG.ENEMY_ORANGE_RATIO_MAX,
-    CFG.ENEMY_ORANGE_RATIO + wave * CFG.ENEMY_ORANGE_RATIO_WAVE);
-  var tank = Math.random() < tankRatio;
+  /* 新敵出現チェック */
+  var r = Math.random();
+  var sniperRate = wave >= CFG.ENEMY_SNIPER_WAVE_START ? CFG.ENEMY_SNIPER_RATIO : 0;
+  var splitRate  = wave >= CFG.ENEMY_SPLIT_WAVE_START  ? CFG.ENEMY_SPLIT_RATIO  : 0;
+  var weaverRate = wave >= CFG.ENEMY_WEAVER_WAVE_START ? CFG.ENEMY_WEAVER_RATIO : 0;
 
-  if(tank){
-    var hp = CFG.ENEMY_ORANGE_HP_BASE + waveAccum(wave, CFG.ENEMY_ORANGE_HP_WAVE, CFG.WAVE_HP_SCALE_EARLY, CFG.WAVE_HP_SCALE_LATE);
-    enemies.push({
-      x: x, y: y, hp: hp, maxHp: hp,
-      speed: CFG.ENEMY_ORANGE_SPEED_BASE + waveAccum(wave, CFG.ENEMY_ORANGE_SPEED_WAVE, CFG.WAVE_SPEED_SCALE_EARLY, CFG.WAVE_SPEED_SCALE_LATE),
-      size: CFG.ENEMY_ORANGE_SIZE, color: '#ffa028',
-      rot: Math.random() * Math.PI * 2, rotSpd: (Math.random() - 0.5) * 1.5,
-      dmg: CFG.ENEMY_ORANGE_DMG, xpReward: CFG.XP_PER_ORANGE, coinReward: CFG.COIN_ORANGE
-    });
+  if(r < sniperRate){
+    spawnSniper(x, y);
+  } else if(r < sniperRate + splitRate){
+    spawnSplit(x, y);
+  } else if(r < sniperRate + splitRate + weaverRate){
+    spawnWeaver(x, y);
   } else {
-    var hp2 = CFG.ENEMY_RED_HP_BASE + waveAccum(wave, CFG.ENEMY_RED_HP_WAVE, CFG.WAVE_HP_SCALE_EARLY, CFG.WAVE_HP_SCALE_LATE);
-    enemies.push({
-      x: x, y: y, hp: hp2, maxHp: hp2,
-      speed: CFG.ENEMY_RED_SPEED_BASE + waveAccum(wave, CFG.ENEMY_RED_SPEED_WAVE, CFG.WAVE_SPEED_SCALE_EARLY, CFG.WAVE_SPEED_SCALE_LATE),
-      size: CFG.ENEMY_RED_SIZE, color: '#ff2e4c',
-      rot: Math.random() * Math.PI * 2, rotSpd: (Math.random() - 0.5) * 1.5,
-      dmg: CFG.ENEMY_RED_DMG, xpReward: CFG.XP_PER_RED, coinReward: CFG.COIN_RED
-    });
+    /* 既存: 赤/オレンジ */
+    var tankRatio = Math.min(CFG.ENEMY_ORANGE_RATIO_MAX,
+      CFG.ENEMY_ORANGE_RATIO + wave * CFG.ENEMY_ORANGE_RATIO_WAVE);
+    if(Math.random() < tankRatio){
+      var hp = CFG.ENEMY_ORANGE_HP_BASE + waveAccum(wave, CFG.ENEMY_ORANGE_HP_WAVE, CFG.WAVE_HP_SCALE_EARLY, CFG.WAVE_HP_SCALE_LATE);
+      enemies.push({
+        x: x, y: y, hp: hp, maxHp: hp,
+        speed: CFG.ENEMY_ORANGE_SPEED_BASE + waveAccum(wave, CFG.ENEMY_ORANGE_SPEED_WAVE, CFG.WAVE_SPEED_SCALE_EARLY, CFG.WAVE_SPEED_SCALE_LATE),
+        size: CFG.ENEMY_ORANGE_SIZE, color: '#ffa028',
+        rot: Math.random() * Math.PI * 2, rotSpd: (Math.random() - 0.5) * 1.5,
+        dmg: CFG.ENEMY_ORANGE_DMG, xpReward: CFG.XP_PER_ORANGE, coinReward: CFG.COIN_ORANGE
+      });
+    } else {
+      var hp2 = CFG.ENEMY_RED_HP_BASE + waveAccum(wave, CFG.ENEMY_RED_HP_WAVE, CFG.WAVE_HP_SCALE_EARLY, CFG.WAVE_HP_SCALE_LATE);
+      enemies.push({
+        x: x, y: y, hp: hp2, maxHp: hp2,
+        speed: CFG.ENEMY_RED_SPEED_BASE + waveAccum(wave, CFG.ENEMY_RED_SPEED_WAVE, CFG.WAVE_SPEED_SCALE_EARLY, CFG.WAVE_SPEED_SCALE_LATE),
+        size: CFG.ENEMY_RED_SIZE, color: '#ff2e4c',
+        rot: Math.random() * Math.PI * 2, rotSpd: (Math.random() - 0.5) * 1.5,
+        dmg: CFG.ENEMY_RED_DMG, xpReward: CFG.XP_PER_RED, coinReward: CFG.COIN_RED
+      });
+    }
   }
+}
+
+/* =====================================================================
+   新敵スポーン関数
+===================================================================== */
+function spawnSniper(x, y){
+  var hp = CFG.ENEMY_SNIPER_HP_BASE + waveAccum(wave, CFG.ENEMY_SNIPER_HP_WAVE, CFG.WAVE_HP_SCALE_EARLY, CFG.WAVE_HP_SCALE_LATE);
+  var standoff = tower.range * CFG.ENEMY_SNIPER_RANGE_MULT;
+  var ang = Math.random() * Math.PI * 2;
+  enemies.push({
+    type: 'sniper',
+    x: x, y: y, hp: hp, maxHp: hp,
+    speed: 0,
+    size: CFG.ENEMY_SNIPER_SIZE, color: CFG.ENEMY_SNIPER_COLOR,
+    rot: 0, rotSpd: 1.5,
+    dmg: CFG.ENEMY_SNIPER_DMG, xpReward: CFG.ENEMY_SNIPER_XP, coinReward: CFG.ENEMY_SNIPER_COIN,
+    standoffDist: standoff,
+    targetX: cx() + Math.cos(ang) * standoff,
+    targetY: cy() + Math.sin(ang) * standoff,
+    phase: 'seek',
+    shotTimer: CFG.ENEMY_SNIPER_SHOT_INTERVAL,
+    repositionTimer: CFG.ENEMY_SNIPER_REPOS_INTERVAL
+  });
+}
+
+function spawnSplit(x, y){
+  var hp = CFG.ENEMY_SPLIT_HP_BASE + waveAccum(wave, CFG.ENEMY_SPLIT_HP_WAVE, CFG.WAVE_HP_SCALE_EARLY, CFG.WAVE_HP_SCALE_LATE);
+  var spd = CFG.ENEMY_SPLIT_SPEED_BASE + waveAccum(wave, 2, CFG.WAVE_SPEED_SCALE_EARLY, CFG.WAVE_SPEED_SCALE_LATE);
+  enemies.push({
+    type: 'split',
+    x: x, y: y, hp: hp, maxHp: hp,
+    speed: spd,
+    size: CFG.ENEMY_SPLIT_SIZE, color: CFG.ENEMY_SPLIT_COLOR,
+    rot: Math.random() * Math.PI * 2, rotSpd: (Math.random() - 0.5) * 1.5,
+    dmg: CFG.ENEMY_SPLIT_DMG, xpReward: CFG.ENEMY_SPLIT_XP, coinReward: CFG.ENEMY_SPLIT_COIN,
+    splitOnDeath: true
+  });
+}
+
+function spawnWeaver(x, y){
+  var hp = CFG.ENEMY_WEAVER_HP_BASE + waveAccum(wave, CFG.ENEMY_WEAVER_HP_WAVE, CFG.WAVE_HP_SCALE_EARLY, CFG.WAVE_HP_SCALE_LATE);
+  var spd = CFG.ENEMY_WEAVER_SPEED_BASE + waveAccum(wave, 3, CFG.WAVE_SPEED_SCALE_EARLY, CFG.WAVE_SPEED_SCALE_LATE);
+  enemies.push({
+    type: 'weaver',
+    x: x, y: y, hp: hp, maxHp: hp,
+    speed: spd,
+    size: CFG.ENEMY_WEAVER_SIZE, color: CFG.ENEMY_WEAVER_COLOR,
+    rot: Math.random() * Math.PI * 2, rotSpd: (Math.random() - 0.5) * 3.0,
+    dmg: CFG.ENEMY_WEAVER_DMG, xpReward: CFG.ENEMY_WEAVER_XP, coinReward: CFG.ENEMY_WEAVER_COIN,
+    sinePhase: Math.random() * Math.PI * 2
+  });
 }
 
 /* =====================================================================
@@ -1259,6 +1378,11 @@ function loop(t){
         var fn = bossSpawnFn; bossSpawnFn = null; fn();
       }
     }
+    /* 新敵告知タイマー(軽量・ゲーム継続) */
+    if(newEnemyAlert !== null){
+      newEnemyAlert.timer -= dt;
+      if(newEnemyAlert.timer <= 0) newEnemyAlert = null;
+    }
     if(shakeTimer > 0){
       shakeTimer -= dt;
       shakeX = (Math.random() - 0.5) * 2 * shakeMag;
@@ -1295,9 +1419,16 @@ function update(dt){
       if(tower.hp <= 0){ tower.hp = 0; endGame(false); return; }
       continue;
     }
-    e.x  += dx / d * e.speed * dt;
-    e.y  += dy / d * e.speed * dt;
-    e.rot += e.rotSpd * dt;
+    if(e.type === 'sniper'){
+      moveSniper(e, dt);
+    } else if(e.type === 'weaver'){
+      moveWeaver(e, dx, dy, d, dt);
+    } else {
+      /* 通常移動(赤・オレンジ・分裂体) */
+      e.x  += dx / d * e.speed * dt;
+      e.y  += dy / d * e.speed * dt;
+      e.rot += e.rotSpd * dt;
+    }
   }
 
   /* 戦闘対象リスト(enemies + boss)を毎フレーム構築 */
@@ -1366,6 +1497,30 @@ function update(dt){
           } else {
             var ei = enemies.indexOf(ct);
             if(ei !== -1) enemies.splice(ei, 1);
+            /* 分裂体: 子を2体スポーン(combatantsにも追加で貫通弾対応) */
+            if(ct.splitOnDeath){
+              for(var sc2 = 0; sc2 < 2; sc2++){
+                var cHp = Math.ceil(ct.maxHp * CFG.ENEMY_SPLIT_HP_RATIO);
+                var child = {
+                  type: 'split',
+                  x: ct.x + (Math.random() - 0.5) * 12,
+                  y: ct.y + (Math.random() - 0.5) * 12,
+                  hp: cHp, maxHp: cHp,
+                  speed: ct.speed * CFG.ENEMY_SPLIT_SPEED_MULT,
+                  size: ct.size * CFG.ENEMY_SPLIT_SIZE_RATIO,
+                  color: ct.color,
+                  rot: Math.random() * Math.PI * 2,
+                  rotSpd: (Math.random() - 0.5) * 2.5,
+                  dmg: ct.dmg,
+                  xpReward: Math.ceil(ct.xpReward * 0.5),
+                  coinReward: 1,
+                  splitOnDeath: false
+                };
+                enemies.push(child);
+                combatants.push(child);
+              }
+              burst(ct.x, ct.y, ct.color, 18);
+            }
             /* 回復アイテムドロップ */
             if(Math.random() < CFG.DROP_HEAL_CHANCE){
               healItems.push({ x: ct.x, y: ct.y, life: 8.0 });
@@ -1434,7 +1589,7 @@ function update(dt){
     var etx = eb.x - cx(), ety = eb.y - cy();
     if(etx * etx + ety * ety < CFG.TOWER_HIT_RADIUS * CFG.TOWER_HIT_RADIUS){
       tower.hp -= eb.dmg;
-      burst(cx(), cy(), '#c84dff', 8);
+      burst(cx(), cy(), eb.color || '#c84dff', 8);
       enemyBullets.splice(i, 1);
       if(tower.hp <= 0){ tower.hp = 0; endGame(false); return; }
     } else if(eb.life <= 0 || eb.x < -120 || eb.x > W + 120 || eb.y < -120 || eb.y > H + 120){
@@ -1452,6 +1607,67 @@ function update(dt){
   if(spawnQueue === 0 && enemies.length === 0 && boss === null && warningTimer <= 0 && STATE === 'play'){
     waveComplete();
   }
+}
+
+/* =====================================================================
+   スナイパー移動
+===================================================================== */
+function moveSniper(e, dt){
+  if(e.phase === 'seek'){
+    var tx = e.targetX - e.x, ty = e.targetY - e.y;
+    var td = Math.sqrt(tx * tx + ty * ty);
+    if(td < 6){
+      e.phase = 'shoot';
+      e.shotTimer = CFG.ENEMY_SNIPER_SHOT_INTERVAL;
+      e.repositionTimer = CFG.ENEMY_SNIPER_REPOS_INTERVAL;
+    } else {
+      e.x += tx / td * CFG.ENEMY_SNIPER_MOVE_SPEED * dt;
+      e.y += ty / td * CFG.ENEMY_SNIPER_MOVE_SPEED * dt;
+    }
+    e.rot += e.rotSpd * dt;
+  } else {
+    /* shoot: タワーへ向いて射撃 */
+    e.rot = Math.atan2(cy() - e.y, cx() - e.x) - Math.PI * 0.5;
+    e.repositionTimer -= dt;
+    e.shotTimer -= dt;
+    if(e.shotTimer <= 0){
+      var ang = Math.atan2(cy() - e.y, cx() - e.x);
+      enemyBullets.push({
+        x: e.x, y: e.y,
+        vx: Math.cos(ang) * CFG.ENEMY_SNIPER_SHOT_SPEED,
+        vy: Math.sin(ang) * CFG.ENEMY_SNIPER_SHOT_SPEED,
+        life: 4.0, dmg: CFG.ENEMY_SNIPER_SHOT_DMG,
+        color: CFG.ENEMY_SNIPER_COLOR, r: 5
+      });
+      e.shotTimer = CFG.ENEMY_SNIPER_SHOT_INTERVAL;
+    }
+    if(e.repositionTimer <= 0){
+      var newAng = Math.random() * Math.PI * 2;
+      e.targetX = cx() + Math.cos(newAng) * e.standoffDist;
+      e.targetY = cy() + Math.sin(newAng) * e.standoffDist;
+      e.phase = 'seek';
+    }
+  }
+}
+
+/* =====================================================================
+   ウィーバー移動
+===================================================================== */
+function moveWeaver(e, dx, dy, d, dt){
+  var nx = dx / d, ny = dy / d;
+  var px = -ny, py = nx;
+  e.sinePhase += CFG.ENEMY_WEAVER_FREQ * dt;
+  var sineV = CFG.ENEMY_WEAVER_AMP * Math.sin(e.sinePhase);
+  e.x += (nx * e.speed + px * sineV) * dt;
+  e.y += (ny * e.speed + py * sineV) * dt;
+  e.rot += e.rotSpd * dt;
+}
+
+/* =====================================================================
+   新敵告知
+===================================================================== */
+function triggerNewEnemyAlert(name, color){
+  newEnemyAlert = { name: name, color: color, timer: CFG.NEW_ENEMY_ALERT_DUR };
 }
 
 /* =====================================================================
@@ -1882,11 +2098,30 @@ function draw(tm, dt){
   for(j = 0; j < enemies.length; j++){
     var e = enemies[j];
     ctx.save(); ctx.translate(e.x, e.y); ctx.rotate(e.rot);
-    ctx.shadowColor = e.color; ctx.shadowBlur = 14;
-    ctx.strokeStyle = e.color; ctx.lineWidth = 4;
-    ctx.strokeRect(-e.size / 2, -e.size / 2, e.size, e.size);
-    ctx.globalAlpha = 0.15; ctx.fillStyle = e.color;
-    ctx.fillRect(-e.size / 2, -e.size / 2, e.size, e.size);
+    ctx.shadowColor = e.color;
+    ctx.shadowBlur = (e.type === 'sniper') ? 22 : 14;
+    ctx.strokeStyle = e.color; ctx.lineWidth = 3.5;
+
+    if(e.type === 'sniper'){
+      /* 三角形(先端がタワーを向く) */
+      ctx.beginPath();
+      ctx.moveTo(0, -e.size * 0.78);
+      ctx.lineTo(e.size * 0.48, e.size * 0.52);
+      ctx.lineTo(-e.size * 0.48, e.size * 0.52);
+      ctx.closePath(); ctx.stroke();
+      ctx.globalAlpha = 0.22; ctx.fillStyle = e.color; ctx.fill();
+    } else if(e.type === 'split' && e.splitOnDeath){
+      /* 親分裂体: 六角形 */
+      ctx.lineWidth = 3;
+      hexPath(e.size * 0.62, 0); ctx.stroke();
+      ctx.globalAlpha = 0.2; ctx.fillStyle = e.color;
+      hexPath(e.size * 0.62, 0); ctx.fill();
+    } else {
+      /* 通常(赤・オレンジ・子分裂体・ウィーバー) */
+      ctx.strokeRect(-e.size / 2, -e.size / 2, e.size, e.size);
+      ctx.globalAlpha = 0.15; ctx.fillStyle = e.color;
+      ctx.fillRect(-e.size / 2, -e.size / 2, e.size, e.size);
+    }
     ctx.globalAlpha = 1; ctx.restore();
     if(e.hp < e.maxHp){
       var bw = e.size * 1.6;
@@ -2041,6 +2276,23 @@ function draw(tm, dt){
   }
   ctx.globalAlpha = 1;
 
+  /* 新敵告知(軽量・ゲーム継続) */
+  if(newEnemyAlert !== null){
+    var naf = newEnemyAlert.timer > CFG.NEW_ENEMY_ALERT_DUR - 0.25
+      ? (CFG.NEW_ENEMY_ALERT_DUR - newEnemyAlert.timer) / 0.25
+      : Math.min(1.0, newEnemyAlert.timer / 0.35);
+    ctx.globalAlpha = naf * 0.92;
+    ctx.save();
+    ctx.textAlign = 'center';
+    ctx.shadowColor = newEnemyAlert.color; ctx.shadowBlur = 22;
+    ctx.fillStyle = newEnemyAlert.color;
+    ctx.font = '700 ' + Math.floor(Math.min(W, H) * 0.048) + 'px "Chakra Petch", Arial';
+    ctx.fillText('NEW ENEMY : ' + newEnemyAlert.name, cx(), cy() - Math.floor(H * 0.22));
+    ctx.shadowBlur = 0;
+    ctx.restore();
+    ctx.globalAlpha = 1;
+  }
+
   /* WARNING演出 */
   if(warningTimer > 0){
     var wFade = warningTimer < 0.35 ? warningTimer / 0.35 : 1.0;
@@ -2165,7 +2417,7 @@ function suspendRun(){
   STATE = 'title'; /* ループ停止 */
   hideScreen('scrPause');
   enemies = []; bullets = []; particles = []; floaters = []; healItems = []; enemyBullets = [];
-  boss = null; warningTimer = 0; bossSpawnFn = null; hideBossBar();
+  boss = null; warningTimer = 0; bossSpawnFn = null; newEnemyAlert = null; hideBossBar();
   document.getElementById('hudEl').style.display = 'none';
   document.getElementById('specialBtn').style.display = 'none';
   showScreen('scrTitle');
@@ -2178,7 +2430,7 @@ function resumeRun(){
 
   /* 戦闘状態リセット */
   enemies = []; bullets = []; particles = []; floaters = []; healItems = []; enemyBullets = [];
-  boss = null; warningTimer = 0; bossSpawnFn = null;
+  boss = null; warningTimer = 0; bossSpawnFn = null; newEnemyAlert = null;
   subTurretAngles = [0, 0]; subTurretFireTimers = [0, 0];
   pendingLevelUps = 0; pendingSteps = 0;
   flashTimer = 0; shakeTimer = 0; hideBossBar();
