@@ -1,6 +1,6 @@
 最終更新日: 2026-07-30
 
-現状: M6(Web Audioサウンド+ミュート)完了。M7着手前。
+現状: M7(最終バランス+仕上げ+Netlify準備)完了。全マイルストーン達成。
 
 完了済み:
 - M1: プロトタイプ移植+50ウェーブ化+CONFIG集約+XPレベルアップ3択+必殺ゲージ
@@ -18,8 +18,11 @@
   - 必殺音: sawtooth低音+sineスイープ+ノイズの3層レイヤー
   - ミュートボタン: HUD右上(settings.mute永続化)
   - iOS対策: PLAY/RETRY/CONTINUEタップでAudioContext.resume()
+- M7: 最終バランス検証+仕上げ+Netlify準備
+  - バランス検証: ステップシミュレーション実施、W1-4微ダメあるが設計範囲内と確認
+  - タイトル画面にv1.0.0バージョン表記追加
+  - README.md作成(概要/遊び方/デバッグ/技術構成)
+  - docs/config.md・DESIGN.md最終化(シミュレーション注記修正)
+  - 公開不要ファイル: hexa-defense-requirements.md・mockup・protoはREADMEに明記して同梱
 
-残タスク:
-- #5 M7: 最終バランス調整+Netlifyデプロイ
-
-次の一手: M7実装 → fixes #5
+次の一手: Netlify接続とrepos.ymlのurl記入

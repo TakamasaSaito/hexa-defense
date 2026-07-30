@@ -1,0 +1,63 @@
+# HEXA DEFENSE
+
+**本体ファイル: `index.html`**（単一HTMLで完結、ビルド不要）
+
+ネオン風ヘクサゴンタワーディフェンス。50ウェーブを生き残れ。
+
+---
+
+## 遊び方
+
+1. `index.html` をブラウザで開く（iPhone Safari 推奨）
+2. **PLAY NOW** でゲーム開始
+3. タワー周囲に迫る敵を自動砲台が迎撃
+4. XPでレベルアップ → 3択カードで強化
+5. コインを集めてラン中ショップで即時強化
+6. 必殺ゲージが満タンになったら **SPECIAL** を発動
+7. W5ボスを倒して初めての武器を獲得し、W6〜7の加速フェーズに挑む
+8. 50ウェーブ制覇で **VICTORY**
+
+### チェックポイント
+W10 / W20 / W30 / W40 到達時にセーブ。次ランはそこから再開可能。
+
+### 恒久強化
+ランで獲得したメタコインをタイトル画面 **UPGRADE** で消費して恒久強化。
+5系統×5段階（初期ダメージ・連射・HP・射程・コイン獲得量）。
+
+---
+
+## デバッグ
+
+URLに `?wave=N` を付けるとウェーブNからスタート（例: `?wave=20`）。
+
+---
+
+## 技術構成
+
+| 項目 | 内容 |
+|---|---|
+| ファイル構成 | `index.html` 1ファイル（HTML/CSS/JS 完結） |
+| 描画 | Canvas 2D API |
+| 言語 | Vanilla JavaScript（ライブラリ・ビルドツールなし） |
+| サウンド | Web Audio API（外部ファイルなし、オシレーター合成） |
+| 永続化 | localStorage（saveData / settings） |
+| 対象環境 | iOS Safari 16+ / Chrome / Firefox |
+
+---
+
+## ファイル構成
+
+```
+index.html          ← ゲーム本体
+README.md
+STATUS.md           ← 開発進捗
+docs/
+  DESIGN.md         ← ゲームデザイン・バランス設計
+  config.md         ← CONFIGパラメータ一覧
+  decisions/        ← アーキテクチャ決定記録
+hexa-defense-requirements.md  ← 要件書（開発参照用）
+hexa-defense-mockup.html      ← モックアップ（参照用）
+hexa-defense.html             ← プロトタイプ（参照用）
+```
+
+> `hexa-defense-requirements.md` / `hexa-defense-mockup.html` / `hexa-defense.html` は開発参照用。Netlifyデプロイ時も同梱するが、ゲームとして動作するのは `index.html` のみ。
