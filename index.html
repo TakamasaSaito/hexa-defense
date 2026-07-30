@@ -546,9 +546,9 @@ var CFG = {
   WAVE_SPAWN_SCALE_LATE:   1.5,
 
   /* XP */
-  XP_BASE:        20,
+  XP_BASE:        50,
   XP_SCALE:       1.3,
-  XP_CAP:         500,
+  XP_CAP:         600,
   XP_PER_RED:     8,
   XP_PER_ORANGE:  18,
 
@@ -556,17 +556,20 @@ var CFG = {
      満タンに必要な与ダメ ≈ 2000 (DMG_RATIO=0.5)
      W5ボスで≈1.5本分、W10で累計≈3本分溜まる設計 */
   SPECIAL_MAX:          1000,
-  SPECIAL_DMG_RATIO:    0.5,
+  SPECIAL_DMG_RATIO:    0.25,
 
   /* PULSE(初期所持、コスト33%、CD3s): 近距離全体ノックバック */
   PULSE_COST:           330,
   PULSE_CD:             3,
-  PULSE_DMG_MULT:       8,
-  PULSE_KNOCKBACK:      200,
+  PULSE_DMG_MULT:       2,
+  PULSE_KNOCKBACK:      100,
   PULSE_RANGE_MULT:     1.8,
+  PULSE_STUN_DUR:       2.0,
+  PULSE_STUN_DUR_BOSS:  0.5,
   PULSE_FLASH_DUR:      0.5,
   PULSE_SHAKE_DUR:      0.3,
   PULSE_SHAKE_MAG:      10,
+  SPECIAL_FLASH_DUR:    0.5,
 
   /* RAILGUN(W10解放、コスト50%、CD6s): 最遠敵を射程無制限で貫通 */
   RAILGUN_COST:         500,
@@ -583,7 +586,7 @@ var CFG = {
   OVERDRIVE_RANGE_MULT: 1.5,
 
   /* パーティクル */
-  PARTICLE_MAX: 220,
+  PARTICLE_MAX: 260,
 
   /* 倍速 */
   SPEED_STEPS:            [1, 3, 10],    /* サイクル倍率: x1→x3→x10 */
@@ -761,10 +764,33 @@ var CFG = {
   PERM_RANGE_PER_LV:     0.08,
   PERM_COIN_GAIN_PER_LV: 0.15,
 
+  /* 弾ビジュアル: ダメージLvごとの半径・色・グロー */
+  BULLET_DMG_RADII:   [4, 4.5, 5, 5.5, 6],
+  BULLET_DMG_COLORS:  ['#cdf2ff', '#e0f8ff', '#ffffff', '#fffbe0', '#ffd770'],
+  BULLET_DMG_GLOWS:   ['#57d8ff', '#70e8ff', '#a0f0ff', '#ffe880', '#ffc200'],
+
+  /* 連射Lvごとの発射条ごとのオフセット角(rad) */
+  BULLET_STREAM_SPREADS: [
+    [0],
+    [-0.10, 0.10],
+    [-0.14, 0, 0.14],
+    [-0.21, -0.07, 0.07, 0.21]
+  ],
+
+  /* 追跡ミサイル */
+  MISSILE_INTERVAL:    3.0,
+  MISSILE_SPEED:       190,
+  MISSILE_HOMING:      2.5,
+  MISSILE_DMG_MULT:    4.0,
+  MISSILE_LIFE:        3.5,
+  MISSILE_SIZE:        5,
+  MISSILE_UNLOCK_RATE: 3,   /* upgradeCounts.rate >= 3 で解放(4条) */
+  MISSILE_UNLOCK_DMG:  4,   /* upgradeCounts.dmg >= 4 で解放(Lv5) */
+
   /* XPカードプール */
   CARD_POOL: [
-    { id:'rate',    icon:'&#9889;',  name:'連射速度',  desc:'発射間隔<br>-20%' },
-    { id:'dmg',     icon:'&#128165;',name:'ダメージ',  desc:'攻撃力<br>+40%' },
+    { id:'rate',    icon:'&#9889;',  name:'連射速度',  desc:'弾+1条<br>(DPS維持)' },
+    { id:'dmg',     icon:'&#128165;',name:'ダメージ',  desc:'攻撃力+40%<br>弾が強化' },
     { id:'range',   icon:'&#127919;',name:'射程距離',  desc:'射程<br>+15%' },
     { id:'speed',   icon:'&#128192;',name:'弾速',      desc:'弾速<br>+15%' },
     { id:'heal',    icon:'&#10010;', name:'HP回復',    desc:'+30 HP<br>即時回復' },
@@ -830,8 +856,10 @@ var pendingLevelUps = 0;
 
 var enemies    = [];
 var bullets    = [];
+var missiles   = [];
 var particles  = [];
 var floaters   = [];
+var missileTimer = 0;
 
 var spawnQueue = 0, spawnTimer = 0;
 var turretAngle = 0, fireTimer = 0;
@@ -1293,8 +1321,8 @@ function updateCoinHud(){
    ラン内ショップ
 ===================================================================== */
 var SHOP_DEFS = [
-  { id:'rate',  icon:'&#9889;',   name:'連射速度', desc:'発射間隔 -20%' },
-  { id:'dmg',   icon:'&#128165;', name:'ダメージ', desc:'攻撃力 +40%' },
+  { id:'rate',  icon:'&#9889;',   name:'連射速度', desc:'弾+1条 / 速度+' },
+  { id:'dmg',   icon:'&#128165;', name:'ダメージ', desc:'攻撃力+40% / 弾強化' },
   { id:'range', icon:'&#127919;', name:'射程距離', desc:'射程 +15%' },
   { id:'speed', icon:'&#128192;', name:'弾速',             desc:'弾速 +15%' },
   { id:'maxhp', icon:'&#10133;',  name:'最大HP+',          desc:'最大HP +30' },
@@ -1385,13 +1413,30 @@ function firePulse(){
     dx = e.x - cx(); dy = e.y - cy();
     dd = Math.sqrt(dx * dx + dy * dy);
     if(dd > blastR) continue;
+    e.stunTimer = CFG.PULSE_STUN_DUR;
     e.hp -= dmg;
-    floater(e.x, e.y - e.size, '-' + Math.round(dmg), '#ff3d81');
     if(dd > 0){ e.x += dx / dd * CFG.PULSE_KNOCKBACK; e.y += dy / dd * CFG.PULSE_KNOCKBACK; }
+    floater(e.x, e.y - e.size, 'STUN', '#4df3ff');
     if(e.hp <= 0){
       burst(e.x, e.y, e.color, 22);
       kills++; gainXP(e.xpReward); gainCoin(e.coinReward || 1, e.x, e.y);
       enemies.splice(i, 1);
+    }
+  }
+  /* ボスにもスタン耐性付きで適用 */
+  if(boss !== null){
+    var bdx = boss.x - cx(), bdy = boss.y - cy();
+    var bdd = Math.sqrt(bdx * bdx + bdy * bdy);
+    if(bdd <= blastR){
+      boss.stunTimer = CFG.PULSE_STUN_DUR_BOSS;
+      boss.hp -= dmg;
+      floater(boss.x, boss.y - boss.size, 'STUN', '#4df3ff');
+      updateBossHpBar();
+      if(boss.hp <= 0){
+        burst(boss.x, boss.y, boss.color, 40);
+        kills++; gainXP(boss.xpReward); gainCoin(boss.coinReward || 1, boss.x, boss.y);
+        boss = null; hideBossBar();
+      }
     }
   }
   flashTimer = CFG.PULSE_FLASH_DUR; shakeTimer = CFG.PULSE_SHAKE_DUR; shakeMag = CFG.PULSE_SHAKE_MAG;
@@ -1477,7 +1522,15 @@ function fireOverdrive(){
   overdriveTimer = CFG.OVERDRIVE_DUR;
   updateSpecialHud();
   playSound('overdrive');
-  shakeTimer = 0.25; shakeMag = 8;
+  shakeTimer = 0.5; shakeMag = 16;
+  for(var oi = 0; oi < 36; oi++){
+    var oa = Math.PI * 2 / 36 * oi;
+    particles.push({ x:cx(), y:cy(), vx:Math.cos(oa)*300, vy:Math.sin(oa)*300, life:0.7, maxLife:0.7, r:4, color:'#ffd257' });
+  }
+  for(var oi2 = 0; oi2 < 24; oi2++){
+    var oa2 = Math.PI * 2 / 24 * oi2;
+    particles.push({ x:cx(), y:cy(), vx:Math.cos(oa2)*160, vy:Math.sin(oa2)*160, life:1.0, maxLife:1.0, r:6, color:'#ffaa00' });
+  }
 }
 
 /* =====================================================================
@@ -1501,7 +1554,8 @@ function resetGame(){
   railgunBeam = null; specialHudTimer = 0;
   coins = 0; healItems = [];
   upgradeCounts = { rate: 0, dmg: 0, range: 0, speed: 0, maxhp: 0, heal: 0 };
-  enemies = []; bullets = []; particles = []; floaters = []; enemyBullets = [];
+  enemies = []; bullets = []; missiles = []; particles = []; floaters = []; enemyBullets = [];
+  missileTimer = 0;
   boss = null; warningTimer = 0; bossSpawnFn = null; newEnemyAlert = null;
   weapons = { subTurret: 0, pierce: 0 };
   subTurretAngles = [0, 0]; subTurretFireTimers = [0, 0];
@@ -1613,7 +1667,8 @@ function spawnEnemy(){
         speed: CFG.ENEMY_ORANGE_SPEED_BASE + waveAccum(wave, CFG.ENEMY_ORANGE_SPEED_WAVE, CFG.WAVE_SPEED_SCALE_EARLY, CFG.WAVE_SPEED_SCALE_LATE),
         size: CFG.ENEMY_ORANGE_SIZE, color: '#ffa028',
         rot: Math.random() * Math.PI * 2, rotSpd: (Math.random() - 0.5) * 1.5,
-        dmg: CFG.ENEMY_ORANGE_DMG, xpReward: CFG.XP_PER_ORANGE, coinReward: CFG.COIN_ORANGE
+        dmg: CFG.ENEMY_ORANGE_DMG, xpReward: CFG.XP_PER_ORANGE, coinReward: CFG.COIN_ORANGE,
+        stunTimer: 0
       });
     } else {
       var hp2 = CFG.ENEMY_RED_HP_BASE + waveAccum(wave, CFG.ENEMY_RED_HP_WAVE, CFG.WAVE_HP_SCALE_EARLY, CFG.WAVE_HP_SCALE_LATE);
@@ -1622,7 +1677,8 @@ function spawnEnemy(){
         speed: CFG.ENEMY_RED_SPEED_BASE + waveAccum(wave, CFG.ENEMY_RED_SPEED_WAVE, CFG.WAVE_SPEED_SCALE_EARLY, CFG.WAVE_SPEED_SCALE_LATE),
         size: CFG.ENEMY_RED_SIZE, color: '#ff2e4c',
         rot: Math.random() * Math.PI * 2, rotSpd: (Math.random() - 0.5) * 1.5,
-        dmg: CFG.ENEMY_RED_DMG, xpReward: CFG.XP_PER_RED, coinReward: CFG.COIN_RED
+        dmg: CFG.ENEMY_RED_DMG, xpReward: CFG.XP_PER_RED, coinReward: CFG.COIN_RED,
+        stunTimer: 0
       });
     }
   }
@@ -1647,7 +1703,8 @@ function spawnSniper(x, y){
     targetY: cy() + Math.sin(ang) * standoff,
     phase: 'seek',
     shotTimer: CFG.ENEMY_SNIPER_SHOT_INTERVAL,
-    repositionTimer: CFG.ENEMY_SNIPER_REPOS_INTERVAL
+    repositionTimer: CFG.ENEMY_SNIPER_REPOS_INTERVAL,
+    stunTimer: 0
   });
 }
 
@@ -1661,7 +1718,7 @@ function spawnSplit(x, y){
     size: CFG.ENEMY_SPLIT_SIZE, color: CFG.ENEMY_SPLIT_COLOR,
     rot: Math.random() * Math.PI * 2, rotSpd: (Math.random() - 0.5) * 1.5,
     dmg: CFG.ENEMY_SPLIT_DMG, xpReward: CFG.ENEMY_SPLIT_XP, coinReward: CFG.ENEMY_SPLIT_COIN,
-    splitOnDeath: true
+    splitOnDeath: true, stunTimer: 0
   });
 }
 
@@ -1675,7 +1732,7 @@ function spawnWeaver(x, y){
     size: CFG.ENEMY_WEAVER_SIZE, color: CFG.ENEMY_WEAVER_COLOR,
     rot: Math.random() * Math.PI * 2, rotSpd: (Math.random() - 0.5) * 3.0,
     dmg: CFG.ENEMY_WEAVER_DMG, xpReward: CFG.ENEMY_WEAVER_XP, coinReward: CFG.ENEMY_WEAVER_COIN,
-    sinePhase: Math.random() * Math.PI * 2
+    sinePhase: Math.random() * Math.PI * 2, stunTimer: 0
   });
 }
 
@@ -1791,6 +1848,11 @@ function update(dt){
       if(tower.hp <= 0){ tower.hp = 0; endGame(false); return; }
       continue;
     }
+    if(e.stunTimer > 0){
+      e.stunTimer -= dt;
+      e.rot += e.rotSpd * dt;
+      continue;
+    }
     if(e.type === 'sniper'){
       moveSniper(e, dt);
     } else if(e.type === 'weaver'){
@@ -1827,13 +1889,24 @@ function update(dt){
     if(fireTimer <= 0){
       fireTimer = tower.fireInterval;
       var pierceMax = CFG.PIERCE_LV[Math.min(weapons.pierce, CFG.PIERCE_LV.length - 1)];
-      bullets.push({
-        x: cx() + Math.cos(turretAngle) * (CFG.TOWER_HEX_R_OUTER + 6),
-        y: cy() + Math.sin(turretAngle) * (CFG.TOWER_HEX_R_OUTER + 6),
-        vx: Math.cos(turretAngle) * tower.bulletSpeed,
-        vy: Math.sin(turretAngle) * tower.bulletSpeed,
-        life: CFG.BULLET_LIFE, dmg: tower.dmg, pierceLeft: pierceMax
-      });
+      var streamCount = Math.min(4, upgradeCounts.rate + 1);
+      var dmgLv = Math.min(4, upgradeCounts.dmg);
+      var bRadius = CFG.BULLET_DMG_RADII[dmgLv];
+      var bColor  = CFG.BULLET_DMG_COLORS[dmgLv];
+      var bGlow   = CFG.BULLET_DMG_GLOWS[dmgLv];
+      var spreads = CFG.BULLET_STREAM_SPREADS[streamCount - 1];
+      var bDmg    = tower.dmg / streamCount;
+      for(var ssi = 0; ssi < streamCount; ssi++){
+        var ssa = turretAngle + spreads[ssi];
+        bullets.push({
+          x: cx() + Math.cos(ssa) * (CFG.TOWER_HEX_R_OUTER + 6),
+          y: cy() + Math.sin(ssa) * (CFG.TOWER_HEX_R_OUTER + 6),
+          vx: Math.cos(ssa) * tower.bulletSpeed,
+          vy: Math.sin(ssa) * tower.bulletSpeed,
+          life: CFG.BULLET_LIFE, dmg: bDmg, pierceLeft: pierceMax,
+          r: bRadius, bcolor: bColor, bglow: bGlow
+        });
+      }
       playSound('shoot');
     }
   }
@@ -1889,7 +1962,7 @@ function update(dt){
                   dmg: ct.dmg,
                   xpReward: Math.ceil(ct.xpReward * 0.5),
                   coinReward: 1,
-                  splitOnDeath: false
+                  splitOnDeath: false, stunTimer: 0
                 };
                 enemies.push(child);
                 combatants.push(child);
@@ -1920,6 +1993,121 @@ function update(dt){
       }
     }
     if(depleted || b.life <= 0) bullets.splice(i, 1);
+  }
+
+  /* ミサイル: 連射Lv4 or ダメージLv5で解放 */
+  var missileActive = (upgradeCounts.rate >= CFG.MISSILE_UNLOCK_RATE || upgradeCounts.dmg >= CFG.MISSILE_UNLOCK_DMG);
+  if(missileActive){
+    missileTimer -= dt;
+    if(missileTimer <= 0){
+      missileTimer = CFG.MISSILE_INTERVAL;
+      var mComb = enemies.slice();
+      if(boss !== null) mComb.push(boss);
+      if(mComb.length > 0){
+        var mBestD = 1e9, mTarget0 = null;
+        for(var msi = 0; msi < mComb.length; msi++){
+          var mct = mComb[msi];
+          var mddx = mct.x - cx(), mddy = mct.y - cy();
+          var mdd = mddx * mddx + mddy * mddy;
+          if(mdd < mBestD){ mBestD = mdd; mTarget0 = mct; }
+        }
+        if(mTarget0){
+          var mAng = Math.atan2(mTarget0.y - cy(), mTarget0.x - cx());
+          missiles.push({
+            x: cx() + Math.cos(mAng) * (CFG.TOWER_HEX_R_OUTER + 6),
+            y: cy() + Math.sin(mAng) * (CFG.TOWER_HEX_R_OUTER + 6),
+            vx: Math.cos(mAng) * CFG.MISSILE_SPEED,
+            vy: Math.sin(mAng) * CFG.MISSILE_SPEED,
+            life: CFG.MISSILE_LIFE
+          });
+        }
+      }
+    }
+  } else {
+    missileTimer = 0;
+  }
+
+  /* ミサイル更新 */
+  if(missiles.length > 0){
+    var mC2 = enemies.slice();
+    if(boss !== null) mC2.push(boss);
+    for(var mi2 = missiles.length - 1; mi2 >= 0; mi2--){
+      var ml = missiles[mi2];
+      if(mC2.length > 0){
+        var mNBest = 1e9, mNear = null;
+        for(var mn = 0; mn < mC2.length; mn++){
+          var mnc = mC2[mn];
+          var mndx = mnc.x - ml.x, mndy = mnc.y - ml.y;
+          var mnd = mndx * mndx + mndy * mndy;
+          if(mnd < mNBest){ mNBest = mnd; mNear = mnc; }
+        }
+        if(mNear){
+          var mtAng = Math.atan2(mNear.y - ml.y, mNear.x - ml.x);
+          var mcAng = Math.atan2(ml.vy, ml.vx);
+          var mdiff = mtAng - mcAng;
+          while(mdiff >  Math.PI) mdiff -= Math.PI * 2;
+          while(mdiff < -Math.PI) mdiff += Math.PI * 2;
+          var mTurn = CFG.MISSILE_HOMING * dt;
+          if(mdiff > 0){ mcAng += (mdiff < mTurn ? mdiff : mTurn); }
+          else          { mcAng += (mdiff > -mTurn ? mdiff : -mTurn); }
+          var mSpd = Math.sqrt(ml.vx * ml.vx + ml.vy * ml.vy);
+          ml.vx = Math.cos(mcAng) * mSpd;
+          ml.vy = Math.sin(mcAng) * mSpd;
+        }
+      }
+      ml.x += ml.vx * dt; ml.y += ml.vy * dt; ml.life -= dt;
+      if(Math.random() < 0.5 && particles.length < CFG.PARTICLE_MAX){
+        particles.push({ x:ml.x, y:ml.y, vx:0, vy:0, life:0.18, maxLife:0.18, r:3, color:'#ffaa40' });
+      }
+      var mHit = false;
+      for(var mk2 = mC2.length - 1; mk2 >= 0; mk2--){
+        var mc4 = mC2[mk2];
+        var mhx = ml.x - mc4.x, mhy = ml.y - mc4.y;
+        var mhR = mc4.size + CFG.MISSILE_SIZE;
+        if(mhx * mhx + mhy * mhy < mhR * mhR){
+          var mDmg = tower.dmg * CFG.MISSILE_DMG_MULT;
+          mc4.hp -= mDmg;
+          gainSpecial(mDmg);
+          floater(mc4.x, mc4.y - mc4.size, String(Math.round(mDmg)), '#ffaa40');
+          burst(ml.x, ml.y, '#ffaa40', 14);
+          if(mc4.hp <= 0){
+            burst(mc4.x, mc4.y, mc4.color, mc4.isBoss ? 40 : 22);
+            kills++; playSound('kill'); gainXP(mc4.xpReward); gainCoin(mc4.coinReward || 1, mc4.x, mc4.y);
+            if(mc4.isBoss){
+              boss = null; hideBossBar();
+            } else {
+              var mEi = enemies.indexOf(mc4);
+              if(mEi !== -1) enemies.splice(mEi, 1);
+              if(mc4.splitOnDeath){
+                for(var msc2 = 0; msc2 < 2; msc2++){
+                  var mCHp2 = Math.ceil(mc4.maxHp * CFG.ENEMY_SPLIT_HP_RATIO);
+                  var mChild = {
+                    type: 'split',
+                    x: mc4.x + (Math.random() - 0.5) * 12,
+                    y: mc4.y + (Math.random() - 0.5) * 12,
+                    hp: mCHp2, maxHp: mCHp2,
+                    speed: mc4.speed * CFG.ENEMY_SPLIT_SPEED_MULT,
+                    size: mc4.size * CFG.ENEMY_SPLIT_SIZE_RATIO,
+                    color: mc4.color, rot: Math.random() * Math.PI * 2,
+                    rotSpd: (Math.random() - 0.5) * 2.5, dmg: mc4.dmg,
+                    xpReward: Math.ceil(mc4.xpReward * 0.5), coinReward: 1,
+                    splitOnDeath: false, stunTimer: 0
+                  };
+                  enemies.push(mChild); mC2.push(mChild);
+                }
+                burst(mc4.x, mc4.y, mc4.color, 18);
+              }
+              if(Math.random() < CFG.DROP_HEAL_CHANCE){
+                healItems.push({ x: mc4.x, y: mc4.y, life: 8.0 });
+              }
+            }
+            mC2.splice(mk2, 1);
+          }
+          mHit = true; break;
+        }
+      }
+      if(mHit || ml.life <= 0) missiles.splice(mi2, 1);
+    }
   }
 
   /* 回復アイテム: タワーへ漂い + タワー接触で取得 */
@@ -2084,13 +2272,19 @@ function spawnMiniCharger(){
     size: CFG.BOSS_MINI_SIZE, color: CFG.BOSS_MINI_COLOR,
     dmg: CFG.BOSS_MINI_DMG, xpReward: CFG.BOSS_MINI_XP, coinReward: CFG.COIN_BOSS,
     rot: 0, orbitAngle: angle, orbitDist: orbitDist,
-    phase: 'wander', timer: CFG.BOSS_MINI_WANDER_DUR, dirX: 0, dirY: 0
+    phase: 'wander', timer: CFG.BOSS_MINI_WANDER_DUR, dirX: 0, dirY: 0, stunTimer: 0
   };
   showBossBar('MINI BOSS');
 }
 
 function updateBoss(dt){
   if(!boss) return;
+  if(boss.stunTimer > 0){
+    boss.stunTimer -= dt;
+    boss.rot += 1.0 * dt;
+    updateBossHpBar();
+    return;
+  }
   if(boss.type === 'mini_charger') updateMiniCharger(dt);
   else if(boss.type === 'charger')  updateCharger(dt);
   else if(boss.type === 'summoner') updateSummoner(dt);
@@ -2171,7 +2365,7 @@ function spawnCharger(w){
     xpReward:   hard ? CFG.BOSS_CHARGER_XP * 2       : CFG.BOSS_CHARGER_XP,
     coinReward: hard ? CFG.BOSS_CHARGER_COIN_HARD     : CFG.BOSS_CHARGER_COIN,
     rot: 0, orbitAngle: angle, orbitDist: orbitDist,
-    phase: 'wander', timer: CFG.BOSS_CHARGER_WANDER_DUR, dirX: 0, dirY: 0
+    phase: 'wander', timer: CFG.BOSS_CHARGER_WANDER_DUR, dirX: 0, dirY: 0, stunTimer: 0
   };
   showBossBar(hard ? 'BOSS : CHARGER II' : 'BOSS : CHARGER');
 }
@@ -2268,7 +2462,8 @@ function spawnSummoner(w){
     coinReward: hard ? CFG.BOSS_SUMMONER_COIN_HARD    : CFG.BOSS_SUMMONER_COIN,
     rot: 0, orbitAngle: angle, orbitDist: orbitDist,
     summonTimer: CFG.BOSS_SUMMONER_SUMMON_INTERVAL,
-    bulletTimer: CFG.BOSS_SUMMONER_BULLET_INTERVAL
+    bulletTimer: CFG.BOSS_SUMMONER_BULLET_INTERVAL,
+    stunTimer: 0
   };
   showBossBar(hard ? 'BOSS : SUMMONER II' : 'BOSS : SUMMONER');
 }
@@ -2326,7 +2521,8 @@ function spawnSummonerMinion(sx, sy){
     speed: CFG.ENEMY_RED_SPEED_BASE * 1.3,
     size: CFG.ENEMY_RED_SIZE, color: '#c84dff',
     rot: Math.random() * Math.PI * 2, rotSpd: (Math.random() - 0.5) * 2.5,
-    dmg: CFG.ENEMY_RED_DMG, xpReward: CFG.XP_PER_RED, coinReward: CFG.COIN_RED
+    dmg: CFG.ENEMY_RED_DMG, xpReward: CFG.XP_PER_RED, coinReward: CFG.COIN_RED,
+    stunTimer: 0
   });
 }
 
@@ -2386,12 +2582,16 @@ function updateSubTurrets(dt){
         var sDmg = tower.dmg * CFG.SUB_TURRET_DMG_RATIO;
         var sAng = subTurretAngles[si];
         var spMax = CFG.PIERCE_LV[Math.min(weapons.pierce, CFG.PIERCE_LV.length - 1)];
+        var sdLv = Math.min(4, upgradeCounts.dmg);
         bullets.push({
           x: sx + Math.cos(sAng) * 14,
           y: sy + Math.sin(sAng) * 14,
           vx: Math.cos(sAng) * tower.bulletSpeed,
           vy: Math.sin(sAng) * tower.bulletSpeed,
-          life: CFG.BULLET_LIFE, dmg: sDmg, pierceLeft: spMax
+          life: CFG.BULLET_LIFE, dmg: sDmg, pierceLeft: spMax,
+          r: CFG.BULLET_DMG_RADII[sdLv] * 0.75,
+          bcolor: CFG.BULLET_DMG_COLORS[sdLv],
+          bglow: CFG.BULLET_DMG_GLOWS[sdLv]
         });
         playSound('shoot');
       }
@@ -2667,11 +2867,26 @@ function draw(tm, dt){
   }
 
   /* 弾 */
-  ctx.shadowColor = '#57d8ff'; ctx.shadowBlur = 14; ctx.fillStyle = '#cdf2ff';
   for(j = 0; j < bullets.length; j++){
-    ctx.beginPath(); ctx.arc(bullets[j].x, bullets[j].y, 4, 0, Math.PI * 2); ctx.fill();
+    var bj = bullets[j];
+    ctx.shadowColor = bj.bglow || '#57d8ff';
+    ctx.shadowBlur = 14;
+    ctx.fillStyle = bj.bcolor || '#cdf2ff';
+    ctx.beginPath();
+    ctx.arc(bj.x, bj.y, bj.r || 4, 0, Math.PI * 2);
+    ctx.fill();
   }
   ctx.shadowBlur = 0;
+
+  /* ミサイル */
+  for(j = 0; j < missiles.length; j++){
+    var mj2 = missiles[j];
+    ctx.save();
+    ctx.shadowColor = '#ff8800'; ctx.shadowBlur = 18;
+    ctx.fillStyle = '#ffcc44'; ctx.globalAlpha = 0.92;
+    ctx.beginPath(); ctx.arc(mj2.x, mj2.y, CFG.MISSILE_SIZE, 0, Math.PI * 2); ctx.fill();
+    ctx.globalAlpha = 1; ctx.restore();
+  }
 
   /* 回復アイテム(緑発光クロス) */
   var healPulse = 0.55 + 0.45 * Math.sin(tm * 5.0);
@@ -2894,7 +3109,8 @@ function suspendRun(){
 
   STATE = 'title'; /* ループ停止 */
   hideScreen('scrPause');
-  enemies = []; bullets = []; particles = []; floaters = []; healItems = []; enemyBullets = [];
+  enemies = []; bullets = []; missiles = []; particles = []; floaters = []; healItems = []; enemyBullets = [];
+  missileTimer = 0;
   boss = null; warningTimer = 0; bossSpawnFn = null; newEnemyAlert = null; hideBossBar();
   document.getElementById('hudEl').style.display = 'none';
   document.getElementById('specialArea').style.display = 'none';
@@ -2907,7 +3123,8 @@ function resumeRun(){
   if(!sr) return;
 
   /* 戦闘状態リセット */
-  enemies = []; bullets = []; particles = []; floaters = []; healItems = []; enemyBullets = [];
+  enemies = []; bullets = []; missiles = []; particles = []; floaters = []; healItems = []; enemyBullets = [];
+  missileTimer = 0;
   boss = null; warningTimer = 0; bossSpawnFn = null; newEnemyAlert = null;
   subTurretAngles = [0, 0]; subTurretFireTimers = [0, 0];
   pendingLevelUps = 0; pendingSteps = 0;
