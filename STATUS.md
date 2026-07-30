@@ -1,6 +1,6 @@
 最終更新日: 2026-07-30
 
-現状: UIレイアウト修正完了。XPバー下部移動・タワー中央化・レーダー減光を適用。
+現状: ゲームバランス大幅改修完了。必殺3種化・射程絞り・ボス強化・難度カーブ再設計を実施。
 
 完了済み:
 - M1: プロトタイプ移植+50ウェーブ化+CONFIG集約+XPレベルアップ3択+必殺ゲージ
@@ -26,5 +26,6 @@
   - 公開不要ファイル: hexa-defense-requirements.md・mockup・protoはREADMEに明記して同梱
 - アプリアイコン追加(favicon/apple-touch-icon/manifest.json/deploy.sh拡張) fixes #7
 - UIレイアウト修正(XPバー下部・タワーY中央・レーダー減光) fixes #8
+- バランス大幅改修(必殺3種/射程縮小/ボス強化/フェーズ2/難度カーブ再設計) fixes #9
 
-次の一手: iPhone Safari実機で上記レイアウト変更を確認・pushして公開
+次の一手: iPhone Safari実機でPULSE/RAILGUN/OVERDRIVEとW5ミニボスの難度を確認
