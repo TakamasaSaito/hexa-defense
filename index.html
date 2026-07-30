@@ -37,9 +37,9 @@ html, body { width:100%; height:100%; overflow:hidden; background:#05090f; touch
 .wave-num small { font-size:13px; color:rgba(140,210,240,0.7); }
 .hud-right { display:flex; flex-direction:column; align-items:flex-end; gap:6px; }
 
-/* XP bar */
-.xpwrap { position:absolute; top:calc(env(safe-area-inset-top,0px) + 76px); left:50%; transform:translateX(-50%);
-          width:min(62vw,300px); }
+/* XP bar — SPECIALボタン直上 */
+.xpwrap { position:absolute; bottom:calc(env(safe-area-inset-bottom,0px) + 84px); left:50%; transform:translateX(-50%);
+          width:140px; }
 .xpbar { height:5px; background:rgba(20,40,66,0.9); border:1px solid rgba(77,243,255,0.25);
          clip-path:polygon(4px 0,100% 0,calc(100% - 4px) 100%,0 100%); overflow:hidden; }
 .xpfill { height:100%; width:0%; background:linear-gradient(90deg,#2b9fff,#4df3ff);
@@ -120,8 +120,8 @@ html, body { width:100%; height:100%; overflow:hidden; background:#05090f; touch
 .card .cname { text-align:center; font-family:'Chakra Petch',sans-serif; font-weight:700; font-size:13px; color:#eaffff; }
 .card .cdesc { text-align:center; font-size:11px; color:rgba(150,200,235,0.75); margin-top:5px; line-height:1.5; padding:0 6px; }
 
-/* ボスHPバー — XPバー(76px〜99px)の下に配置 */
-#bossBar { position:absolute; top:calc(env(safe-area-inset-top,0px) + 106px); left:50%; transform:translateX(-50%);
+/* ボスHPバー — 上部HUD直下 */
+#bossBar { position:absolute; top:calc(env(safe-area-inset-top,0px) + 78px); left:50%; transform:translateX(-50%);
            width:min(70vw,260px); display:none; }
 .boss-label { font-family:'Chakra Petch',sans-serif; font-size:9px; letter-spacing:4px;
               color:rgba(255,100,50,0.9); text-align:center; margin-bottom:3px; }
@@ -475,6 +475,7 @@ var CFG = {
   TOWER_FIRE_INTERVAL: 0.45,
   TOWER_BULLET_SPEED:  520,
   TOWER_RANGE_RATIO:   0.42,
+  TOWER_CENTER_Y:      0.50,
   TOWER_HIT_RADIUS:    38,
 
   /* 弾 */
@@ -731,7 +732,7 @@ window.addEventListener('resize', resize);
 resize();
 
 function cx(){ return W / 2; }
-function cy(){ return H * 0.42; }
+function cy(){ return H * CFG.TOWER_CENTER_Y; }
 
 /* 2段階カーブ: ウェーブwでの累積スケーリング量を返す */
 function waveAccum(w, perWave, earlyScale, lateScale){
@@ -2243,7 +2244,7 @@ function draw(tm, dt){
   ctx.setLineDash([]);
   ctx.save(); ctx.translate(cx(), cy()); ctx.rotate(tm * 0.9);
   var sg = ctx.createLinearGradient(0, 0, tower.range, 0);
-  sg.addColorStop(0, 'rgba(77,243,255,0)'); sg.addColorStop(1, 'rgba(77,243,255,0.32)');
+  sg.addColorStop(0, 'rgba(77,243,255,0)'); sg.addColorStop(1, 'rgba(77,243,255,0.10)');
   ctx.fillStyle = sg;
   ctx.beginPath(); ctx.moveTo(0, 0); ctx.arc(0, 0, tower.range, -0.5, 0); ctx.closePath(); ctx.fill();
   ctx.restore();

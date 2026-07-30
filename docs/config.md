@@ -10,6 +10,7 @@ CONFIGオブジェクトは `index.html` 冒頭にまとめる。マジックナ
 | 発射間隔 | `TOWER_FIRE_INTERVAL` | 0.45 | 秒 |
 | 弾速 | `TOWER_BULLET_SPEED` | 520 | px/s |
 | 射程(倍率) | `TOWER_RANGE_RATIO` | 0.42 | ×min(W,H) |
+| タワーY中心 | `TOWER_CENTER_Y` | 0.50 | ×画面高。0.50=中央 |
 | サブ砲台ダメージ倍率 | `SUB_DMG_RATIO` | 0.5 | |
 
 ## 敵パラメータ
