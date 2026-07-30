@@ -1,6 +1,6 @@
 最終更新日: 2026-07-30
 
-現状: M7(最終バランス+仕上げ+Netlify準備)完了。全マイルストーン達成。
+現状: 全マイルストーン達成。デプロイ先をConoHa VPS(hexa.ea-journey.com)へ変更完了。
 
 完了済み:
 - M1: プロトタイプ移植+50ウェーブ化+CONFIG集約+XPレベルアップ3択+必殺ゲージ
@@ -25,4 +25,4 @@
   - docs/config.md・DESIGN.md最終化(シミュレーション注記修正)
   - 公開不要ファイル: hexa-defense-requirements.md・mockup・protoはREADMEに明記して同梱
 
-次の一手: Netlify接続とrepos.ymlのurl記入
+次の一手: repos.yml の url フィールドに https://hexa.ea-journey.com/ を記入

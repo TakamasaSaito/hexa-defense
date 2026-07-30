@@ -60,4 +60,19 @@ hexa-defense-mockup.html      ← モックアップ（参照用）
 hexa-defense.html             ← プロトタイプ（参照用）
 ```
 
-> `hexa-defense-requirements.md` / `hexa-defense-mockup.html` / `hexa-defense.html` は開発参照用。Netlifyデプロイ時も同梱するが、ゲームとして動作するのは `index.html` のみ。
+> `hexa-defense-requirements.md` / `hexa-defense-mockup.html` / `hexa-defense.html` は開発参照用。デプロイ時も同梱するが、ゲームとして動作するのは `index.html` のみ。
+
+---
+
+## デプロイ
+
+公開URL: **https://hexa.ea-journey.com/**
+
+ConoHa VPS(`160.251.252.203`) の `/var/www/hexa-defense` へ配信。
+公開鍵認証を設定済みの状態で以下を実行:
+
+```bash
+./deploy.sh
+```
+
+`index.html` を scp で転送し、完了メッセージを表示して終了。
