@@ -272,6 +272,28 @@ localStorageキー: `hd_save`。
 | `EXPLOSION_RADII` | [55,80,115] | Lv1〜3の爆発半径(px) |
 | `EXPLOSION_DMG_MULTS` | [0.45,0.65,0.90] | Lv1〜3の爆発ダメージ倍率 |
 
+## 衛星砲台 (#13で追加)
+| キー | 値 | 説明 |
+|---|---|---|
+| `SATELLITE_DMG_MULT` | 0.40 | タワーDMGへのダメージ倍率 |
+| `SATELLITE_RANGE_RATIO` | 0.60 | 射程(×min(W,H)) |
+| `SATELLITE_FIRE_INTERVAL` | 1.8 | 発射間隔(秒) |
+| `SATELLITE_BULLET_SPEED` | 460 | 弾速(px/s) |
+
+配置位置は `tower.range + 24`px の円周上に等間隔。属性効果適用。
+
+## 設置型フィールド (#13で追加)
+| キー | 値 | 説明 |
+|---|---|---|
+| `FIELD_DMG_PER_SEC` | [6,10,15] | Lv1〜3の継続ダメージ(/秒) |
+| `FIELD_SLOW_MULT` | 0.55 | 敵速度倍率(減速) |
+| `FIELD_DURATION` | 10.0 | フィールド持続時間(秒) |
+| `FIELD_COOLDOWN` | 15.0 | 設置クールダウン(秒) |
+| `FIELD_RADIUS` | [65,80,95] | Lv1〜3の効果半径(px) |
+
+タップ位置に設置。Lvで同時設置数(1/2/3)が増加。
+スポーン時に `fieldCooldown = FIELD_COOLDOWN` をセット。残時間は `fields[].timer`で管理。
+
 ## デバッグ: URLパラメータ `?wave=N`
 
 任意のウェーブからゲームを開始。`?wave=5` でW5ボス即確認など。
