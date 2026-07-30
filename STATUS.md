@@ -1,6 +1,6 @@
 最終更新日: 2026-07-30
 
-現状: 全マイルストーン達成。アプリアイコン(favicon/apple-touch-icon/PWA manifest)追加完了。
+現状: UIレイアウト修正完了。XPバー下部移動・タワー中央化・レーダー減光を適用。
 
 完了済み:
 - M1: プロトタイプ移植+50ウェーブ化+CONFIG集約+XPレベルアップ3択+必殺ゲージ
@@ -25,5 +25,6 @@
   - docs/config.md・DESIGN.md最終化(シミュレーション注記修正)
   - 公開不要ファイル: hexa-defense-requirements.md・mockup・protoはREADMEに明記して同梱
 - アプリアイコン追加(favicon/apple-touch-icon/manifest.json/deploy.sh拡張) fixes #7
+- UIレイアウト修正(XPバー下部・タワーY中央・レーダー減光) fixes #8
 
-次の一手: repos.yml の url フィールドに https://hexa.ea-journey.com/ を記入
+次の一手: iPhone Safari実機で上記レイアウト変更を確認・pushして公開
