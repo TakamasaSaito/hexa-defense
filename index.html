@@ -74,6 +74,8 @@ html, body { width:100%; height:100%; overflow:hidden; background:#05090f; touch
                     box-shadow:0 0 20px rgba(255,210,87,0.5); animation:odpulse 0.6s ease-in-out infinite; }
 @keyframes sbpulse { 0%,100%{box-shadow:0 0 14px rgba(77,243,255,0.35);} 50%{box-shadow:0 0 32px rgba(77,243,255,0.75);} }
 @keyframes odpulse { 0%,100%{box-shadow:0 0 14px rgba(255,210,87,0.4);} 50%{box-shadow:0 0 32px rgba(255,210,87,0.85);} }
+@keyframes bmpulse { 0%,100%{box-shadow:0 0 14px rgba(255,136,68,0.4);} 50%{box-shadow:0 0 32px rgba(255,136,68,0.9);} }
+#beamBtn.od-active { color:#ff8844; border-color:rgba(255,136,68,0.8); box-shadow:0 0 20px rgba(255,136,68,0.5); animation:bmpulse 0.6s ease-in-out infinite; }
 .sp-name { font-size:10px; letter-spacing:3px; }
 .sp-cost { font-size:8px; color:rgba(120,190,230,0.55); }
 .sp-cd { font-size:8px; color:rgba(255,120,120,0.85); position:absolute; bottom:3px; left:0; right:0; text-align:center; }
@@ -384,6 +386,10 @@ html, body { width:100%; height:100%; overflow:hidden; background:#05090f; touch
         <span class="sp-name">OVERDRIVE</span><span class="sp-cost">100%</span>
         <span class="sp-cd" id="overdriveCdLbl"></span>
       </button>
+      <button id="beamBtn" class="sp-btn locked">
+        <span class="sp-name">BEAM</span><span class="sp-cost">100%</span>
+        <span class="sp-cd" id="beamCdLbl"></span>
+      </button>
     </div>
   </div>
 
@@ -579,6 +585,14 @@ var CFG = {
   OVERDRIVE_RATE_MULT:  3.0,
   OVERDRIVE_DMG_MULT:   2.0,
   OVERDRIVE_RANGE_MULT: 1.5,
+
+  /* BEAM(W15解放、コスト100%、CD20s、持続10s) */
+  BEAM_COST:         1000,
+  BEAM_CD:           20,
+  BEAM_DUR:          10,
+  BEAM_WIDTH:        26,        /* 当たり判定幅(半幅) */
+  BEAM_DMG_PER_SEC:  200,       /* 1秒あたりダメージ */
+  BEAM_FLASH_DUR:    0.4,
 
   /* バリア: 回数制ダメージ無効 */
   BARRIER_MAX:             3,
@@ -964,11 +978,14 @@ var specialGauge = 0;
 var specials = {
   pulse:     { unlocked: true,  cd: 0 },
   railgun:   { unlocked: false, cd: 0 },
-  overdrive: { unlocked: false, cd: 0 }
+  overdrive: { unlocked: false, cd: 0 },
+  beam:      { unlocked: false, cd: 0 }
 };
 var overdriveTimer = 0;
 var overdriveSavedInterval = 0, overdriveSavedDmg = 0, overdriveSavedRange = 0;
 var railgunBeam = null;
+var beamTimer = 0;
+var beamAngle = 0;   /* BEAMの向き(ラジアン) */
 var specialHudTimer = 0;
 var pendingLevelUps = 0;
 
@@ -1534,6 +1551,22 @@ function updateSpecialHud(){
   } else if(specialGauge >= CFG.OVERDRIVE_COST){
     oBtn.classList.add('ready'); oCd.textContent = '';
   } else { oCd.textContent = ''; }
+
+  /* BEAM */
+  var bmBtn = document.getElementById('beamBtn');
+  var bmCd  = document.getElementById('beamCdLbl');
+  bmBtn.classList.remove('ready', 'cooldown', 'locked', 'od-active');
+  if(beamTimer > 0){
+    bmBtn.classList.add('od-active');
+    bmCd.textContent = Math.ceil(beamTimer) + 's';
+  } else if(!specials.beam.unlocked){
+    bmBtn.classList.add('locked'); bmCd.textContent = '';
+  } else if(specials.beam.cd > 0){
+    bmBtn.classList.add('cooldown');
+    bmCd.textContent = Math.ceil(specials.beam.cd) + 's';
+  } else if(specialGauge >= CFG.BEAM_COST){
+    bmBtn.classList.add('ready'); bmCd.textContent = '';
+  } else { bmCd.textContent = ''; }
 }
 
 /* =====================================================================
@@ -1757,6 +1790,23 @@ function fireOverdrive(){
   }
 }
 
+function fireBeam(){
+  if(!specials.beam.unlocked || specials.beam.cd > 0 || beamTimer > 0 || STATE !== 'play') return;
+  if(specialGauge < CFG.BEAM_COST) return;
+  specialGauge -= CFG.BEAM_COST;
+  beamTimer = CFG.BEAM_DUR;
+  /* 初期方向: タワーから一番近い敵 or 右向き */
+  var initTarget = boss !== null ? boss : (enemies.length > 0 ? enemies[0] : null);
+  if(initTarget){
+    beamAngle = Math.atan2(initTarget.y - cy(), initTarget.x - cx());
+  } else {
+    beamAngle = 0;
+  }
+  flashTimer = CFG.BEAM_FLASH_DUR;
+  updateSpecialHud();
+  playSound('overdrive'); /* 既存OVERDRIVEサウンドを共用 */
+}
+
 /* =====================================================================
    ウェーブ管理
 ===================================================================== */
@@ -1773,7 +1823,8 @@ function resetGame(){
   specials.pulse.unlocked    = true;  specials.pulse.cd    = 0;
   specials.railgun.unlocked  = false; specials.railgun.cd  = 0;
   specials.overdrive.unlocked= false; specials.overdrive.cd= 0;
-  overdriveTimer = 0;
+  specials.beam.unlocked     = false; specials.beam.cd     = 0;
+  overdriveTimer = 0; beamTimer = 0;
   overdriveSavedInterval = 0; overdriveSavedDmg = 0; overdriveSavedRange = 0;
   railgunBeam = null; specialHudTimer = 0;
   coins = 0; healItems = []; rareItems = [];
@@ -2850,6 +2901,36 @@ function update(dt){
     }
   }
 
+  /* BEAMアクティブ: ダメージ判定 + タイマー */
+  if(beamTimer > 0){
+    beamTimer -= dt;
+    if(beamTimer <= 0){
+      beamTimer = 0;
+      specials.beam.cd = CFG.BEAM_CD;
+    } else {
+      var bcos = Math.cos(beamAngle), bsin = Math.sin(beamAngle);
+      var bAll = enemies.slice();
+      if(boss !== null) bAll.push(boss);
+      var bi3;
+      for(bi3 = 0; bi3 < bAll.length; bi3++){
+        var btgt = bAll[bi3];
+        /* 点→直線距離でビーム当たり判定(タワーから beamAngle 方向の無限線) */
+        var bdx3 = btgt.x - cx(), bdy3 = btgt.y - cy();
+        var bproj = bdx3 * bcos + bdy3 * bsin; /* 射影距離(正=ビーム前方) */
+        var bperp = Math.abs(-bdx3 * bsin + bdy3 * bcos);
+        if(bproj > 0 && bperp < CFG.BEAM_WIDTH){
+          var bDmg3 = CFG.BEAM_DMG_PER_SEC * dt;
+          btgt.hp -= bDmg3;
+          gainSpecial(bDmg3 * 0.1);
+          applyAttrEffects(btgt, bDmg3, cx() + bcos * bproj, cy() + bsin * bproj);
+        }
+      }
+    }
+  } else if(specials.beam.cd > 0){
+    specials.beam.cd -= dt;
+    if(specials.beam.cd < 0) specials.beam.cd = 0;
+  }
+
   /* レールガンビームフェード */
   if(railgunBeam){ railgunBeam.timer -= dt; if(railgunBeam.timer <= 0) railgunBeam = null; }
 
@@ -3550,6 +3631,7 @@ function onElemChoice(){
 function showWeaponReward(){
   if(wave === 5){  showElementChoice(); return; }
   if(wave === 10){ showSpecialUnlock('railgun', 'RAILGUN', '#4df3ff', '射程無制限の<br>貫通レーザー'); return; }
+  if(wave === 15){ showSpecialUnlock('beam', 'BEAM', '#ff8844', '10秒間タワーから<br>極太ビーム 操作可'); return; }
   if(wave === 20){ showSpecialUnlock('overdrive', 'OVERDRIVE', '#ffd257', '8秒間タワー<br>全ステータス大強化'); return; }
 
   var pool = buildWeaponPool();
@@ -3673,6 +3755,28 @@ function draw(tm, dt){
   ctx.fillStyle = sg;
   ctx.beginPath(); ctx.moveTo(0, 0); ctx.arc(0, 0, tower.range, -0.5, 0); ctx.closePath(); ctx.fill();
   ctx.restore();
+
+  /* BEAM */
+  if(beamTimer > 0){
+    var bmFrac = beamTimer / CFG.BEAM_DUR;
+    var bmLen  = Math.max(W, H) * 1.6;
+    var bmEx   = cx() + Math.cos(beamAngle) * bmLen;
+    var bmEy   = cy() + Math.sin(beamAngle) * bmLen;
+    var bmFlicker = 0.75 + 0.25 * Math.abs(Math.sin(tm * 18));
+    ctx.save();
+    ctx.globalAlpha = bmFrac * bmFlicker;
+    ctx.strokeStyle = '#ffffff';
+    ctx.lineWidth = CFG.BEAM_WIDTH * 0.8;
+    ctx.shadowColor = '#ff8844'; ctx.shadowBlur = 48;
+    ctx.beginPath(); ctx.moveTo(cx(), cy()); ctx.lineTo(bmEx, bmEy); ctx.stroke();
+    ctx.globalAlpha = bmFrac * bmFlicker * 0.55;
+    ctx.strokeStyle = '#ffcc88'; ctx.lineWidth = CFG.BEAM_WIDTH * 1.6;
+    ctx.beginPath(); ctx.moveTo(cx(), cy()); ctx.lineTo(bmEx, bmEy); ctx.stroke();
+    ctx.globalAlpha = bmFrac * 0.85;
+    ctx.strokeStyle = '#ff4400'; ctx.lineWidth = CFG.BEAM_WIDTH * 0.3;
+    ctx.beginPath(); ctx.moveTo(cx(), cy()); ctx.lineTo(bmEx, bmEy); ctx.stroke();
+    ctx.globalAlpha = 1; ctx.shadowBlur = 0; ctx.restore();
+  }
 
   /* レールガンビーム */
   if(railgunBeam && railgunBeam.timer > 0){
@@ -4115,6 +4219,17 @@ function draw(tm, dt){
     }
   }
 
+  /* BEAMアクティブ中: 操作案内 */
+  if(beamTimer > 0){
+    var bmGuideAlpha = 0.6 + 0.25 * Math.abs(Math.sin(tm * 3.5));
+    ctx.save(); ctx.textAlign = 'center';
+    ctx.font = '600 12px "Chakra Petch", Arial';
+    ctx.fillStyle = 'rgba(255,136,68,' + bmGuideAlpha + ')';
+    ctx.shadowColor = '#ff8844'; ctx.shadowBlur = 8;
+    ctx.fillText('BEAM — DRAG TO AIM  ' + Math.ceil(beamTimer) + 's', cx(), cy() + 52);
+    ctx.restore();
+  }
+
   /* 新敵告知(軽量・ゲーム継続) */
   if(newEnemyAlert !== null){
     var naf = newEnemyAlert.timer > CFG.NEW_ENEMY_ALERT_DUR - 0.25
@@ -4249,7 +4364,7 @@ function suspendRun(){
                attrFire: weapons.attrFire, attrIce: weapons.attrIce, attrLightning: weapons.attrLightning,
                orbital: weapons.orbital, explosion: weapons.explosion,
                satellite: weapons.satellite, field: weapons.field },
-    specials: { railgunUnlocked: specials.railgun.unlocked, overdriveUnlocked: specials.overdrive.unlocked },
+    specials: { railgunUnlocked: specials.railgun.unlocked, overdriveUnlocked: specials.overdrive.unlocked, beamUnlocked: specials.beam.unlocked },
     barrierCount: barrierCount,
     chosenElement: chosenElement,
     attrRangeMult: attrRangeMult,
@@ -4303,7 +4418,9 @@ function resumeRun(){
   specials.pulse.unlocked    = true;
   specials.railgun.unlocked  = sr.specials ? !!sr.specials.railgunUnlocked  : false;
   specials.overdrive.unlocked= sr.specials ? !!sr.specials.overdriveUnlocked : false;
-  overdriveTimer = 0; railgunBeam = null;
+  specials.beam.unlocked     = sr.specials ? !!sr.specials.beamUnlocked      : false;
+  specials.beam.cd = 0;
+  overdriveTimer = 0; beamTimer = 0; railgunBeam = null;
   weapons         = { subTurret: sr.weapons.subTurret, pierce: sr.weapons.pierce,
                       attrFire: sr.weapons.attrFire || 0, attrIce: sr.weapons.attrIce || 0,
                       attrLightning: sr.weapons.attrLightning || 0,
@@ -4664,6 +4781,9 @@ document.getElementById('railgunBtn').addEventListener('click', function(){
 document.getElementById('overdriveBtn').addEventListener('click', function(){
   fireOverdrive();
 });
+document.getElementById('beamBtn').addEventListener('click', function(){
+  fireBeam();
+});
 document.getElementById('wpnContinueBtn').addEventListener('click', function(){
   playSound('button');
   this.style.display = 'none';
@@ -4735,17 +4855,54 @@ function tryPlaceField(px, py){
   burst(px, py, '#aa44ff', 10);
   playSound('button');
 }
+/* BEAMアクティブ中: タッチ/ドラッグでビーム方向を更新 */
+function updateBeamAngleFromPos(px, py){
+  var adx = px - cx(), ady = py - cy();
+  if(Math.abs(adx) > 1 || Math.abs(ady) > 1){
+    beamAngle = Math.atan2(ady, adx);
+  }
+}
+
 canvas.addEventListener('touchstart', function(e){
-  if(weapons.field === 0 || STATE !== 'play') return;
-  e.preventDefault();
+  if(STATE !== 'play') return;
+  var rect = canvas.getBoundingClientRect();
   var t = e.changedTouches[0];
-  var rect = canvas.getBoundingClientRect();
-  tryPlaceField(t.clientX - rect.left, t.clientY - rect.top);
+  var px = t.clientX - rect.left, py = t.clientY - rect.top;
+  if(beamTimer > 0){
+    /* BEAMアクティブ: ドラッグで向きを操作 */
+    e.preventDefault();
+    updateBeamAngleFromPos(px, py);
+    return;
+  }
+  /* BEAM非アクティブ: フィールド設置 */
+  if(weapons.field === 0) return;
+  e.preventDefault();
+  tryPlaceField(px, py);
 }, { passive: false });
-canvas.addEventListener('click', function(e){
-  if(weapons.field === 0 || STATE !== 'play') return;
+
+canvas.addEventListener('touchmove', function(e){
+  if(STATE !== 'play' || beamTimer <= 0) return;
+  e.preventDefault();
   var rect = canvas.getBoundingClientRect();
+  var t = e.changedTouches[0];
+  updateBeamAngleFromPos(t.clientX - rect.left, t.clientY - rect.top);
+}, { passive: false });
+
+canvas.addEventListener('click', function(e){
+  if(STATE !== 'play') return;
+  var rect = canvas.getBoundingClientRect();
+  if(beamTimer > 0){
+    updateBeamAngleFromPos(e.clientX - rect.left, e.clientY - rect.top);
+    return;
+  }
+  if(weapons.field === 0) return;
   tryPlaceField(e.clientX - rect.left, e.clientY - rect.top);
+});
+
+canvas.addEventListener('mousemove', function(e){
+  if(STATE !== 'play' || beamTimer <= 0) return;
+  var rect = canvas.getBoundingClientRect();
+  updateBeamAngleFromPos(e.clientX - rect.left, e.clientY - rect.top);
 });
 
 /* =====================================================================
