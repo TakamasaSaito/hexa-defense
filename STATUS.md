@@ -1,6 +1,6 @@
 最終更新日: 2026-07-30
 
-現状: 全マイルストーン達成。デプロイ先をConoHa VPS(hexa.ea-journey.com)へ変更完了。
+現状: 全マイルストーン達成。アプリアイコン(favicon/apple-touch-icon/PWA manifest)追加完了。
 
 完了済み:
 - M1: プロトタイプ移植+50ウェーブ化+CONFIG集約+XPレベルアップ3択+必殺ゲージ
@@ -24,5 +24,6 @@
   - README.md作成(概要/遊び方/デバッグ/技術構成)
   - docs/config.md・DESIGN.md最終化(シミュレーション注記修正)
   - 公開不要ファイル: hexa-defense-requirements.md・mockup・protoはREADMEに明記して同梱
+- アプリアイコン追加(favicon/apple-touch-icon/manifest.json/deploy.sh拡張) fixes #7
 
 次の一手: repos.yml の url フィールドに https://hexa.ea-journey.com/ を記入

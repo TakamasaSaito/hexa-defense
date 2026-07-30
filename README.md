@@ -49,6 +49,13 @@ URLに `?wave=N` を付けるとウェーブNからスタート（例: `?wave=20
 
 ```
 index.html          ← ゲーム本体
+manifest.json       ← PWAマニフェスト
+hexa-favicon.svg    ← ファビコン用アイコン素材（小サイズ向け）
+favicon-32.png      ← ファビコン 32×32
+hexa-icon.svg       ← アプリアイコン素材（フル版）
+apple-touch-icon.png ← iOS ホーム画面アイコン 180×180
+icon-192.png        ← PWAアイコン 192×192
+icon-512.png        ← PWAアイコン 512×512
 README.md
 STATUS.md           ← 開発進捗
 docs/
@@ -75,4 +82,4 @@ ConoHa VPS(`160.251.252.203`) の `/var/www/hexa-defense` へ配信。
 ./deploy.sh
 ```
 
-`index.html` を scp で転送し、完了メッセージを表示して終了。
+`index.html`・`manifest.json`・アイコン類を scp で転送し、完了メッセージを表示して終了。
