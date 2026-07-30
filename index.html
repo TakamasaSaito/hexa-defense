@@ -497,8 +497,8 @@ var CFG = {
 
   /* タワー */
   TOWER_HP:            100,
-  TOWER_DMG:           10,
-  TOWER_FIRE_INTERVAL: 0.45,
+  TOWER_DMG:           7,       /* 10→7 弱体化 */
+  TOWER_FIRE_INTERVAL: 0.55,    /* 0.45→0.55 弱体化 */
   TOWER_BULLET_SPEED:  520,
   TOWER_RANGE_RATIO:   0.30,
   TOWER_RANGE_MAX:     0.45,
@@ -531,19 +531,15 @@ var CFG = {
 
   /* ウェーブ */
   WAVE_SPAWN_BASE:          6,
-  WAVE_SPAWN_WAVE:          3,
+  WAVE_SPAWN_WAVE:          2.5,
   WAVE_SPAWN_INTERVAL_BASE: 1.1,
   WAVE_SPAWN_INTERVAL_MIN:  0.18,
   WAVE_HEAL_ON_CLEAR:       20,
 
-  /* 2段階難度カーブ: W1~5=イントロ, W6~=加速期 */
-  WAVE_PHASE_BREAK:        6,    /* 加速期が始まるウェーブ番号 */
-  WAVE_HP_SCALE_EARLY:     1.0,  /* イントロ期のHP増加係数 */
-  WAVE_HP_SCALE_LATE:      2.2,  /* 加速期のHP増加係数 */
-  WAVE_SPEED_SCALE_EARLY:  1.0,
-  WAVE_SPEED_SCALE_LATE:   1.6,
-  WAVE_SPAWN_SCALE_EARLY:  1.0,
-  WAVE_SPAWN_SCALE_LATE:   1.5,
+  /* 5帯難度スケール [W1-10 / W11-20 / W21-30 / W31-40 / W41-50] */
+  WAVE_HP_SCALES:    [1.0, 2.0, 3.5, 5.5, 8.0],
+  WAVE_SPEED_SCALES: [1.0, 1.5, 2.2, 3.0, 4.0],
+  WAVE_SPAWN_SCALES: [1.0, 1.4, 1.9, 2.5, 3.2],
 
   /* XP */
   XP_BASE:        50,
@@ -552,32 +548,28 @@ var CFG = {
   XP_PER_RED:     8,
   XP_PER_ORANGE:  18,
 
-  /* 必殺(共有ゲージ 0-1000、表示は0-100%)
-     満タンに必要な与ダメ ≈ 2000 (DMG_RATIO=0.5)
-     W5ボスで≈1.5本分、W10で累計≈3本分溜まる設計 */
+  /* 必殺(共有ゲージ 0-1000) */
   SPECIAL_MAX:          1000,
   SPECIAL_DMG_RATIO:    0.25,
-
-  /* PULSE(初期所持、コスト33%、CD3s): 近距離全体ノックバック */
-  PULSE_COST:           330,
-  PULSE_CD:             3,
-  PULSE_DMG_MULT:       2,
-  PULSE_KNOCKBACK:      100,
-  PULSE_RANGE_MULT:     1.8,
-  PULSE_STUN_DUR:       2.0,
-  PULSE_STUN_DUR_BOSS:  0.5,
-  PULSE_FLASH_DUR:      0.5,
-  PULSE_SHAKE_DUR:      0.3,
-  PULSE_SHAKE_MAG:      10,
   SPECIAL_FLASH_DUR:    0.5,
 
-  /* RAILGUN(W10解放、コスト50%、CD6s): 最遠敵を射程無制限で貫通 */
+  /* PULSE(コスト33%、CD3s): 全方位弾一斉発射 */
+  PULSE_COST:             330,
+  PULSE_CD:               3,
+  PULSE_BULLET_COUNT:     20,    /* 全方位弾数(CONFIG化) */
+  PULSE_BULLET_SPEED:     380,
+  PULSE_BULLET_DMG_MULT:  1.5,   /* tower.dmg × この値 */
+  PULSE_FLASH_DUR:        0.5,
+  PULSE_SHAKE_DUR:        0.3,
+  PULSE_SHAKE_MAG:        8,
+
+  /* RAILGUN(W10解放、コスト50%、CD6s) */
   RAILGUN_COST:         500,
   RAILGUN_CD:           6,
   RAILGUN_DMG_MULT:     20,
   RAILGUN_HIT_MARGIN:   28,
 
-  /* OVERDRIVE(W20解放、コスト100%、CD15s): 8秒間タワー大強化 */
+  /* OVERDRIVE(W20解放、コスト100%、CD15s) */
   OVERDRIVE_COST:       1000,
   OVERDRIVE_CD:         15,
   OVERDRIVE_DUR:        8,
@@ -585,16 +577,20 @@ var CFG = {
   OVERDRIVE_DMG_MULT:   2.0,
   OVERDRIVE_RANGE_MULT: 1.5,
 
+  /* バリア: 回数制ダメージ無効 */
+  BARRIER_MAX:             3,
+  BARRIER_BREAK_FLASH_DUR: 0.3,
+
   /* パーティクル */
   PARTICLE_MAX: 260,
 
   /* 倍速 */
-  SPEED_STEPS:            [1, 3, 10],    /* サイクル倍率: x1→x3→x10 */
-  SPEED_SUBSTEP_DT:       0.01667,       /* 固定サブステップ dt (1/60秒) */
-  SPEED_BUDGET_MS:        8,             /* フレーム内処理時間上限 */
-  SPEED_SUBSTEP_MAX_LAG:  2,             /* 持ち越し上限(フレーム数) */
-  SPEED_PARTICLE_THRESH:  2,             /* このインデックス以上でパーティクル間引き (x10) */
-  SPEED_PARTICLE_RATIO:   0.3,           /* 間引き時のパーティクル生成率 */
+  SPEED_STEPS:            [1, 3, 10],
+  SPEED_SUBSTEP_DT:       0.01667,
+  SPEED_BUDGET_MS:        8,
+  SPEED_SUBSTEP_MAX_LAG:  2,
+  SPEED_PARTICLE_THRESH:  2,
+  SPEED_PARTICLE_RATIO:   0.3,
 
   /* コイン */
   COIN_RED:    1,
@@ -613,127 +609,178 @@ var CFG = {
   /* 報酬ウェーブ */
   REWARD_WAVES: [5, 10, 20, 30, 40],
 
-  /* ボス共通 */
-  BOSS_PHASE2_HP_RATIO:  0.5,            /* HP50%でフェーズ2移行 */
+  /* ボス共通フェーズ移行 */
+  BOSS_PHASE2_HP_RATIO:  0.60,   /* HP60%でフェーズ2移行 */
+  BOSS_PHASE3_HP_RATIO:  0.30,   /* HP30%でフェーズ3移行(W25以降) */
 
-  /* W5小型ボス(チャージャー弱体版、初見の壁) */
-  BOSS_MINI_HP:           600,
-  BOSS_MINI_SPEED_WANDER: 0.6,           /* 軌道角速度 rad/s */
-  BOSS_MINI_ORBIT_RATIO:  0.30,          /* 軌道半径 = min(W,H) × この値 */
-  BOSS_MINI_SPEED_CHARGE: 280,
-  BOSS_MINI_SIZE:         22,
-  BOSS_MINI_DMG:          24,
-  BOSS_MINI_WARN_DUR:     0.8,
-  BOSS_MINI_CHARGE_DUR:   0.55,
-  BOSS_MINI_REST_DUR:     2.2,
-  BOSS_MINI_WANDER_DUR:   3.0,
-  BOSS_MINI_WANDER_DUR_P2: 2.0,         /* フェーズ2: 徘徊短縮 */
-  BOSS_MINI_REST_DUR_P2:   1.2,         /* フェーズ2: 休憩短縮 */
-  BOSS_MINI_COLOR:        '#4df3ff',
-  BOSS_MINI_XP:           80,
+  /* W5小型ボス */
+  BOSS_MINI_HP:            700,
+  BOSS_MINI_SPEED_WANDER:  0.7,
+  BOSS_MINI_ORBIT_RATIO:   0.30,
+  BOSS_MINI_SPEED_CHARGE:  310,
+  BOSS_MINI_SIZE:          22,
+  BOSS_MINI_DMG:           28,
+  BOSS_MINI_WARN_DUR:      0.8,
+  BOSS_MINI_CHARGE_DUR:    0.55,
+  BOSS_MINI_REST_DUR:      2.0,
+  BOSS_MINI_WANDER_DUR:    2.8,
+  BOSS_MINI_WANDER_DUR_P2: 1.8,
+  BOSS_MINI_REST_DUR_P2:   1.0,
+  BOSS_MINI_COLOR:         '#4df3ff',
+  BOSS_MINI_XP:            80,
 
   /* ボス登場警告 */
-  BOSS_WARNING_DUR:      2.0,
+  BOSS_WARNING_DUR: 2.0,
 
-  /* チャージャー (W10/W30) */
-  BOSS_CHARGER_HP:           1800,
-  BOSS_CHARGER_HP_HARD:      3200,
-  BOSS_CHARGER_SIZE:         28,
-  BOSS_CHARGER_COLOR:        '#ff6b35',
-  BOSS_CHARGER_DMG:          35,
-  BOSS_CHARGER_DMG_HARD:     50,
-  BOSS_CHARGER_SPEED_WANDER: 0.7,
-  BOSS_CHARGER_ORBIT_RATIO:  0.32,
-  BOSS_CHARGER_SPEED_CHARGE: 380,
-  BOSS_CHARGER_WARN_DUR:     1.5,
-  BOSS_CHARGER_CHARGE_DUR:   0.5,
-  BOSS_CHARGER_REST_DUR:     1.8,
-  BOSS_CHARGER_WANDER_DUR:   2.5,
-  BOSS_CHARGER_WANDER_DUR_P2: 1.5,      /* フェーズ2 */
-  BOSS_CHARGER_REST_DUR_P2:   0.8,      /* フェーズ2 */
-  BOSS_CHARGER_XP:           200,
-  BOSS_CHARGER_COIN:         60,
-  BOSS_CHARGER_COIN_HARD:    120,
-  BOSS_CHARGER_SHOCKWAVE_R:  120,
-  BOSS_CHARGER_SHOCKWAVE_DMG: 40,
+  /* チャージャー (W10/W25/W45) */
+  BOSS_CHARGER_HP:             2200,
+  BOSS_CHARGER_HP_HARD:        4200,
+  BOSS_CHARGER_HP_ULTRA:       7000,
+  BOSS_CHARGER_SIZE:           28,
+  BOSS_CHARGER_COLOR:          '#ff6b35',
+  BOSS_CHARGER_DMG:            38,
+  BOSS_CHARGER_DMG_HARD:       58,
+  BOSS_CHARGER_DMG_ULTRA:      80,
+  BOSS_CHARGER_SPEED_WANDER:   0.8,
+  BOSS_CHARGER_ORBIT_RATIO:    0.32,
+  BOSS_CHARGER_SPEED_CHARGE:   430,
+  BOSS_CHARGER_WARN_DUR:       1.5,
+  BOSS_CHARGER_CHARGE_DUR:     0.5,
+  BOSS_CHARGER_REST_DUR:       1.6,
+  BOSS_CHARGER_WANDER_DUR:     2.2,
+  BOSS_CHARGER_WANDER_DUR_P2:  1.4,
+  BOSS_CHARGER_REST_DUR_P2:    0.7,
+  BOSS_CHARGER_WANDER_DUR_P3:  0.9,
+  BOSS_CHARGER_REST_DUR_P3:    0.4,
+  BOSS_CHARGER_XP:             200,
+  BOSS_CHARGER_COIN:           60,
+  BOSS_CHARGER_COIN_HARD:      120,
+  BOSS_CHARGER_COIN_ULTRA:     200,
+  BOSS_CHARGER_SHOCKWAVE_R:    140,
+  BOSS_CHARGER_SHOCKWAVE_DMG:  55,
 
-  /* サモナー (W20/W40) */
-  BOSS_SUMMONER_HP:                2600,
-  BOSS_SUMMONER_HP_HARD:           4500,
-  BOSS_SUMMONER_SIZE:              30,
-  BOSS_SUMMONER_COLOR:             '#c84dff',
-  BOSS_SUMMONER_ORBIT_RATIO:       0.45,
-  BOSS_SUMMONER_SPEED_ORBIT:       0.45,
-  BOSS_SUMMONER_SUMMON_INTERVAL:   5.0,
-  BOSS_SUMMONER_SUMMON_COUNT:      3,
-  BOSS_SUMMONER_SUMMON_COUNT_HARD: 5,
-  BOSS_SUMMONER_BULLET_INTERVAL:   2.5,
-  BOSS_SUMMONER_BULLET_COUNT:      2,
-  BOSS_SUMMONER_BULLET_COUNT_HARD: 4,
-  BOSS_SUMMONER_BULLET_SPEED:      190,
-  BOSS_SUMMONER_BULLET_DMG:        18,
-  BOSS_SUMMONER_SUMMON_INTERVAL_P2: 3.0,  /* フェーズ2: 召喚間隔短縮 */
-  BOSS_SUMMONER_SUMMON_COUNT_P2:    5,    /* フェーズ2: 召喚数 */
-  BOSS_SUMMONER_BULLET_INTERVAL_P2: 1.8, /* フェーズ2: 弾幕間隔 */
-  BOSS_SUMMONER_BULLET_COUNT_P2:    5,   /* フェーズ2: 弾数 */
-  BOSS_SUMMONER_XP:                300,
-  BOSS_SUMMONER_COIN:              60,
-  BOSS_SUMMONER_COIN_HARD:         120,
+  /* サモナー (W20/W40/W50) */
+  BOSS_SUMMONER_HP:                 3000,
+  BOSS_SUMMONER_HP_HARD:            5500,
+  BOSS_SUMMONER_HP_ULTRA:           9000,
+  BOSS_SUMMONER_SIZE:               30,
+  BOSS_SUMMONER_COLOR:              '#c84dff',
+  BOSS_SUMMONER_ORBIT_RATIO:        0.45,
+  BOSS_SUMMONER_SPEED_ORBIT:        0.50,
+  BOSS_SUMMONER_SUMMON_INTERVAL:    4.5,
+  BOSS_SUMMONER_SUMMON_COUNT:       3,
+  BOSS_SUMMONER_SUMMON_COUNT_HARD:  5,
+  BOSS_SUMMONER_BULLET_INTERVAL:    2.2,
+  BOSS_SUMMONER_BULLET_COUNT:       2,
+  BOSS_SUMMONER_BULLET_COUNT_HARD:  4,
+  BOSS_SUMMONER_BULLET_SPEED:       200,
+  BOSS_SUMMONER_BULLET_DMG:         22,
+  BOSS_SUMMONER_SUMMON_INTERVAL_P2: 2.8,
+  BOSS_SUMMONER_SUMMON_COUNT_P2:    5,
+  BOSS_SUMMONER_BULLET_INTERVAL_P2: 1.5,
+  BOSS_SUMMONER_BULLET_COUNT_P2:    5,
+  BOSS_SUMMONER_SUMMON_INTERVAL_P3: 1.8,
+  BOSS_SUMMONER_SUMMON_COUNT_P3:    8,
+  BOSS_SUMMONER_BULLET_INTERVAL_P3: 1.0,
+  BOSS_SUMMONER_BULLET_COUNT_P3:    8,
+  BOSS_SUMMONER_XP:                 300,
+  BOSS_SUMMONER_COIN:               60,
+  BOSS_SUMMONER_COIN_HARD:          120,
+  BOSS_SUMMONER_COIN_ULTRA:         200,
+
+  /* 弾幕型ボス BARRAGE (W15/W35) */
+  BOSS_BARRAGE_HP:               1600,
+  BOSS_BARRAGE_HP_HARD:          3400,
+  BOSS_BARRAGE_SIZE:             26,
+  BOSS_BARRAGE_COLOR:            '#ff4488',
+  BOSS_BARRAGE_ORBIT_RATIO:      0.40,
+  BOSS_BARRAGE_SPEED_ORBIT:      0.50,
+  BOSS_BARRAGE_BULLET_INTERVAL:  2.2,
+  BOSS_BARRAGE_BULLET_COUNT:     8,    /* 円形弾数(フェーズ1) */
+  BOSS_BARRAGE_BULLET_SPEED:     170,
+  BOSS_BARRAGE_BULLET_DMG:       22,
+  BOSS_BARRAGE_SPIRAL_OFFSET:    0.22, /* フェーズ2: 螺旋オフセット角(rad) */
+  BOSS_BARRAGE_SPIRAL_COUNT:     12,   /* フェーズ2: 螺旋弾数 */
+  BOSS_BARRAGE_SPIRAL_COUNT_P3:  18,   /* フェーズ3 */
+  BOSS_BARRAGE_XP:               250,
+  BOSS_BARRAGE_COIN:             70,
+  BOSS_BARRAGE_COIN_HARD:        130,
+
+  /* 分裂型ボス DIVIDER (W30) */
+  BOSS_DIVIDER_HP:              2800,
+  BOSS_DIVIDER_SIZE:            32,
+  BOSS_DIVIDER_COLOR:           '#00ffcc',
+  BOSS_DIVIDER_DMG:             32,
+  BOSS_DIVIDER_ORBIT_RATIO:     0.35,
+  BOSS_DIVIDER_SPEED_WANDER:    0.65,
+  BOSS_DIVIDER_SPEED_CHARGE:    360,
+  BOSS_DIVIDER_WARN_DUR:        1.2,
+  BOSS_DIVIDER_CHARGE_DUR:      0.6,
+  BOSS_DIVIDER_REST_DUR:        1.8,
+  BOSS_DIVIDER_WANDER_DUR:      2.5,
+  BOSS_DIVIDER_WANDER_DUR_P2:   1.6,
+  BOSS_DIVIDER_REST_DUR_P2:     0.9,
+  BOSS_DIVIDER_XP:              280,
+  BOSS_DIVIDER_COIN:            90,
+  BOSS_DIVIDER_CHILD_HP_RATIO:  0.40,  /* 分裂後の中型ボスHP比率 */
+  BOSS_DIVIDER_CHILD_SIZE_RATIO: 0.68,
+  BOSS_DIVIDER_CHILD_DMG:       22,
+  BOSS_DIVIDER_CHILD_WANDER:    1.0,   /* 中型ボス軌道角速度 */
 
   /* 敵:スナイパー(W8〜) */
-  ENEMY_SNIPER_HP_BASE:       30,
-  ENEMY_SNIPER_HP_WAVE:       8,
-  ENEMY_SNIPER_SIZE:          14,
-  ENEMY_SNIPER_COLOR:         '#9b59b6',
-  ENEMY_SNIPER_DMG:           0,
-  ENEMY_SNIPER_XP:            15,
-  ENEMY_SNIPER_COIN:          3,
-  ENEMY_SNIPER_MOVE_SPEED:    110,
-  ENEMY_SNIPER_RANGE_MULT:    1.20,
-  ENEMY_SNIPER_SHOT_DMG:      12,
-  ENEMY_SNIPER_SHOT_SPEED:    210,
-  ENEMY_SNIPER_SHOT_INTERVAL: 2.0,
-  ENEMY_SNIPER_REPOS_INTERVAL: 4.5,
-  ENEMY_SNIPER_WAVE_START:    8,
-  ENEMY_SNIPER_RATIO:         0.10,
+  ENEMY_SNIPER_HP_BASE:        30,
+  ENEMY_SNIPER_HP_WAVE:        8,
+  ENEMY_SNIPER_SIZE:           14,
+  ENEMY_SNIPER_COLOR:          '#9b59b6',
+  ENEMY_SNIPER_DMG:            0,
+  ENEMY_SNIPER_XP:             15,
+  ENEMY_SNIPER_COIN:           3,
+  ENEMY_SNIPER_MOVE_SPEED:     110,
+  ENEMY_SNIPER_RANGE_MULT:     1.20,
+  ENEMY_SNIPER_SHOT_DMG:       16,
+  ENEMY_SNIPER_SHOT_SPEED:     230,
+  ENEMY_SNIPER_SHOT_INTERVAL:  1.8,
+  ENEMY_SNIPER_REPOS_INTERVAL: 4.0,
+  ENEMY_SNIPER_WAVE_START:     8,
+  ENEMY_SNIPER_RATIO:          0.12,
 
   /* 敵:分裂体(W15〜) */
-  ENEMY_SPLIT_HP_BASE:        40,
-  ENEMY_SPLIT_HP_WAVE:        10,
-  ENEMY_SPLIT_SPEED_BASE:     44,
-  ENEMY_SPLIT_SIZE:           18,
-  ENEMY_SPLIT_COLOR:          '#2ecc71',
-  ENEMY_SPLIT_DMG:            10,
-  ENEMY_SPLIT_XP:             20,
-  ENEMY_SPLIT_COIN:           2,
-  ENEMY_SPLIT_WAVE_START:     15,
-  ENEMY_SPLIT_RATIO:          0.12,
-  ENEMY_SPLIT_HP_RATIO:       0.50,
-  ENEMY_SPLIT_SPEED_MULT:     1.30,
-  ENEMY_SPLIT_SIZE_RATIO:     0.65,
+  ENEMY_SPLIT_HP_BASE:       40,
+  ENEMY_SPLIT_HP_WAVE:       10,
+  ENEMY_SPLIT_SPEED_BASE:    44,
+  ENEMY_SPLIT_SIZE:          18,
+  ENEMY_SPLIT_COLOR:         '#2ecc71',
+  ENEMY_SPLIT_DMG:           10,
+  ENEMY_SPLIT_XP:            20,
+  ENEMY_SPLIT_COIN:          2,
+  ENEMY_SPLIT_WAVE_START:    15,
+  ENEMY_SPLIT_RATIO:         0.14,
+  ENEMY_SPLIT_HP_RATIO:      0.50,
+  ENEMY_SPLIT_SPEED_MULT:    1.35,
+  ENEMY_SPLIT_SIZE_RATIO:    0.65,
 
   /* 敵:ウィーバー(W22〜) */
-  ENEMY_WEAVER_HP_BASE:       20,
-  ENEMY_WEAVER_HP_WAVE:       7,
-  ENEMY_WEAVER_SPEED_BASE:    52,
-  ENEMY_WEAVER_SIZE:          14,
-  ENEMY_WEAVER_COLOR:         '#f1c40f',
-  ENEMY_WEAVER_DMG:           9,
-  ENEMY_WEAVER_XP:            12,
-  ENEMY_WEAVER_COIN:          2,
-  ENEMY_WEAVER_WAVE_START:    22,
-  ENEMY_WEAVER_RATIO:         0.10,
-  ENEMY_WEAVER_AMP:           58,
-  ENEMY_WEAVER_FREQ:          2.2,
+  ENEMY_WEAVER_HP_BASE:      20,
+  ENEMY_WEAVER_HP_WAVE:      7,
+  ENEMY_WEAVER_SPEED_BASE:   55,
+  ENEMY_WEAVER_SIZE:         14,
+  ENEMY_WEAVER_COLOR:        '#f1c40f',
+  ENEMY_WEAVER_DMG:          9,
+  ENEMY_WEAVER_XP:           12,
+  ENEMY_WEAVER_COIN:         2,
+  ENEMY_WEAVER_WAVE_START:   22,
+  ENEMY_WEAVER_RATIO:        0.12,
+  ENEMY_WEAVER_AMP:          65,
+  ENEMY_WEAVER_FREQ:         2.4,
 
-  /* 新敵告知(軽量、ゲーム継続) */
+  /* 新敵告知 */
   NEW_ENEMY_ALERT_DUR: 2.2,
 
   /* 特殊武器 */
-  SUB_TURRET_DMG_RATIO:  0.5,            /* サブ砲台ダメージ倍率 */
-  SUB_TURRET_FIRE_RATIO: 0.65,           /* メイン砲の何倍の発射間隔か */
+  SUB_TURRET_DMG_RATIO:  0.5,
+  SUB_TURRET_FIRE_RATIO: 0.65,
   SUB_TURRET_OFFSETS: [{ dx: 52, dy: -36 }, { dx: -52, dy: -36 }],
-  PIERCE_LV: [1, 2, 3, 999],            /* インデックス=武器レベル, 値=最大ヒット数 */
+  PIERCE_LV: [1, 2, 3, 999],
 
   /* 星 */
   STAR_COUNT: 70,
@@ -754,22 +801,22 @@ var CFG = {
   CHECKPOINT_START_COINS: 80,
 
   /* 恒久強化 */
-  META_COIN_RATE:        0.5,
+  META_COIN_RATE:        0.6,
   PERM_MAX_LEVEL:        5,
-  PERM_BASE_PRICE:       20,
+  PERM_BASE_PRICE:       25,
   PERM_PRICE_SCALE:      1.8,
-  PERM_DMG_PER_LV:       0.15,
-  PERM_RATE_PER_LV:      0.12,
-  PERM_HP_PER_LV:        20,
-  PERM_RANGE_PER_LV:     0.08,
-  PERM_COIN_GAIN_PER_LV: 0.15,
+  PERM_DMG_PER_LV:       0.20,
+  PERM_RATE_PER_LV:      0.15,
+  PERM_HP_PER_LV:        25,
+  PERM_RANGE_PER_LV:     0.10,
+  PERM_COIN_GAIN_PER_LV: 0.18,
 
-  /* 弾ビジュアル: ダメージLvごとの半径・色・グロー */
-  BULLET_DMG_RADII:   [4, 4.5, 5, 5.5, 6],
-  BULLET_DMG_COLORS:  ['#cdf2ff', '#e0f8ff', '#ffffff', '#fffbe0', '#ffd770'],
-  BULLET_DMG_GLOWS:   ['#57d8ff', '#70e8ff', '#a0f0ff', '#ffe880', '#ffc200'],
+  /* 弾ビジュアル */
+  BULLET_DMG_RADII:  [4, 4.5, 5, 5.5, 6],
+  BULLET_DMG_COLORS: ['#cdf2ff', '#e0f8ff', '#ffffff', '#fffbe0', '#ffd770'],
+  BULLET_DMG_GLOWS:  ['#57d8ff', '#70e8ff', '#a0f0ff', '#ffe880', '#ffc200'],
 
-  /* 連射Lvごとの発射条ごとのオフセット角(rad) */
+  /* 連射Lvごとのオフセット角(rad) */
   BULLET_STREAM_SPREADS: [
     [0],
     [-0.10, 0.10],
@@ -778,14 +825,14 @@ var CFG = {
   ],
 
   /* 追跡ミサイル */
-  MISSILE_INTERVAL:    3.0,
+  MISSILE_INTERVAL:    5.0,    /* 3.0→5.0 弱体化 */
   MISSILE_SPEED:       190,
   MISSILE_HOMING:      2.5,
-  MISSILE_DMG_MULT:    4.0,
+  MISSILE_DMG_MULT:    2.5,    /* 4.0→2.5 弱体化 */
   MISSILE_LIFE:        3.5,
   MISSILE_SIZE:        5,
-  MISSILE_UNLOCK_RATE: 3,   /* upgradeCounts.rate >= 3 で解放(4条) */
-  MISSILE_UNLOCK_DMG:  4,   /* upgradeCounts.dmg >= 4 で解放(Lv5) */
+  MISSILE_UNLOCK_RATE: 3,
+  MISSILE_UNLOCK_DMG:  4,
 
   /* XPカードプール */
   CARD_POOL: [
@@ -794,7 +841,7 @@ var CFG = {
     { id:'range',   icon:'&#127919;',name:'射程距離',  desc:'射程<br>+15%' },
     { id:'speed',   icon:'&#128192;',name:'弾速',      desc:'弾速<br>+15%' },
     { id:'heal',    icon:'&#10010;', name:'HP回復',    desc:'+30 HP<br>即時回復' },
-    { id:'maxhp',   icon:'&#10133;', name:'最大HP+',   desc:'最大HP<br>+30' }
+    { id:'barrier', icon:'&#11035;', name:'バリア+1',  desc:'ダメージを<br>1回無効化' }
   ]
 };
 
@@ -818,12 +865,17 @@ resize();
 function cx(){ return W / 2; }
 function cy(){ return H * CFG.TOWER_CENTER_Y; }
 
-/* 2段階カーブ: ウェーブwでの累積スケーリング量を返す */
-function waveAccum(w, perWave, earlyScale, lateScale){
-  var brk = CFG.WAVE_PHASE_BREAK - 1;
-  var earlyW = w <= brk ? w : brk;
-  var lateW = w > brk ? w - brk : 0;
-  return earlyW * perWave * earlyScale + lateW * perWave * lateScale;
+/* 5帯カーブ: ウェーブwでの累積スケーリング量を返す(scales=[W1-10, W11-20, W21-30, W31-40, W41-50]) */
+function waveAccum(w, perWave, scales){
+  var total = 0;
+  for(var b = 0; b < 5; b++){
+    var bandStart = b * 10 + 1;
+    if(w < bandStart) break;
+    var bandEnd = bandStart + 9;
+    var wInBand = (w < bandEnd ? w : bandEnd) - bandStart + 1;
+    total += wInBand * perWave * scales[b];
+  }
+  return total;
 }
 
 /* =====================================================================
@@ -883,7 +935,9 @@ var subTurretFireTimers = [0, 0];
 /* コイン・アイテム・強化カウント */
 var coins = 0;
 var healItems = [];
-var upgradeCounts = { rate: 0, dmg: 0, range: 0, speed: 0, maxhp: 0, heal: 0 };
+var upgradeCounts = { rate: 0, dmg: 0, range: 0, speed: 0, barrier: 0, heal: 0 };
+var barrierCount = 0;
+var barrierBreakTimer = 0;
 
 /* 恒久強化: ラン開始時に再計算するコイン倍率 */
 var coinGainMult = 1;
@@ -1035,6 +1089,7 @@ function playSound(id){
   else if(id === 'overdrive')sndOverdrive();
   else if(id === 'boss')    sndBoss();
   else if(id === 'damage')  sndDamage();
+  else if(id === 'barrier') sndBarrierBreak();
   else if(id === 'button')  sndButton();
 }
 
@@ -1131,6 +1186,11 @@ function sndButton(){
   oscPlay('sine', 1200, 600, 0.13, 0.04);
 }
 
+function sndBarrierBreak(){
+  oscPlay('sawtooth', 800, 180, 0.28, 0.18);
+  noisePlay(0.20, 0.12);
+}
+
 function sndRailgun(){
   oscPlay('sawtooth', 3200, 400, 0.30, 0.18);
   oscPlay('sine',     2000, 800, 0.20, 0.22);
@@ -1153,6 +1213,29 @@ function sndOverdrive(){
   oc('sine', 220, 880, 0.30, 0.40);
   oc('sine', 330, 1320, 0.22, 0.35);
   oc('square', 110, 440, 0.12, 0.45);
+}
+
+/* =====================================================================
+   バリア・ダメージ処理
+===================================================================== */
+function takeDamage(dmg){
+  if(barrierCount > 0){
+    barrierCount--;
+    barrierBreakTimer = CFG.BARRIER_BREAK_FLASH_DUR;
+    playSound('barrier');
+    var bi;
+    for(bi = 0; bi < 24; bi++){
+      var ba = Math.PI * 2 / 24 * bi;
+      if(particles.length < CFG.PARTICLE_MAX){
+        particles.push({ x:cx(), y:cy(), vx:Math.cos(ba)*200, vy:Math.sin(ba)*200, life:0.55, maxLife:0.55, r:4, color:'#4df3ff' });
+      }
+    }
+    return false;
+  }
+  tower.hp -= dmg;
+  playSound('damage');
+  if(tower.hp <= 0){ tower.hp = 0; return true; }
+  return false;
 }
 
 /* =====================================================================
@@ -1233,17 +1316,17 @@ function onCardClick(){
 }
 
 function applyUpgrade(id){
-  if(id === 'rate')  { tower.fireInterval = tower.fireInterval * 0.8; }
-  if(id === 'dmg')   { tower.dmg = tower.dmg * 1.4; }
-  if(id === 'range') {
+  if(id === 'rate')    { tower.fireInterval = tower.fireInterval * 0.8; }
+  if(id === 'dmg')     { tower.dmg = tower.dmg * 1.4; }
+  if(id === 'range'){
     var rIdx = Math.min(upgradeCounts.range, CFG.TOWER_RANGE_SHOP_STEPS.length - 1);
     tower.range = tower.range * (1 + CFG.TOWER_RANGE_SHOP_STEPS[rIdx]);
     var rangeCap = Math.min(W, H) * CFG.TOWER_RANGE_MAX;
     if(tower.range > rangeCap) tower.range = rangeCap;
   }
-  if(id === 'speed') { tower.bulletSpeed = tower.bulletSpeed * 1.15; }
-  if(id === 'heal')  { tower.hp = Math.min(tower.maxHp, tower.hp + 30); }
-  if(id === 'maxhp') { tower.maxHp = tower.maxHp + 30; tower.hp = Math.min(tower.maxHp, tower.hp + 30); }
+  if(id === 'speed')   { tower.bulletSpeed = tower.bulletSpeed * 1.15; }
+  if(id === 'heal')    { tower.hp = Math.min(tower.maxHp, tower.hp + 30); }
+  if(id === 'barrier') { barrierCount = Math.min(CFG.BARRIER_MAX, barrierCount + 1); }
   if(typeof upgradeCounts[id] !== 'undefined') upgradeCounts[id]++;
 }
 
@@ -1321,12 +1404,12 @@ function updateCoinHud(){
    ラン内ショップ
 ===================================================================== */
 var SHOP_DEFS = [
-  { id:'rate',  icon:'&#9889;',   name:'連射速度', desc:'弾+1条 / 速度+' },
-  { id:'dmg',   icon:'&#128165;', name:'ダメージ', desc:'攻撃力+40% / 弾強化' },
-  { id:'range', icon:'&#127919;', name:'射程距離', desc:'射程 +15%' },
-  { id:'speed', icon:'&#128192;', name:'弾速',             desc:'弾速 +15%' },
-  { id:'maxhp', icon:'&#10133;',  name:'最大HP+',          desc:'最大HP +30' },
-  { id:'heal',  icon:'&#10010;',  name:'HP回復',           desc:'+30 HP 即時回復' }
+  { id:'rate',    icon:'&#9889;',   name:'連射速度', desc:'弾+1条 / 速度+' },
+  { id:'dmg',     icon:'&#128165;', name:'ダメージ', desc:'攻撃力+40% / 弾強化' },
+  { id:'range',   icon:'&#127919;', name:'射程距離', desc:'射程 +15%' },
+  { id:'speed',   icon:'&#128192;', name:'弾速',     desc:'弾速 +15%' },
+  { id:'barrier', icon:'&#11035;',  name:'バリア+1', desc:'ダメージ1回無効' },
+  { id:'heal',    icon:'&#10010;',  name:'HP回復',   desc:'+30 HP 即時回復' }
 ];
 
 function getShopPrice(id){
@@ -1360,6 +1443,8 @@ function renderShopItems(){
     var lvText;
     if(def.id === 'heal'){
       lvText = '+30 HP';
+    } else if(def.id === 'barrier'){
+      lvText = barrierCount + ' / ' + CFG.BARRIER_MAX;
     } else if(def.id === 'range'){
       var rIdx = Math.min(cnt, CFG.TOWER_RANGE_SHOP_STEPS.length - 1);
       var rPct = Math.round(CFG.TOWER_RANGE_SHOP_STEPS[rIdx] * 100);
@@ -1405,45 +1490,29 @@ function firePulse(){
   specials.pulse.cd = CFG.PULSE_CD;
   updateSpecialHud();
 
-  var dmg    = tower.dmg * CFG.PULSE_DMG_MULT;
-  var blastR = tower.range * CFG.PULSE_RANGE_MULT;
-  var i, e, dx, dy, dd;
-  for(i = enemies.length - 1; i >= 0; i--){
-    e = enemies[i];
-    dx = e.x - cx(); dy = e.y - cy();
-    dd = Math.sqrt(dx * dx + dy * dy);
-    if(dd > blastR) continue;
-    e.stunTimer = CFG.PULSE_STUN_DUR;
-    e.hp -= dmg;
-    if(dd > 0){ e.x += dx / dd * CFG.PULSE_KNOCKBACK; e.y += dy / dd * CFG.PULSE_KNOCKBACK; }
-    floater(e.x, e.y - e.size, 'STUN', '#4df3ff');
-    if(e.hp <= 0){
-      burst(e.x, e.y, e.color, 22);
-      kills++; gainXP(e.xpReward); gainCoin(e.coinReward || 1, e.x, e.y);
-      enemies.splice(i, 1);
-    }
+  /* 全方位弾: リング状に一斉発射。貫通弾効果も適用 */
+  var dmg = tower.dmg * CFG.PULSE_BULLET_DMG_MULT;
+  var pierceMax = CFG.PIERCE_LV[Math.min(weapons.pierce, CFG.PIERCE_LV.length - 1)];
+  var count = CFG.PULSE_BULLET_COUNT;
+  for(var k = 0; k < count; k++){
+    var a = Math.PI * 2 / count * k;
+    bullets.push({
+      x: cx(), y: cy(),
+      vx: Math.cos(a) * CFG.PULSE_BULLET_SPEED,
+      vy: Math.sin(a) * CFG.PULSE_BULLET_SPEED,
+      life: CFG.BULLET_LIFE, dmg: dmg, pierceLeft: pierceMax,
+      r: 5, bcolor: '#4df3ff', bglow: '#57d8ff'
+    });
   }
-  /* ボスにもスタン耐性付きで適用 */
-  if(boss !== null){
-    var bdx = boss.x - cx(), bdy = boss.y - cy();
-    var bdd = Math.sqrt(bdx * bdx + bdy * bdy);
-    if(bdd <= blastR){
-      boss.stunTimer = CFG.PULSE_STUN_DUR_BOSS;
-      boss.hp -= dmg;
-      floater(boss.x, boss.y - boss.size, 'STUN', '#4df3ff');
-      updateBossHpBar();
-      if(boss.hp <= 0){
-        burst(boss.x, boss.y, boss.color, 40);
-        kills++; gainXP(boss.xpReward); gainCoin(boss.coinReward || 1, boss.x, boss.y);
-        boss = null; hideBossBar();
-      }
-    }
-  }
-  flashTimer = CFG.PULSE_FLASH_DUR; shakeTimer = CFG.PULSE_SHAKE_DUR; shakeMag = CFG.PULSE_SHAKE_MAG;
+  flashTimer = CFG.PULSE_FLASH_DUR;
+  shakeTimer = CFG.PULSE_SHAKE_DUR;
+  shakeMag   = CFG.PULSE_SHAKE_MAG;
   playSound('pulse');
-  for(var k = 0; k < 48; k++){
-    var a = Math.PI * 2 / 48 * k;
-    particles.push({ x:cx(), y:cy(), vx:Math.cos(a)*320, vy:Math.sin(a)*320, life:0.5, maxLife:0.5, r:3, color:'#4df3ff' });
+  /* リング演出パーティクル */
+  for(var pk = 0; pk < 32; pk++){
+    var pa = Math.PI * 2 / 32 * pk;
+    if(particles.length < CFG.PARTICLE_MAX)
+      particles.push({ x:cx(), y:cy(), vx:Math.cos(pa)*260, vy:Math.sin(pa)*260, life:0.45, maxLife:0.45, r:3, color:'#4df3ff' });
   }
 }
 
@@ -1553,7 +1622,8 @@ function resetGame(){
   overdriveSavedInterval = 0; overdriveSavedDmg = 0; overdriveSavedRange = 0;
   railgunBeam = null; specialHudTimer = 0;
   coins = 0; healItems = [];
-  upgradeCounts = { rate: 0, dmg: 0, range: 0, speed: 0, maxhp: 0, heal: 0 };
+  upgradeCounts = { rate: 0, dmg: 0, range: 0, speed: 0, barrier: 0, heal: 0 };
+  barrierCount = 0; barrierBreakTimer = 0;
   enemies = []; bullets = []; missiles = []; particles = []; floaters = []; enemyBullets = [];
   missileTimer = 0;
   boss = null; warningTimer = 0; bossSpawnFn = null; newEnemyAlert = null;
@@ -1592,16 +1662,20 @@ function startWave(){
   if(wave === 5){
     spawnQueue = 0; spawnTimer = 0;
     triggerBossWarning('MINI BOSS', 'CHARGER', spawnMiniCharger);
-  } else if(wave === 10 || wave === 30){
+  } else if(wave === 10 || wave === 25 || wave === 45){
     spawnQueue = 0; spawnTimer = 0;
-    var _w10 = wave;
-    triggerBossWarning('BOSS', _w10 === 30 ? 'CHARGER  II' : 'CHARGER', function(){ spawnCharger(_w10); });
-  } else if(wave === 20 || wave === 40){
+    (function(_wc){ triggerBossWarning('BOSS', _wc === 45 ? 'CHARGER III' : _wc === 25 ? 'CHARGER II' : 'CHARGER', function(){ spawnCharger(_wc); }); })(wave);
+  } else if(wave === 15 || wave === 35){
     spawnQueue = 0; spawnTimer = 0;
-    var _w20 = wave;
-    triggerBossWarning('BOSS', _w20 === 40 ? 'SUMMONER  II' : 'SUMMONER', function(){ spawnSummoner(_w20); });
+    (function(_wb){ triggerBossWarning('BOSS', _wb === 35 ? 'BARRAGE II' : 'BARRAGE', function(){ spawnBarrage(_wb); }); })(wave);
+  } else if(wave === 20 || wave === 40 || wave === 50){
+    spawnQueue = 0; spawnTimer = 0;
+    (function(_ws){ triggerBossWarning('BOSS', _ws === 50 ? 'FINAL BOSS' : _ws === 40 ? 'SUMMONER II' : 'SUMMONER', function(){ spawnSummoner(_ws); }); })(wave);
+  } else if(wave === 30){
+    spawnQueue = 0; spawnTimer = 0;
+    (function(_wd){ triggerBossWarning('BOSS', 'DIVIDER', function(){ spawnDivider(_wd); }); })(wave);
   } else {
-    spawnQueue = Math.floor(CFG.WAVE_SPAWN_BASE + waveAccum(wave, CFG.WAVE_SPAWN_WAVE, CFG.WAVE_SPAWN_SCALE_EARLY, CFG.WAVE_SPAWN_SCALE_LATE));
+    spawnQueue = Math.floor(CFG.WAVE_SPAWN_BASE + waveAccum(wave, CFG.WAVE_SPAWN_WAVE, CFG.WAVE_SPAWN_SCALES));
     spawnTimer = 0;
   }
   document.getElementById('waveNum').textContent = String(wave);
@@ -1661,20 +1735,20 @@ function spawnEnemy(){
     var tankRatio = Math.min(CFG.ENEMY_ORANGE_RATIO_MAX,
       CFG.ENEMY_ORANGE_RATIO + wave * CFG.ENEMY_ORANGE_RATIO_WAVE);
     if(Math.random() < tankRatio){
-      var hp = CFG.ENEMY_ORANGE_HP_BASE + waveAccum(wave, CFG.ENEMY_ORANGE_HP_WAVE, CFG.WAVE_HP_SCALE_EARLY, CFG.WAVE_HP_SCALE_LATE);
+      var hp = CFG.ENEMY_ORANGE_HP_BASE + waveAccum(wave, CFG.ENEMY_ORANGE_HP_WAVE, CFG.WAVE_HP_SCALES);
       enemies.push({
         x: x, y: y, hp: hp, maxHp: hp,
-        speed: CFG.ENEMY_ORANGE_SPEED_BASE + waveAccum(wave, CFG.ENEMY_ORANGE_SPEED_WAVE, CFG.WAVE_SPEED_SCALE_EARLY, CFG.WAVE_SPEED_SCALE_LATE),
+        speed: CFG.ENEMY_ORANGE_SPEED_BASE + waveAccum(wave, CFG.ENEMY_ORANGE_SPEED_WAVE, CFG.WAVE_SPEED_SCALES),
         size: CFG.ENEMY_ORANGE_SIZE, color: '#ffa028',
         rot: Math.random() * Math.PI * 2, rotSpd: (Math.random() - 0.5) * 1.5,
         dmg: CFG.ENEMY_ORANGE_DMG, xpReward: CFG.XP_PER_ORANGE, coinReward: CFG.COIN_ORANGE,
         stunTimer: 0
       });
     } else {
-      var hp2 = CFG.ENEMY_RED_HP_BASE + waveAccum(wave, CFG.ENEMY_RED_HP_WAVE, CFG.WAVE_HP_SCALE_EARLY, CFG.WAVE_HP_SCALE_LATE);
+      var hp2 = CFG.ENEMY_RED_HP_BASE + waveAccum(wave, CFG.ENEMY_RED_HP_WAVE, CFG.WAVE_HP_SCALES);
       enemies.push({
         x: x, y: y, hp: hp2, maxHp: hp2,
-        speed: CFG.ENEMY_RED_SPEED_BASE + waveAccum(wave, CFG.ENEMY_RED_SPEED_WAVE, CFG.WAVE_SPEED_SCALE_EARLY, CFG.WAVE_SPEED_SCALE_LATE),
+        speed: CFG.ENEMY_RED_SPEED_BASE + waveAccum(wave, CFG.ENEMY_RED_SPEED_WAVE, CFG.WAVE_SPEED_SCALES),
         size: CFG.ENEMY_RED_SIZE, color: '#ff2e4c',
         rot: Math.random() * Math.PI * 2, rotSpd: (Math.random() - 0.5) * 1.5,
         dmg: CFG.ENEMY_RED_DMG, xpReward: CFG.XP_PER_RED, coinReward: CFG.COIN_RED,
@@ -1688,7 +1762,7 @@ function spawnEnemy(){
    新敵スポーン関数
 ===================================================================== */
 function spawnSniper(x, y){
-  var hp = CFG.ENEMY_SNIPER_HP_BASE + waveAccum(wave, CFG.ENEMY_SNIPER_HP_WAVE, CFG.WAVE_HP_SCALE_EARLY, CFG.WAVE_HP_SCALE_LATE);
+  var hp = CFG.ENEMY_SNIPER_HP_BASE + waveAccum(wave, CFG.ENEMY_SNIPER_HP_WAVE, CFG.WAVE_HP_SCALES);
   var standoff = tower.range * CFG.ENEMY_SNIPER_RANGE_MULT;
   var ang = Math.random() * Math.PI * 2;
   enemies.push({
@@ -1709,8 +1783,8 @@ function spawnSniper(x, y){
 }
 
 function spawnSplit(x, y){
-  var hp = CFG.ENEMY_SPLIT_HP_BASE + waveAccum(wave, CFG.ENEMY_SPLIT_HP_WAVE, CFG.WAVE_HP_SCALE_EARLY, CFG.WAVE_HP_SCALE_LATE);
-  var spd = CFG.ENEMY_SPLIT_SPEED_BASE + waveAccum(wave, 2, CFG.WAVE_SPEED_SCALE_EARLY, CFG.WAVE_SPEED_SCALE_LATE);
+  var hp = CFG.ENEMY_SPLIT_HP_BASE + waveAccum(wave, CFG.ENEMY_SPLIT_HP_WAVE, CFG.WAVE_HP_SCALES);
+  var spd = CFG.ENEMY_SPLIT_SPEED_BASE + waveAccum(wave, 2, CFG.WAVE_SPEED_SCALES);
   enemies.push({
     type: 'split',
     x: x, y: y, hp: hp, maxHp: hp,
@@ -1723,8 +1797,8 @@ function spawnSplit(x, y){
 }
 
 function spawnWeaver(x, y){
-  var hp = CFG.ENEMY_WEAVER_HP_BASE + waveAccum(wave, CFG.ENEMY_WEAVER_HP_WAVE, CFG.WAVE_HP_SCALE_EARLY, CFG.WAVE_HP_SCALE_LATE);
-  var spd = CFG.ENEMY_WEAVER_SPEED_BASE + waveAccum(wave, 3, CFG.WAVE_SPEED_SCALE_EARLY, CFG.WAVE_SPEED_SCALE_LATE);
+  var hp = CFG.ENEMY_WEAVER_HP_BASE + waveAccum(wave, CFG.ENEMY_WEAVER_HP_WAVE, CFG.WAVE_HP_SCALES);
+  var spd = CFG.ENEMY_WEAVER_SPEED_BASE + waveAccum(wave, 3, CFG.WAVE_SPEED_SCALES);
   enemies.push({
     type: 'weaver',
     x: x, y: y, hp: hp, maxHp: hp,
@@ -1794,6 +1868,7 @@ function loop(t){
 
     /* 演出タイマーは倍速に無関係、等倍で進める */
     if(flashTimer > 0){ flashTimer -= dt; }
+    if(barrierBreakTimer > 0){ barrierBreakTimer -= dt; if(barrierBreakTimer < 0) barrierBreakTimer = 0; }
     /* サウンドスロットルも実時間 */
     if(shootSoundTimer > 0) shootSoundTimer -= dt;
     if(hitSoundTimer > 0) hitSoundTimer -= dt;
@@ -1841,11 +1916,9 @@ function update(dt){
     var dx = cx() - e.x, dy = cy() - e.y;
     var d  = Math.sqrt(dx * dx + dy * dy);
     if(d < CFG.TOWER_HIT_RADIUS){
-      tower.hp -= e.dmg;
-      playSound('damage');
       burst(e.x, e.y, e.color, 14);
       enemies.splice(i, 1);
-      if(tower.hp <= 0){ tower.hp = 0; endGame(false); return; }
+      if(takeDamage(e.dmg)){ endGame(false); return; }
       continue;
     }
     if(e.stunTimer > 0){
@@ -1857,6 +1930,12 @@ function update(dt){
       moveSniper(e, dt);
     } else if(e.type === 'weaver'){
       moveWeaver(e, dx, dy, d, dt);
+    } else if(e.type === 'divider_child'){
+      /* 分裂子ボス: 軌道周回 */
+      e.orbitAngle += CFG.BOSS_DIVIDER_CHILD_WANDER * dt;
+      e.x = cx() + Math.cos(e.orbitAngle) * e.orbitDist;
+      e.y = cy() + Math.sin(e.orbitAngle) * e.orbitDist;
+      e.rot += e.rotSpd * dt;
     } else {
       /* 通常移動(赤・オレンジ・分裂体) */
       e.x  += dx / d * e.speed * dt;
@@ -1941,6 +2020,7 @@ function update(dt){
           gainXP(ct.xpReward);
           gainCoin(ct.coinReward || 1, ct.x, ct.y);
           if(ct.isBoss){
+            if(ct.type === 'divider'){ spawnDividerChildren(ct); }
             boss = null; hideBossBar();
           } else {
             var ei = enemies.indexOf(ct);
@@ -2074,6 +2154,7 @@ function update(dt){
             burst(mc4.x, mc4.y, mc4.color, mc4.isBoss ? 40 : 22);
             kills++; playSound('kill'); gainXP(mc4.xpReward); gainCoin(mc4.coinReward || 1, mc4.x, mc4.y);
             if(mc4.isBoss){
+              if(mc4.type === 'divider'){ spawnDividerChildren(mc4); }
               boss = null; hideBossBar();
             } else {
               var mEi = enemies.indexOf(mc4);
@@ -2151,11 +2232,9 @@ function update(dt){
     eb.x += eb.vx * dt; eb.y += eb.vy * dt; eb.life -= dt;
     var etx = eb.x - cx(), ety = eb.y - cy();
     if(etx * etx + ety * ety < CFG.TOWER_HIT_RADIUS * CFG.TOWER_HIT_RADIUS){
-      tower.hp -= eb.dmg;
-      playSound('damage');
       burst(cx(), cy(), eb.color || '#c84dff', 8);
       enemyBullets.splice(i, 1);
-      if(tower.hp <= 0){ tower.hp = 0; endGame(false); return; }
+      if(takeDamage(eb.dmg)){ endGame(false); return; }
     } else if(eb.life <= 0 || eb.x < -120 || eb.x > W + 120 || eb.y < -120 || eb.y > H + 120){
       enemyBullets.splice(i, 1);
     }
@@ -2288,6 +2367,8 @@ function updateBoss(dt){
   if(boss.type === 'mini_charger') updateMiniCharger(dt);
   else if(boss.type === 'charger')  updateCharger(dt);
   else if(boss.type === 'summoner') updateSummoner(dt);
+  else if(boss.type === 'barrage')  updateBarrage(dt);
+  else if(boss.type === 'divider')  updateDivider(dt);
 }
 
 function updateMiniCharger(dt){
@@ -2319,12 +2400,11 @@ function updateMiniCharger(dt){
     var dx2 = b.x - cx(), dy2 = b.y - cy();
     var d2  = Math.sqrt(dx2 * dx2 + dy2 * dy2);
     if(d2 < CFG.TOWER_HIT_RADIUS + b.size * 0.5){
-      tower.hp -= b.dmg;
       burst(b.x, b.y, b.color, 20);
       b.x = cx() + b.dirX * -(CFG.TOWER_HIT_RADIUS + b.size);
       b.y = cy() + b.dirY * -(CFG.TOWER_HIT_RADIUS + b.size);
       b.phase = 'rest'; b.timer = restDur;
-      if(tower.hp <= 0){ tower.hp = 0; endGame(false); return; }
+      if(takeDamage(b.dmg)){ endGame(false); return; }
     }
     if(b.timer <= 0){ b.phase = 'rest'; b.timer = restDur; }
   } else if(b.phase === 'rest'){
@@ -2351,23 +2431,28 @@ function triggerBossWarning(type, name, spawnFn){
    チャージャー (W10/W30)
 ===================================================================== */
 function spawnCharger(w){
-  var hard = (w >= 30);
+  var tier = (w >= 45) ? 'ultra' : (w >= 25) ? 'hard' : 'normal';
   var orbitDist = Math.min(W, H) * CFG.BOSS_CHARGER_ORBIT_RATIO;
   var angle = Math.random() * Math.PI * 2;
+  var hp   = tier === 'ultra' ? CFG.BOSS_CHARGER_HP_ULTRA : tier === 'hard' ? CFG.BOSS_CHARGER_HP_HARD : CFG.BOSS_CHARGER_HP;
+  var dmg  = tier === 'ultra' ? CFG.BOSS_CHARGER_DMG_ULTRA : tier === 'hard' ? CFG.BOSS_CHARGER_DMG_HARD : CFG.BOSS_CHARGER_DMG;
+  var coin = tier === 'ultra' ? CFG.BOSS_CHARGER_COIN_ULTRA : tier === 'hard' ? CFG.BOSS_CHARGER_COIN_HARD : CFG.BOSS_CHARGER_COIN;
   boss = {
     x: cx() + Math.cos(angle) * orbitDist,
     y: cy() + Math.sin(angle) * orbitDist,
-    isBoss: true, type: 'charger', hard: hard,
-    hp:    hard ? CFG.BOSS_CHARGER_HP_HARD  : CFG.BOSS_CHARGER_HP,
-    maxHp: hard ? CFG.BOSS_CHARGER_HP_HARD  : CFG.BOSS_CHARGER_HP,
-    size:  CFG.BOSS_CHARGER_SIZE, color: CFG.BOSS_CHARGER_COLOR,
-    dmg:   hard ? CFG.BOSS_CHARGER_DMG_HARD : CFG.BOSS_CHARGER_DMG,
-    xpReward:   hard ? CFG.BOSS_CHARGER_XP * 2       : CFG.BOSS_CHARGER_XP,
-    coinReward: hard ? CFG.BOSS_CHARGER_COIN_HARD     : CFG.BOSS_CHARGER_COIN,
+    isBoss: true, type: 'charger', tier: tier,
+    shockwave: (tier !== 'normal'),   /* hard以上で衝撃波 */
+    has3Phases: (w >= 25),
+    hp: hp, maxHp: hp,
+    size: CFG.BOSS_CHARGER_SIZE, color: CFG.BOSS_CHARGER_COLOR,
+    dmg: dmg,
+    xpReward:   tier === 'ultra' ? CFG.BOSS_CHARGER_XP * 3 : tier === 'hard' ? CFG.BOSS_CHARGER_XP * 2 : CFG.BOSS_CHARGER_XP,
+    coinReward: coin,
     rot: 0, orbitAngle: angle, orbitDist: orbitDist,
     phase: 'wander', timer: CFG.BOSS_CHARGER_WANDER_DUR, dirX: 0, dirY: 0, stunTimer: 0
   };
-  showBossBar(hard ? 'BOSS : CHARGER II' : 'BOSS : CHARGER');
+  var label = tier === 'ultra' ? 'BOSS : CHARGER III' : tier === 'hard' ? 'BOSS : CHARGER II' : 'BOSS : CHARGER';
+  showBossBar(label);
 }
 
 function updateCharger(dt){
@@ -2377,8 +2462,13 @@ function updateCharger(dt){
     floater(b.x, b.y - b.size - 22, 'PHASE 2!', '#ff3d81');
     shakeTimer = 0.4; shakeMag = 12;
   }
-  var wanderDur = b.phase2 ? CFG.BOSS_CHARGER_WANDER_DUR_P2 : CFG.BOSS_CHARGER_WANDER_DUR;
-  var restDur   = b.phase2 ? CFG.BOSS_CHARGER_REST_DUR_P2   : CFG.BOSS_CHARGER_REST_DUR;
+  if(b.has3Phases && !b.phase3 && b.hp <= b.maxHp * CFG.BOSS_PHASE3_HP_RATIO){
+    b.phase3 = true;
+    floater(b.x, b.y - b.size - 22, 'PHASE 3!', '#ff0044');
+    shakeTimer = 0.6; shakeMag = 18;
+  }
+  var wanderDur = b.phase3 ? CFG.BOSS_CHARGER_WANDER_DUR_P3 : b.phase2 ? CFG.BOSS_CHARGER_WANDER_DUR_P2 : CFG.BOSS_CHARGER_WANDER_DUR;
+  var restDur   = b.phase3 ? CFG.BOSS_CHARGER_REST_DUR_P3   : b.phase2 ? CFG.BOSS_CHARGER_REST_DUR_P2   : CFG.BOSS_CHARGER_REST_DUR;
   b.timer -= dt;
   if(b.phase === 'wander'){
     b.orbitAngle += CFG.BOSS_CHARGER_SPEED_WANDER * dt;
@@ -2398,13 +2488,12 @@ function updateCharger(dt){
     var dx2 = b.x - cx(), dy2 = b.y - cy();
     var d2  = Math.sqrt(dx2 * dx2 + dy2 * dy2);
     if(d2 < CFG.TOWER_HIT_RADIUS + b.size * 0.5){
-      tower.hp -= b.dmg;
       burst(b.x, b.y, b.color, 22);
-      if(b.hard){ bossShockwave(b); }
+      if(b.shockwave){ bossShockwave(b); }
       b.x = cx() + b.dirX * -(CFG.TOWER_HIT_RADIUS + b.size);
       b.y = cy() + b.dirY * -(CFG.TOWER_HIT_RADIUS + b.size);
       b.phase = 'rest'; b.timer = restDur;
-      if(tower.hp <= 0){ tower.hp = 0; endGame(false); return; }
+      if(takeDamage(b.dmg)){ endGame(false); return; }
     }
     if(b.timer <= 0){ b.phase = 'rest'; b.timer = restDur; }
   } else if(b.phase === 'rest'){
@@ -2447,25 +2536,28 @@ function bossShockwave(b){
    サモナー (W20/W40)
 ===================================================================== */
 function spawnSummoner(w){
-  var hard = (w >= 40);
+  var tier = (w >= 50) ? 'ultra' : (w >= 40) ? 'hard' : 'normal';
   var orbitDist = Math.min(W, H) * CFG.BOSS_SUMMONER_ORBIT_RATIO;
   var angle = Math.random() * Math.PI * 2;
+  var hp   = tier === 'ultra' ? CFG.BOSS_SUMMONER_HP_ULTRA : tier === 'hard' ? CFG.BOSS_SUMMONER_HP_HARD : CFG.BOSS_SUMMONER_HP;
+  var coin = tier === 'ultra' ? CFG.BOSS_SUMMONER_COIN_ULTRA : tier === 'hard' ? CFG.BOSS_SUMMONER_COIN_HARD : CFG.BOSS_SUMMONER_COIN;
   boss = {
     x: cx() + Math.cos(angle) * orbitDist,
     y: cy() + Math.sin(angle) * orbitDist,
-    isBoss: true, type: 'summoner', hard: hard,
-    hp:    hard ? CFG.BOSS_SUMMONER_HP_HARD : CFG.BOSS_SUMMONER_HP,
-    maxHp: hard ? CFG.BOSS_SUMMONER_HP_HARD : CFG.BOSS_SUMMONER_HP,
-    size:  CFG.BOSS_SUMMONER_SIZE, color: CFG.BOSS_SUMMONER_COLOR,
+    isBoss: true, type: 'summoner', tier: tier,
+    has3Phases: (w >= 40),
+    hp: hp, maxHp: hp,
+    size: CFG.BOSS_SUMMONER_SIZE, color: CFG.BOSS_SUMMONER_COLOR,
     dmg: 0,
-    xpReward:   hard ? CFG.BOSS_SUMMONER_XP * 2      : CFG.BOSS_SUMMONER_XP,
-    coinReward: hard ? CFG.BOSS_SUMMONER_COIN_HARD    : CFG.BOSS_SUMMONER_COIN,
+    xpReward:   tier === 'ultra' ? CFG.BOSS_SUMMONER_XP * 3 : tier === 'hard' ? CFG.BOSS_SUMMONER_XP * 2 : CFG.BOSS_SUMMONER_XP,
+    coinReward: coin,
     rot: 0, orbitAngle: angle, orbitDist: orbitDist,
     summonTimer: CFG.BOSS_SUMMONER_SUMMON_INTERVAL,
     bulletTimer: CFG.BOSS_SUMMONER_BULLET_INTERVAL,
     stunTimer: 0
   };
-  showBossBar(hard ? 'BOSS : SUMMONER II' : 'BOSS : SUMMONER');
+  var label = tier === 'ultra' ? 'FINAL BOSS : SUMMONER' : tier === 'hard' ? 'BOSS : SUMMONER II' : 'BOSS : SUMMONER';
+  showBossBar(label);
 }
 
 function updateSummoner(dt){
@@ -2477,6 +2569,13 @@ function updateSummoner(dt){
     b.summonTimer = CFG.BOSS_SUMMONER_SUMMON_INTERVAL_P2;
     b.bulletTimer = CFG.BOSS_SUMMONER_BULLET_INTERVAL_P2;
   }
+  if(b.has3Phases && !b.phase3 && b.hp <= b.maxHp * CFG.BOSS_PHASE3_HP_RATIO){
+    b.phase3 = true;
+    floater(b.x, b.y - b.size - 22, 'PHASE 3!', '#ff0044');
+    shakeTimer = 0.6; shakeMag = 18;
+    b.summonTimer = CFG.BOSS_SUMMONER_SUMMON_INTERVAL_P3;
+    b.bulletTimer = CFG.BOSS_SUMMONER_BULLET_INTERVAL_P3;
+  }
   b.orbitAngle += CFG.BOSS_SUMMONER_SPEED_ORBIT * dt;
   b.x = cx() + Math.cos(b.orbitAngle) * b.orbitDist;
   b.y = cy() + Math.sin(b.orbitAngle) * b.orbitDist;
@@ -2484,14 +2583,13 @@ function updateSummoner(dt){
   b.summonTimer -= dt;
   if(b.summonTimer <= 0){
     var cnt;
-    if(b.phase2){
-      cnt = CFG.BOSS_SUMMONER_SUMMON_COUNT_P2;
-    } else {
-      cnt = b.hard ? CFG.BOSS_SUMMONER_SUMMON_COUNT_HARD : CFG.BOSS_SUMMONER_SUMMON_COUNT;
-    }
+    if(b.phase3){ cnt = CFG.BOSS_SUMMONER_SUMMON_COUNT_P3; }
+    else if(b.phase2){ cnt = CFG.BOSS_SUMMONER_SUMMON_COUNT_P2; }
+    else { cnt = (b.tier !== 'normal') ? CFG.BOSS_SUMMONER_SUMMON_COUNT_HARD : CFG.BOSS_SUMMONER_SUMMON_COUNT; }
     var si;
     for(si = 0; si < cnt; si++){ spawnSummonerMinion(b.x, b.y); }
-    b.summonTimer = b.phase2 ? CFG.BOSS_SUMMONER_SUMMON_INTERVAL_P2 : CFG.BOSS_SUMMONER_SUMMON_INTERVAL;
+    var nextSummon = b.phase3 ? CFG.BOSS_SUMMONER_SUMMON_INTERVAL_P3 : b.phase2 ? CFG.BOSS_SUMMONER_SUMMON_INTERVAL_P2 : CFG.BOSS_SUMMONER_SUMMON_INTERVAL;
+    b.summonTimer = nextSummon;
     burst(b.x, b.y, b.color, 14);
     floater(b.x, b.y - b.size - 10, 'SUMMON!', b.color);
   }
@@ -2499,13 +2597,12 @@ function updateSummoner(dt){
   b.bulletTimer -= dt;
   if(b.bulletTimer <= 0){
     var bcount;
-    if(b.phase2){
-      bcount = CFG.BOSS_SUMMONER_BULLET_COUNT_P2;
-    } else {
-      bcount = b.hard ? CFG.BOSS_SUMMONER_BULLET_COUNT_HARD : CFG.BOSS_SUMMONER_BULLET_COUNT;
-    }
+    if(b.phase3){ bcount = CFG.BOSS_SUMMONER_BULLET_COUNT_P3; }
+    else if(b.phase2){ bcount = CFG.BOSS_SUMMONER_BULLET_COUNT_P2; }
+    else { bcount = (b.tier !== 'normal') ? CFG.BOSS_SUMMONER_BULLET_COUNT_HARD : CFG.BOSS_SUMMONER_BULLET_COUNT; }
     fireSummonerBullets(b, bcount);
-    b.bulletTimer = b.phase2 ? CFG.BOSS_SUMMONER_BULLET_INTERVAL_P2 : CFG.BOSS_SUMMONER_BULLET_INTERVAL;
+    var nextBullet = b.phase3 ? CFG.BOSS_SUMMONER_BULLET_INTERVAL_P3 : b.phase2 ? CFG.BOSS_SUMMONER_BULLET_INTERVAL_P2 : CFG.BOSS_SUMMONER_BULLET_INTERVAL;
+    b.bulletTimer = nextBullet;
   }
 
   b.rot += 0.8 * dt;
@@ -2513,7 +2610,7 @@ function updateSummoner(dt){
 }
 
 function spawnSummonerMinion(sx, sy){
-  var hp = CFG.ENEMY_RED_HP_BASE + waveAccum(wave, CFG.ENEMY_RED_HP_WAVE, CFG.WAVE_HP_SCALE_EARLY, CFG.WAVE_HP_SCALE_LATE);
+  var hp = CFG.ENEMY_RED_HP_BASE + waveAccum(wave, CFG.ENEMY_RED_HP_WAVE, CFG.WAVE_HP_SCALES);
   enemies.push({
     x: sx + (Math.random() - 0.5) * 24,
     y: sy + (Math.random() - 0.5) * 24,
@@ -2524,6 +2621,176 @@ function spawnSummonerMinion(sx, sy){
     dmg: CFG.ENEMY_RED_DMG, xpReward: CFG.XP_PER_RED, coinReward: CFG.COIN_RED,
     stunTimer: 0
   });
+}
+
+/* =====================================================================
+   弾幕型ボス BARRAGE (W15/W35)
+===================================================================== */
+function spawnBarrage(w){
+  var hard = (w >= 35);
+  var orbitDist = Math.min(W, H) * CFG.BOSS_BARRAGE_ORBIT_RATIO;
+  var angle = Math.random() * Math.PI * 2;
+  var hp = hard ? CFG.BOSS_BARRAGE_HP_HARD : CFG.BOSS_BARRAGE_HP;
+  boss = {
+    x: cx() + Math.cos(angle) * orbitDist,
+    y: cy() + Math.sin(angle) * orbitDist,
+    isBoss: true, type: 'barrage', tier: hard ? 'hard' : 'normal',
+    has3Phases: hard,
+    hp: hp, maxHp: hp,
+    size: CFG.BOSS_BARRAGE_SIZE, color: CFG.BOSS_BARRAGE_COLOR,
+    dmg: 0,
+    xpReward:   hard ? CFG.BOSS_BARRAGE_XP * 2 : CFG.BOSS_BARRAGE_XP,
+    coinReward: hard ? CFG.BOSS_BARRAGE_COIN_HARD : CFG.BOSS_BARRAGE_COIN,
+    rot: 0, orbitAngle: angle, orbitDist: orbitDist,
+    bulletTimer: CFG.BOSS_BARRAGE_BULLET_INTERVAL,
+    spiralAngle: 0,
+    stunTimer: 0
+  };
+  showBossBar(hard ? 'BOSS : BARRAGE II' : 'BOSS : BARRAGE');
+}
+
+function updateBarrage(dt){
+  var b = boss;
+  if(!b.phase2 && b.hp <= b.maxHp * CFG.BOSS_PHASE2_HP_RATIO){
+    b.phase2 = true;
+    floater(b.x, b.y - b.size - 22, 'PHASE 2!', '#ff3d81');
+    shakeTimer = 0.4; shakeMag = 12;
+    b.bulletTimer = CFG.BOSS_BARRAGE_BULLET_INTERVAL * 0.7;
+  }
+  if(b.has3Phases && !b.phase3 && b.hp <= b.maxHp * CFG.BOSS_PHASE3_HP_RATIO){
+    b.phase3 = true;
+    floater(b.x, b.y - b.size - 22, 'PHASE 3!', '#ff0044');
+    shakeTimer = 0.6; shakeMag = 18;
+    b.bulletTimer = CFG.BOSS_BARRAGE_BULLET_INTERVAL * 0.5;
+  }
+  b.orbitAngle += CFG.BOSS_BARRAGE_SPEED_ORBIT * dt;
+  b.x = cx() + Math.cos(b.orbitAngle) * b.orbitDist;
+  b.y = cy() + Math.sin(b.orbitAngle) * b.orbitDist;
+  b.bulletTimer -= dt;
+  if(b.bulletTimer <= 0){
+    /* フェーズ1: 円形弾幕, フェーズ2: 螺旋弾幕, フェーズ3: 密螺旋 */
+    if(!b.phase2){
+      fireBarrageBullets(b, CFG.BOSS_BARRAGE_BULLET_COUNT, 0);
+      b.bulletTimer = CFG.BOSS_BARRAGE_BULLET_INTERVAL;
+    } else if(!b.phase3){
+      fireBarrageBullets(b, CFG.BOSS_BARRAGE_SPIRAL_COUNT, b.spiralAngle);
+      b.spiralAngle += CFG.BOSS_BARRAGE_SPIRAL_OFFSET;
+      b.bulletTimer = CFG.BOSS_BARRAGE_BULLET_INTERVAL * 0.7;
+    } else {
+      fireBarrageBullets(b, CFG.BOSS_BARRAGE_SPIRAL_COUNT_P3, b.spiralAngle);
+      b.spiralAngle += CFG.BOSS_BARRAGE_SPIRAL_OFFSET * 1.5;
+      b.bulletTimer = CFG.BOSS_BARRAGE_BULLET_INTERVAL * 0.5;
+    }
+  }
+  b.rot += 1.0 * dt;
+  updateBossHpBar();
+}
+
+function fireBarrageBullets(b, count, baseAngleOffset){
+  var i;
+  for(i = 0; i < count; i++){
+    var a = Math.PI * 2 / count * i + baseAngleOffset;
+    enemyBullets.push({
+      x: b.x, y: b.y,
+      vx: Math.cos(a) * CFG.BOSS_BARRAGE_BULLET_SPEED,
+      vy: Math.sin(a) * CFG.BOSS_BARRAGE_BULLET_SPEED,
+      life: 4.0, dmg: CFG.BOSS_BARRAGE_BULLET_DMG,
+      color: CFG.BOSS_BARRAGE_COLOR, r: 6
+    });
+  }
+}
+
+/* =====================================================================
+   分裂型ボス DIVIDER (W30)
+===================================================================== */
+function spawnDivider(w){
+  var orbitDist = Math.min(W, H) * CFG.BOSS_DIVIDER_ORBIT_RATIO;
+  var angle = Math.random() * Math.PI * 2;
+  boss = {
+    x: cx() + Math.cos(angle) * orbitDist,
+    y: cy() + Math.sin(angle) * orbitDist,
+    isBoss: true, type: 'divider',
+    has3Phases: false,
+    hp: CFG.BOSS_DIVIDER_HP, maxHp: CFG.BOSS_DIVIDER_HP,
+    size: CFG.BOSS_DIVIDER_SIZE, color: CFG.BOSS_DIVIDER_COLOR,
+    dmg: CFG.BOSS_DIVIDER_DMG,
+    xpReward: CFG.BOSS_DIVIDER_XP, coinReward: CFG.BOSS_DIVIDER_COIN,
+    rot: 0, orbitAngle: angle, orbitDist: orbitDist,
+    phase: 'wander', timer: CFG.BOSS_DIVIDER_WANDER_DUR, dirX: 0, dirY: 0, stunTimer: 0,
+    isChild: false
+  };
+  showBossBar('BOSS : DIVIDER');
+}
+
+function updateDivider(dt){
+  var b = boss;
+  if(!b.isChild && !b.phase2 && b.hp <= b.maxHp * CFG.BOSS_PHASE2_HP_RATIO){
+    b.phase2 = true;
+    floater(b.x, b.y - b.size - 22, 'PHASE 2!', '#ff3d81');
+    shakeTimer = 0.4; shakeMag = 12;
+  }
+  var wanderDur = b.phase2 ? CFG.BOSS_DIVIDER_WANDER_DUR_P2 : CFG.BOSS_DIVIDER_WANDER_DUR;
+  var restDur   = b.phase2 ? CFG.BOSS_DIVIDER_REST_DUR_P2   : CFG.BOSS_DIVIDER_REST_DUR;
+  b.timer -= dt;
+  if(b.phase === 'wander'){
+    b.orbitAngle += CFG.BOSS_DIVIDER_SPEED_WANDER * dt;
+    b.x = cx() + Math.cos(b.orbitAngle) * b.orbitDist;
+    b.y = cy() + Math.sin(b.orbitAngle) * b.orbitDist;
+    if(b.timer <= 0){
+      b.phase = 'warn'; b.timer = CFG.BOSS_DIVIDER_WARN_DUR;
+      var dx = cx() - b.x, dy = cy() - b.y;
+      var d  = Math.sqrt(dx * dx + dy * dy);
+      b.dirX = dx / d; b.dirY = dy / d;
+    }
+  } else if(b.phase === 'warn'){
+    if(b.timer <= 0){ b.phase = 'charge'; b.timer = CFG.BOSS_DIVIDER_CHARGE_DUR; }
+  } else if(b.phase === 'charge'){
+    b.x += b.dirX * CFG.BOSS_DIVIDER_SPEED_CHARGE * dt;
+    b.y += b.dirY * CFG.BOSS_DIVIDER_SPEED_CHARGE * dt;
+    var dx2 = b.x - cx(), dy2 = b.y - cy();
+    var d2  = Math.sqrt(dx2 * dx2 + dy2 * dy2);
+    if(d2 < CFG.TOWER_HIT_RADIUS + b.size * 0.5){
+      burst(b.x, b.y, b.color, 22);
+      b.x = cx() + b.dirX * -(CFG.TOWER_HIT_RADIUS + b.size);
+      b.y = cy() + b.dirY * -(CFG.TOWER_HIT_RADIUS + b.size);
+      b.phase = 'rest'; b.timer = restDur;
+      if(takeDamage(b.dmg)){ endGame(false); return; }
+    }
+    if(b.timer <= 0){ b.phase = 'rest'; b.timer = restDur; }
+  } else if(b.phase === 'rest'){
+    if(b.timer <= 0){
+      b.phase = 'wander'; b.timer = wanderDur;
+      b.orbitAngle = Math.atan2(b.y - cy(), b.x - cx());
+    }
+  }
+  b.rot += 1.3 * dt;
+  updateBossHpBar();
+}
+
+/* 分裂型ボス撃破時: 子ボス2体スポーン */
+function spawnDividerChildren(parent){
+  var childHp = Math.ceil(parent.maxHp * CFG.BOSS_DIVIDER_CHILD_HP_RATIO);
+  var childSize = Math.ceil(parent.size * CFG.BOSS_DIVIDER_CHILD_SIZE_RATIO);
+  /* 子ボスは enemies 配列に普通の敵として追加(ボスは同時1体制限のため) */
+  for(var ci = 0; ci < 2; ci++){
+    var ang = parent.rot + (ci === 0 ? -0.8 : 0.8);
+    var dist = parent.size * 1.5;
+    enemies.push({
+      type: 'divider_child',
+      x: parent.x + Math.cos(ang) * dist,
+      y: parent.y + Math.sin(ang) * dist,
+      hp: childHp, maxHp: childHp,
+      size: childSize, color: CFG.BOSS_DIVIDER_COLOR,
+      dmg: CFG.BOSS_DIVIDER_CHILD_DMG,
+      xpReward: Math.ceil(CFG.BOSS_DIVIDER_XP * 0.4),
+      coinReward: Math.ceil(CFG.BOSS_DIVIDER_COIN * 0.3),
+      rot: Math.random() * Math.PI * 2, rotSpd: 1.2,
+      orbitAngle: ang, orbitDist: parent.orbitDist * 0.85,
+      stunTimer: 0
+    });
+  }
+  floater(parent.x, parent.y - parent.size - 14, 'DIVIDES!', CFG.BOSS_DIVIDER_COLOR);
+  burst(parent.x, parent.y, CFG.BOSS_DIVIDER_COLOR, 40);
 }
 
 function fireSummonerBullets(b, count){
@@ -2784,6 +3051,14 @@ function draw(tm, dt){
       ctx.lineTo(-e.size * 0.48, e.size * 0.52);
       ctx.closePath(); ctx.stroke();
       ctx.globalAlpha = 0.22; ctx.fillStyle = e.color; ctx.fill();
+    } else if(e.type === 'divider_child'){
+      /* 分裂子ボス: 二重六角形 */
+      ctx.lineWidth = 3.5;
+      hexPath(e.size * 0.65, 0); ctx.stroke();
+      ctx.lineWidth = 1.5;
+      hexPath(e.size * 0.38, e.rot); ctx.stroke();
+      ctx.globalAlpha = 0.18; ctx.fillStyle = e.color;
+      hexPath(e.size * 0.65, 0); ctx.fill();
     } else if(e.type === 'split' && e.splitOnDeath){
       /* 親分裂体: 六角形 */
       ctx.lineWidth = 3;
@@ -2808,17 +3083,18 @@ function draw(tm, dt){
 
   /* ボス */
   if(boss !== null){
-    /* サモナー: 巡回軌道リング */
-    if(boss.type === 'summoner'){
+    /* サモナー/バラージ: 巡回軌道リング */
+    if(boss.type === 'summoner' || boss.type === 'barrage'){
+      var orbitColor = boss.type === 'barrage' ? 'rgba(255,68,136,0.15)' : 'rgba(200,77,255,0.18)';
       ctx.save();
-      ctx.strokeStyle = 'rgba(200,77,255,0.18)'; ctx.lineWidth = boss.size * 2.2;
+      ctx.strokeStyle = orbitColor; ctx.lineWidth = boss.size * 2.2;
       ctx.setLineDash([6, 14]);
       ctx.beginPath(); ctx.arc(cx(), cy(), boss.orbitDist, 0, Math.PI * 2); ctx.stroke();
       ctx.setLineDash([]);
       ctx.restore();
     }
-    /* チャージャー系: 突進予告帯 */
-    if((boss.type === 'charger' || boss.type === 'mini_charger') && boss.phase === 'warn'){
+    /* チャージャー/ディバイダー系: 突進予告帯 */
+    if((boss.type === 'charger' || boss.type === 'mini_charger' || boss.type === 'divider') && boss.phase === 'warn'){
       var bperpX = -boss.dirY, bperpY = boss.dirX;
       var bHW    = boss.size * 1.4;
       var bfarX  = boss.x + boss.dirX * (W + H);
@@ -2845,14 +3121,36 @@ function draw(tm, dt){
     ctx.shadowColor = boss.color; ctx.shadowBlur = 26;
     ctx.strokeStyle = boss.color; ctx.lineWidth = 4;
     hexPath(boss.size, 0); ctx.stroke();
-    /* サモナーは内側に逆回転リングを追加 */
+    /* サモナーは内側に逆回転リング */
     if(boss.type === 'summoner'){
       ctx.strokeStyle = 'rgba(200,77,255,0.5)'; ctx.lineWidth = 2;
       hexPath(boss.size * 0.6, -boss.rot * 2); ctx.stroke();
     }
+    /* バラージは二重リング + 弾幕演出 */
+    if(boss.type === 'barrage'){
+      ctx.strokeStyle = 'rgba(255,68,136,0.6)'; ctx.lineWidth = 2;
+      hexPath(boss.size * 0.55, boss.rot * 1.8); ctx.stroke();
+      ctx.strokeStyle = 'rgba(255,68,136,0.3)'; ctx.lineWidth = 1;
+      hexPath(boss.size * 1.2, -boss.rot * 0.8); ctx.stroke();
+    }
+    /* ディバイダーは二重六角形 */
+    if(boss.type === 'divider'){
+      ctx.strokeStyle = 'rgba(0,255,204,0.4)'; ctx.lineWidth = 2;
+      hexPath(boss.size * 0.55, -boss.rot * 1.5); ctx.stroke();
+    }
     ctx.globalAlpha = 0.18; ctx.fillStyle = boss.color;
     hexPath(boss.size, 0); ctx.fill();
     ctx.globalAlpha = 1; ctx.restore();
+    /* フェーズ3表示: 輝きリング */
+    if(boss.phase3){
+      var p3pulse = 0.5 + 0.5 * Math.abs(Math.sin(tm * 6));
+      ctx.save(); ctx.translate(boss.x, boss.y);
+      ctx.strokeStyle = '#ff0044'; ctx.lineWidth = 1.5;
+      ctx.globalAlpha = 0.3 + p3pulse * 0.4;
+      ctx.shadowColor = '#ff0044'; ctx.shadowBlur = 12;
+      ctx.beginPath(); ctx.arc(0, 0, boss.size * 1.35, 0, Math.PI * 2); ctx.stroke();
+      ctx.globalAlpha = 1; ctx.shadowBlur = 0; ctx.restore();
+    }
   }
 
   /* 敵弾(サモナー弾) */
@@ -2942,6 +3240,31 @@ function draw(tm, dt){
                CFG.TOWER_BARREL_LEN, CFG.TOWER_BARREL_H);
   ctx.shadowBlur = 0;
   ctx.restore();
+
+  /* バリアシェル描画 */
+  if(barrierCount > 0){
+    var bk;
+    for(bk = 0; bk < barrierCount; bk++){
+      var bShellR = CFG.TOWER_HEX_R_OUTER + 14 + bk * 9;
+      var bPulse  = barrierBreakTimer > 0 && bk === 0 ? 1.0 : (0.55 + 0.35 * Math.sin(tm * 3.5 + bk * 1.1));
+      ctx.save(); ctx.translate(cx(), cy());
+      ctx.strokeStyle = 'rgba(77,243,255,' + (0.55 + bPulse * 0.35) + ')';
+      ctx.shadowColor = '#4df3ff'; ctx.shadowBlur = 16 + bPulse * 8;
+      ctx.lineWidth = 2;
+      hexPath(bShellR, hexRot * 0.4 + bk * 0.5); ctx.stroke();
+      ctx.globalAlpha = 0.08 + bPulse * 0.06;
+      ctx.fillStyle = '#4df3ff';
+      hexPath(bShellR, hexRot * 0.4 + bk * 0.5); ctx.fill();
+      ctx.globalAlpha = 1; ctx.shadowBlur = 0; ctx.restore();
+    }
+  }
+  /* バリア破壊フラッシュ */
+  if(barrierBreakTimer > 0){
+    ctx.globalAlpha = (barrierBreakTimer / CFG.BARRIER_BREAK_FLASH_DUR) * 0.35;
+    ctx.fillStyle = '#4df3ff';
+    ctx.fillRect(0, 0, W, H);
+    ctx.globalAlpha = 1;
+  }
 
   /* タワーHPバー(セグメント) */
   var hw  = CFG.TOWER_HP_BAR_W;
@@ -3100,9 +3423,10 @@ function suspendRun(){
     coins: coins, kills: kills, specialGauge: specialGauge,
     weapons: { subTurret: weapons.subTurret, pierce: weapons.pierce },
     specials: { railgunUnlocked: specials.railgun.unlocked, overdriveUnlocked: specials.overdrive.unlocked },
+    barrierCount: barrierCount,
     upgradeCounts: {
       rate: upgradeCounts.rate, dmg: upgradeCounts.dmg, range: upgradeCounts.range,
-      speed: upgradeCounts.speed, maxhp: upgradeCounts.maxhp, heal: upgradeCounts.heal
+      speed: upgradeCounts.speed, barrier: upgradeCounts.barrier, heal: upgradeCounts.heal
     }
   };
   persistSave();
@@ -3150,9 +3474,11 @@ function resumeRun(){
   specials.overdrive.unlocked= sr.specials ? !!sr.specials.overdriveUnlocked : false;
   overdriveTimer = 0; railgunBeam = null;
   weapons         = { subTurret: sr.weapons.subTurret, pierce: sr.weapons.pierce };
+  barrierCount    = sr.barrierCount || 0;
+  barrierBreakTimer = 0;
   upgradeCounts   = {
     rate: sr.upgradeCounts.rate, dmg: sr.upgradeCounts.dmg, range: sr.upgradeCounts.range,
-    speed: sr.upgradeCounts.speed, maxhp: sr.upgradeCounts.maxhp, heal: sr.upgradeCounts.heal
+    speed: sr.upgradeCounts.speed, barrier: sr.upgradeCounts.barrier || 0, heal: sr.upgradeCounts.heal
   };
   turretAngle = 0; fireTimer = 0;
 

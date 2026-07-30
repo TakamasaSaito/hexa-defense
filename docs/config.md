@@ -6,25 +6,27 @@ CONFIGオブジェクトは `index.html` 冒頭にまとめる。マジックナ
 | パラメータ | キー | 初期値 | 単位 |
 |---|---|---|---|
 | HP | `TOWER_HP` | 100 | HP |
-| ダメージ | `TOWER_DMG` | 10 | /発 |
-| 発射間隔 | `TOWER_FIRE_INTERVAL` | 0.45 | 秒 |
+| ダメージ | `TOWER_DMG` | **7** | /発 (旧10→難度強化で弱体化) |
+| 発射間隔 | `TOWER_FIRE_INTERVAL` | **0.55** | 秒 (旧0.45→弱体化) |
 | 弾速 | `TOWER_BULLET_SPEED` | 520 | px/s |
-| 射程(倍率) | `TOWER_RANGE_RATIO` | **0.30** | ×min(W,H) ※初期値を絞り遠距離はRAILGUNで対処 |
-| 射程上限 | `TOWER_RANGE_MAX` | 0.45 | ×min(W,H)、ショップ強化の上限 |
+| 射程(倍率) | `TOWER_RANGE_RATIO` | 0.30 | ×min(W,H) |
+| 射程上限 | `TOWER_RANGE_MAX` | 0.45 | ×min(W,H) |
 | ショップ射程逓減 | `TOWER_RANGE_SHOP_STEPS` | [0.12,0.09,0.07,0.05] | 購入回数ごとの増加率 |
-| タワーY中心 | `TOWER_CENTER_Y` | 0.50 | ×画面高。0.50=中央 |
+| タワーY中心 | `TOWER_CENTER_Y` | 0.50 | ×画面高 |
 | サブ砲台ダメージ倍率 | `SUB_DMG_RATIO` | 0.5 | |
+
+**基礎DPS:** 7 / 0.55 ≈ 12.7/秒
 
 ## 敵パラメータ
 | キー | 値 | 説明 |
 |---|---|---|
 | `ENEMY_RED_HP_BASE` | 12 | 赤スクエア基礎HP |
-| `ENEMY_RED_HP_WAVE` | 6 | ウェーブごとHP加算 |
+| `ENEMY_RED_HP_WAVE` | 6 | ウェーブごとHP加算(帯係数で乗算) |
 | `ENEMY_RED_SPEED_BASE` | 55 | 基礎速度 px/s |
-| `ENEMY_RED_SPEED_WAVE` | 4 | ウェーブごと速度加算 |
+| `ENEMY_RED_SPEED_WAVE` | 4 | ウェーブごと速度加算(帯係数で乗算) |
 | `ENEMY_RED_DMG` | 8 | 接触ダメージ |
 | `ENEMY_ORANGE_HP_BASE` | 26 | タンク基礎HP |
-| `ENEMY_ORANGE_HP_WAVE` | 10 | ウェーブごとHP加算 |
+| `ENEMY_ORANGE_HP_WAVE` | 10 | ウェーブごとHP加算(帯係数で乗算) |
 | `ENEMY_ORANGE_SPEED_BASE` | 34 | タンク基礎速度 |
 | `ENEMY_ORANGE_SPEED_WAVE` | 4 | |
 | `ENEMY_ORANGE_DMG` | 14 | タンク接触ダメージ |
@@ -43,61 +45,64 @@ CONFIGオブジェクトは `index.html` 冒頭にまとめる。マジックナ
 | `WAVE_SPAWN_INTERVAL_MIN` | 0.18 | 最小スポーン間隔(秒) |
 | `WAVE_HEAL_ON_CLEAR` | 20 | ウェーブクリア回復量 |
 
-## 2段階難度カーブ
+## 5帯難度スケール係数 (#11で2段階→5帯に変更)
 | キー | 値 | 説明 |
 |---|---|---|
-| `WAVE_PHASE_BREAK` | 6 | W6以降を加速期とするフェーズ境界 |
-| `WAVE_HP_SCALE_EARLY` | 1.0 | イントロ期(W1〜5)のHP増加係数(×ENEMY_RED_HP_WAVE) |
-| `WAVE_HP_SCALE_LATE` | 2.2 | 加速期(W6〜)のHP増加係数 |
-| `WAVE_SPEED_SCALE_EARLY` | 1.0 | イントロ期の速度増加係数 |
-| `WAVE_SPEED_SCALE_LATE` | 1.6 | 加速期の速度増加係数 |
-| `WAVE_SPAWN_SCALE_EARLY` | 1.0 | イントロ期の出現数増加係数 |
-| `WAVE_SPAWN_SCALE_LATE` | 1.5 | 加速期の出現数増加係数 |
+| `WAVE_HP_SCALES` | [1.0, 2.0, 3.5, 5.5, 8.0] | 各帯(W1-10/11-20/21-30/31-40/41-50)のHP増加係数 |
+| `WAVE_SPEED_SCALES` | [1.0, 1.5, 2.2, 3.0, 4.0] | 各帯の速度増加係数 |
+| `WAVE_SPAWN_SCALES` | [1.0, 1.4, 1.9, 2.5, 3.2] | 各帯の出現数増加係数 |
 
-W6以降のHPは「W1〜5で使う線形加算」に乗数を掛けて急加速させる。
-各フェーズ係数を変えることで「どこで初見が詰まるか」を細かく制御できる。
+**waveAccum(w, perWave, scales):** W1からウェーブwまでの累積増加量を5帯合計で返す。
+各帯は10ウェーブ幅。帯ごとに独立した係数を掛けることで帯境界で急加速する。
 
-目標バランス(005決定記録): W5ミニボスが初見の壁。恒久強化3〜4回でW5突破。
+**廃止:** `WAVE_PHASE_BREAK` / `WAVE_HP_SCALE_EARLY` / `WAVE_HP_SCALE_LATE` など旧2段階キー (#11で削除)
 
-**改訂後の難度カーブ(W5ボスHP 600・DMG 24)**
-- 無強化: W5ミニボスHP 600をDMG10基本射撃のみでは撃破困難 → 敗北
-- PULSE(初期所持)を使いながらW1〜4のゲームプレイに慣れる
-- 恒久強化DMG/RATE 2〜3段階 + PULSE活用でW5突破可能
-- W5突破 → サブ砲台獲得 → W10チャージャー → RAILGUN解放
+## バリアシステム (#11で最大HP強化に置き換え)
+| キー | 値 | 説明 |
+|---|---|---|
+| `BARRIER_MAX` | 3 | バリア最大所持数 |
+| `BARRIER_BREAK_FLASH_DUR` | 0.3 | バリア破壊フラッシュ持続時間(秒) |
+
+バリアは枚数制。1枚でダメージを1回完全無効化(量に依らない)。
+視覚: タワー周囲に六角形殻をバリア枚数分表示。破壊時: シアンパーティクルリング+フラッシュ+音。
+ウェーブクリア時に回復しない(希少資源)。
 
 ## XP設計
 | キー | 値 | 説明 |
 |---|---|---|
-| `XP_BASE` | **50** | レベル1必要XP(旧20→1ウェーブ1回UP目標に緩和) |
+| `XP_BASE` | 50 | レベル1必要XP |
 | `XP_SCALE` | 1.3 | レベルごと倍率 |
-| `XP_CAP` | **600** | 最大必要XP(旧500) |
+| `XP_CAP` | 600 | 最大必要XP |
 | `XP_PER_RED` | 8 | 赤スクエア撃破XP |
 | `XP_PER_ORANGE` | 18 | タンク撃破XP |
-
-**レベルアップ頻度の目安:** W1-10でほぼ1ウェーブ1回UP。高Wではウェーブ規模が大きいため複数回UPあり。
-視覚化(弾数増加・色変化・ミサイル)でレベルアップの実感を補強する(#10方針)。
 
 ## 必殺ゲージ(3種)
 | キー | 値 | 説明 |
 |---|---|---|
-| `SPECIAL_MAX` | 1000 | 満タン値(内部)。UI表示は0〜100% |
-| `SPECIAL_DMG_RATIO` | **0.25** | 与ダメ→ゲージ変換率(#10で0.5→0.25に再調整。満タン≈4000ダメ必要) |
+| `SPECIAL_MAX` | 1000 | 満タン値(内部) |
+| `SPECIAL_DMG_RATIO` | 0.25 | 与ダメ→ゲージ変換率 |
 
-### PULSE(初期所持) — スタン主体(#10再設計)
+### PULSE(初期所持) — 全方位弾幕 (#11でスタンから変更)
+| キー | 値 | 説明 |
+|---|---|---|
 | `PULSE_COST` | 330 | コスト(33%) |
 | `PULSE_CD` | 3 | クールダウン(秒) |
-| `PULSE_DMG_MULT` | **2** | タワーDMGへの倍率(旧8→スタン主体に変更) |
-| `PULSE_RANGE_MULT` | 1.8 | 爆発半径(射程×1.8) |
-| `PULSE_KNOCKBACK` | **100** | ノックバック距離(px、旧200) |
-| `PULSE_STUN_DUR` | 2.0 | 通常敵スタン時間(秒) |
-| `PULSE_STUN_DUR_BOSS` | 0.5 | ボススタン時間(秒、スタンロック防止) |
+| `PULSE_BULLET_COUNT` | 20 | 発射弾数(全方位均等) |
+| `PULSE_BULLET_SPEED` | 380 | 弾速(px/s) |
+| `PULSE_BULLET_DMG_MULT` | 1.5 | タワーDMGへの倍率 |
+
+**廃止:** `PULSE_DMG_MULT` / `PULSE_RANGE_MULT` / `PULSE_KNOCKBACK` / `PULSE_STUN_DUR` / `PULSE_STUN_DUR_BOSS` (#11で削除)
 
 ### RAILGUN(W10解放)
+| キー | 値 | 説明 |
+|---|---|---|
 | `RAILGUN_COST` | 500 | コスト(50%) |
 | `RAILGUN_CD` | 6 | クールダウン(秒) |
 | `RAILGUN_DMG_MULT` | 20 | 射線上の全敵に適用 |
 
 ### OVERDRIVE(W20解放)
+| キー | 値 | 説明 |
+|---|---|---|
 | `OVERDRIVE_COST` | 1000 | コスト(100%) |
 | `OVERDRIVE_CD` | 15 | クールダウン(秒) |
 | `OVERDRIVE_DUR` | 8 | 持続時間(秒) |
@@ -105,79 +110,107 @@ W6以降のHPは「W1〜5で使う線形加算」に乗数を掛けて急加速�
 | `OVERDRIVE_DMG_MULT` | 2.0 | ダメージ2倍 |
 | `OVERDRIVE_RANGE_MULT` | 1.5 | 射程1.5倍 |
 
-## コイン(M2)
+## ミサイル
 | キー | 値 | 説明 |
 |---|---|---|
-| `COIN_RED` | 1 | 赤スクエア撃破コイン |
-| `COIN_ORANGE` | 3 | タンク撃破コイン |
-| `COIN_BOSS` | 50 | ボス撃破コイン |
+| `MISSILE_DMG_MULT` | **2.5** | タワーDMGへの倍率(旧4.0→弱体化) |
+| `MISSILE_INTERVAL` | **5.0** | 発射間隔(秒)(旧3.0→弱体化) |
 
-コインはラン内通貨。ラン終了時に `META_COIN_RATE(0.5)` 分がメタコインに変換される。
-`gainCoin(amount, x, y)` が獲得・HUD更新・フローター演出をまとめて処理。
-コイン実際獲得量 = `ceil(amount × coinGainMult)` (恒久強化coinGainで倍率が上がる)。
+## ボス設定
 
-## ラン内ショップ(M2)
+### チャージャー系 (W5/10/25/45)
+| キー | 値 | 説明 |
+|---|---|---|
+| `BOSS_MINI_HP` | 300 | W5ミニボスHP |
+| `BOSS_CHARGER_HP` | 600 | W10ノーマルHP |
+| `BOSS_CHARGER_HP_HARD` | 1400 | W25(hard)HP |
+| `BOSS_CHARGER_HP_ULTRA` | 3000 | W45(ultra)HP |
+| `BOSS_CHARGER_DMG` | 24 | 突進接触ダメージ |
+| `BOSS_CHARGER_DMG_HARD` | 36 | hard突進ダメージ |
+| `BOSS_CHARGER_DMG_ULTRA` | 50 | ultra突進ダメージ |
+| `BOSS_CHARGER_SPEED_CHARGE` | 420 | 突進速度(px/s) |
+| `BOSS_PHASE2_HP_RATIO` | 0.60 | フェーズ2移行HP割合 |
+| `BOSS_PHASE3_HP_RATIO` | 0.30 | フェーズ3移行HP割合(W25以降) |
+| `BOSS_CHARGER_WANDER_DUR_P3` | 1.0 | フェーズ3周回時間(秒) |
+| `BOSS_CHARGER_REST_DUR_P3` | 0.6 | フェーズ3休止時間(秒) |
+
+### バラージ系(W15/35) — 新規 (#11)
+| キー | 値 | 説明 |
+|---|---|---|
+| `BOSS_BARRAGE_HP` | 800 | W15HP |
+| `BOSS_BARRAGE_HP_HARD` | 2000 | W35HP |
+| `BOSS_BARRAGE_ORBIT_SPEED` | 0.5 | 軌道回転速度(rad/s) |
+| `BOSS_BARRAGE_INTERVAL_P1` | 1.5 | フェーズ1弾幕間隔(秒) |
+| `BOSS_BARRAGE_INTERVAL_P2` | 0.9 | フェーズ2弾幕間隔(秒) |
+| `BOSS_BARRAGE_INTERVAL_P3` | 0.6 | フェーズ3弾幕間隔(秒、W35のみ) |
+| `BOSS_BARRAGE_COUNT_P1` | 8 | フェーズ1弾数(円形) |
+| `BOSS_BARRAGE_COUNT_P2` | 12 | フェーズ2弾数(螺旋) |
+| `BOSS_BARRAGE_COUNT_P3` | 18 | フェーズ3弾数(高密度螺旋) |
+| `BOSS_BARRAGE_BULLET_SPEED` | 160 | 弾速(px/s) |
+| `BOSS_BARRAGE_DMG` | 12 | 弾ダメージ |
+
+### ディバイダー(W30) — 新規 (#11)
+| キー | 値 | 説明 |
+|---|---|---|
+| `BOSS_DIVIDER_HP` | 1200 | 親HP |
+| `BOSS_DIVIDER_ORBIT_SPEED` | 0.6 | 軌道速度(rad/s) |
+| `BOSS_DIVIDER_CHARGE_SPEED` | 350 | 突進速度(px/s) |
+| `BOSS_DIVIDER_CHILD_HP_RATIO` | 0.4 | 子のHP比(親最大HPの40%) |
+| `BOSS_DIVIDER_CHILD_COIN` | 25 | 子撃破コイン |
+| `BOSS_DIVIDER_DMG` | 20 | 突進ダメージ |
+
+### サモナー系 (W20/40/50)
+| キー | 値 | 説明 |
+|---|---|---|
+| `BOSS_SUMMONER_HP` | 700 | W20HP |
+| `BOSS_SUMMONER_HP_HARD` | 1800 | W40HP |
+| `BOSS_SUMMONER_HP_ULTRA` | 4000 | W50HP |
+| `BOSS_SUMMONER_P3_SUMMON_INTERVAL` | 1.5 | フェーズ3召喚間隔(秒) |
+| `BOSS_SUMMONER_P3_BULLET_COUNT` | 16 | フェーズ3弾数 |
+
+## コイン経済
+| キー | 値 | 説明 |
+|---|---|---|
+| `META_COIN_RATE` | **0.6** | ラン終了コインのメタコイン変換率(旧0.5) |
+| `PERM_MAX_LEVEL` | 5 | 各系統の最大レベル |
+| `PERM_BASE_PRICE` | **25** | Tier1価格(メタコイン)(旧20) |
+| `PERM_PRICE_SCALE` | 1.8 | レベルごと価格倍率 |
+| `PERM_DMG_PER_LV` | **0.20** | ダメージ+20%/LV(旧0.15) |
+| `PERM_RATE_PER_LV` | **0.15** | 発射間隔-15%/LV(旧0.12) |
+| `PERM_HP_PER_LV` | **25** | 最大HP+25/LV(旧20) |
+| `PERM_RANGE_PER_LV` | **0.10** | 射程+10%/LV(旧0.08) |
+| `PERM_COIN_GAIN_PER_LV` | **0.18** | コイン獲得量+18%/LV(旧0.15) |
+
+**価格:** Tier1: 25, T2: 45, T3: 81, T4: 146, T5: 263 (×1.8倍逓増)
+
+**経済目標:** W5前後敗北ランで60〜80コイン → メタコイン36〜48 → 2ランに1個ペースでTier1購入
+
+## ラン内ショップ
 | キー | 値 | 説明 |
 |---|---|---|
 | `SHOP_BASE_PRICE` | 10 | 初回価格 |
 | `SHOP_PRICE_SCALE` | 1.5 | 購入ごと倍率 |
 
-**価格計算:** `floor(SHOP_BASE_PRICE × SHOP_PRICE_SCALE ^ upgradeCounts[id])`
+**品目(バリア追加):** 連射速度/ダメージ/射程/弾速/バリア+1/HP即時回復
+(旧「最大HP+30」をバリア+1に置き換え: #11)
 
-`upgradeCounts` はレベルアップ3択カードとショップで共有される。カードで「連射」を上げるとショップの「連射」価格も上がる。
-
-**品目(6種):** 連射速度(弾+1条/DPS維持)/ダメージ(+40%/弾強化)/射程(+15%)/弾速(+15%)/最大HP+30/HP即時回復+30
-
-**連射強化の視覚変化:** upgradeCounts.rate+1 条(上限4)の弾を扇形に発射。1発ダメージをstream数等分しDPS不変。
-**ダメージ強化の視覚変化:** 弾の半径 4→6px、色シアン→白→淡金(Lv0〜4)。
-**ミサイル解放条件:** 連射Lv4(upgradeCounts.rate≥3) or ダメージLv5(upgradeCounts.dmg≥4)でミサイルが3秒ごとに自動発射。
-
-**UI:** SHOPボタン=左上WAVEパネル下。STATE='shop'でゲームポーズ。所持コイン不足はグレーアウト。
-
-## 回復アイテムドロップ(M2)
+## 回復アイテムドロップ
 | キー | 値 | 説明 |
 |---|---|---|
 | `DROP_HEAL_CHANCE` | 0.05 | 通常敵撃破時のドロップ率 |
 | `DROP_HEAL_AMOUNT` | 15 | 取得時回復量 |
 | `DROP_SPEED` | 40 | タワーへの漂い速度(px/s) |
 
-**挙動:** 敵死亡位置に緑発光クロスがスポーン → タワーへゆっくり漂う → タワー接触か弾ヒットで取得(+15HP)。8秒で消滅。
-
-## 恒久強化(M3実装済)
-| キー | 値 | 説明 |
-|---|---|---|
-| `META_COIN_RATE` | 0.5 | ラン終了コインのメタコイン変換率 |
-| `PERM_MAX_LEVEL` | 5 | 各系統の最大レベル |
-| `PERM_BASE_PRICE` | 20 | Tier1価格(メタコイン) |
-| `PERM_PRICE_SCALE` | 1.8 | レベルごと価格倍率 |
-| `PERM_DMG_PER_LV` | 0.15 | ダメージ+15%/LV |
-| `PERM_RATE_PER_LV` | 0.12 | 発射間隔-12%/LV |
-| `PERM_HP_PER_LV` | 20 | 最大HP+20/LV |
-| `PERM_RANGE_PER_LV` | 0.08 | 射程+8%/LV |
-| `PERM_COIN_GAIN_PER_LV` | 0.15 | コイン獲得量+15%/LV |
-
-**価格:** `floor(PERM_BASE_PRICE × PERM_PRICE_SCALE ^ currentLv)` → LV0→1: 20, 1→2: 36, 2→3: 65, 3→4: 117, 4→5: 211
-
-**経済目標:** W3-4敗北で約30〜50コイン獲得 → メタコイン15〜25 → Tier1(20)を1個購入できる
-
-5系統の効果は `applyPermanentUpgrades()` がラン開始時に `resetGame()` 経由で適用する。
-
-## チェックポイント制(M3実装済)
+## チェックポイント制
 | キー | 値 | 説明 |
 |---|---|---|
 | `CHECKPOINT_WAVES` | [10,20,30,40] | 到達時に解除されるウェーブ番号 |
 | `CHECKPOINT_START_COINS` | 80 | CP開始時の補償コイン数 |
 
-解除されたCPはタイトルの「SELECT WAVE」から選択可能。
-CP開始時: `coins = CHECKPOINT_START_COINS` + 武器2択(checkpointWeaponMode=true でshowWeaponReward()を流用)。
-`docs/decisions/003-checkpoint-compensation.md` 参照。
+## 中断セーブ
 
-## 中断セーブ(M3実装済)
 `saveData.suspendedRun` に1スロット上書き保存。保存内容:
-wave/hp/maxHp/dmg/fireInterval/bulletSpeed/range/level/xp/xpNext/coins/kills/specialGauge/weapons/upgradeCounts
-
-- HUDの「II」(ポーズ)ボタン → SAVE & QUIT で保存
-- タイトルの「CONTINUE」ボタン(suspendedRun存在時のみ表示)で復元
+wave/hp/maxHp/dmg/fireInterval/bulletSpeed/range/level/xp/xpNext/coins/kills/specialGauge/weapons/upgradeCounts/**barrierCount**
 
 ## SaveData スキーマ(v1)
 ```json
@@ -192,44 +225,16 @@ wave/hp/maxHp/dmg/fireInterval/bulletSpeed/range/level/xp/xpNext/coins/kills/spe
   "settings": { "mute": false, "speedIdx": 1 }
 }
 ```
-localStorageキー: `hd_save`。旧v0キー(`hd_best_wave`/`hd_settings`)からの自動マイグレーション付き。
+localStorageキー: `hd_save`。
 
 ## 倍速設定
 | キー | 値 | 説明 |
 |---|---|---|
-| `SPEED_STEPS` | [1,3,10] | サイクルトグル倍率リスト(デフォルトx3) |
-| `SPEED_SUBSTEP_DT` | 0.01667 (1/60s) | 固定サブステップdt |
+| `SPEED_STEPS` | [1,3,10] | サイクルトグル倍率リスト |
+| `SPEED_SUBSTEP_DT` | 0.01667 | 固定サブステップdt(秒) |
 | `SPEED_BUDGET_MS` | 8 | フレーム内処理時間上限(ms) |
-| `SPEED_SUBSTEP_MAX_LAG` | 2 | 持ち越し上限(mult×この値がcap) |
-| `SPEED_PARTICLE_THRESH` | 2 | このインデックス以上(x5~)でパーティクル間引き |
-| `SPEED_PARTICLE_RATIO` | 0.3 | 間引き時のパーティクル/トレイル生成率 |
-| `settings.speedIdx` | 1 | 現在の倍率インデックス(デフォルト1=x3、localStorage保存) |
-
-- 倍速はゲームシミュレーション(update)のみ
-- draw・演出タイマー(flashTimer/shakeTimer)・hexRot回転は等倍
-- 8ms超過時は残りサブステップを次フレームへ持ち越し(溜まりすぎはcapで抑制)
-
-## 必殺ゲージ充填量の目安
-`SPECIAL_MAX / SPECIAL_DMG_RATIO = 満タンまでに必要な与ダメージ量`
-
-| 設定 | 必要与ダメ | W1(9体) | W3(15体) | W5ボス込み |
-|---|---|---|---|---|
-| ratio=0.5(旧) | 2000 | 0.08本 | 0.23本 | 〜0.5本 |
-| ratio=1.0(現在) | 1000 | 0.16本 | 0.45本 | 〜1本 |
-
-W5のミニボス(HP300)が充填の主力。W3〜5で初めて1回撃てる体感が目標。
-
-## W5小型ボス設定
-| キー | 値 | 説明 |
-|---|---|---|
-| `BOSS_MINI_HP` | 300 | HP |
-| `BOSS_MINI_SPEED_WANDER` | 0.6 rad/s | 軌道回転速度 |
-| `BOSS_MINI_ORBIT_RATIO` | 0.30 | 軌道半径 = min(W,H) × この値 |
-| `BOSS_MINI_SPEED_CHARGE` | 280 px/s | 突進速度 |
-| `BOSS_MINI_WARN_DUR` | 0.8 s | 予告線表示時間 |
-| `BOSS_MINI_CHARGE_DUR` | 0.55 s | 突進持続時間 |
-| `BOSS_MINI_REST_DUR` | 2.2 s | 休止時間 |
-| `BOSS_MINI_WANDER_DUR` | 3.0 s | 周回時間(次のwarnまで) |
+| `SPEED_PARTICLE_THRESH` | 2 | このインデックス以上でパーティクル間引き |
+| `SPEED_PARTICLE_RATIO` | 0.3 | 間引き時の生成率 |
 
 ## 特殊武器設定
 | キー | 値 | 説明 |
@@ -239,24 +244,13 @@ W5のミニボス(HP300)が充填の主力。W3〜5で初めて1回撃てる体�
 | `SUB_TURRET_FIRE_RATIO` | 0.65 | サブ砲台の発射速度倍率 |
 | `PIERCE_LV` | [1,2,3,999] | 貫通弾各レベルの最大ヒット数 |
 
-## デバッグ機能
+## デバッグ: URLパラメータ `?wave=N`
 
-### URLパラメータ: `?wave=N`
-任意のウェーブからゲームを開始できる。本番ビルドにも残存(コスト無し)。
-
-```
-http://localhost:8000/?wave=5   # W5ミニボス戦を即確認
-http://localhost:8000/?wave=6   # 2段階カーブ加速期を確認
-http://localhost:8000/?wave=10  # W10予定ボス位置まで確認
-```
-
-- 実装: `resetGame()` 内で `getUrlParam('wave')` を読み、`1 ≤ N ≤ MAX_WAVE` なら `wave = N` にセット
-- 武器・恒久強化はリセット状態。ウェーブ難度のみスキップ
-- 本番URLにパラメータがなければ通常通りW1開始
+任意のウェーブからゲームを開始。`?wave=5` でW5ボス即確認など。
 
 ## 調整指針
-1. **初見W6〜7敗北(W5武器獲得後)** が基準。`WAVE_HP_SCALE_LATE` / `WAVE_SPAWN_SCALE_LATE` で調整
-2. **W1〜5は緩やかに**: `WAVE_HP_SCALE_EARLY=1.0` を変えず、イントロ期は線形増加のみ
-3. **経済目標**: W6〜7敗北で約50〜60コイン獲得 → `COIN_RED` / `WAVE_SPAWN_BASE` で調整
-4. 必殺が「本作最大の気持ちいい瞬間」になるよう `SPECIAL_DAMAGE_MULT` と演出時間は慎重に
-5. iPhone Safari 60fps 維持が最優先。パーティクル上限 `PARTICLE_MAX=200` を超えたら削除
+1. **設計目標:** 恒久強化ゼロで初見W5ボス敗北。フルコンプ+武器/必殺全解放でW50クリア可(余裕なし)
+2. **5帯係数:** `WAVE_HP_SCALES` の各値を変えることで帯境界の急加速タイミングを制御
+3. **バリア入手難度:** ショップ/カードでのみ入手。BARRIER_MAX=3を超えない(希少資源)
+4. **PULSE弾幕:** PULSE_BULLET_COUNT(20)とPULSE_BULLET_DMG_MULT(1.5)のバランスで面処理力を調整
+5. **iPhone Safari 60fps 維持が最優先:** PARTICLE_MAX=200を超えたら削除
