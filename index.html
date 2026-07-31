@@ -197,6 +197,21 @@ html, body { width:100%; height:100%; overflow:hidden; background:#05090f; touch
   clip-path:polygon(10px 0,100% 0,100% calc(100% - 10px),calc(100% - 10px) 100%,0 100%,0 10px); }
 .title-sub-btn:active { background:rgba(77,243,255,0.18); }
 
+/* HELP画面 */
+.help-panel { width:min(92vw,400px); max-height:84vh; overflow-y:auto; -webkit-overflow-scrolling:touch;
+  background:linear-gradient(180deg,rgba(10,22,42,0.97),rgba(6,12,26,0.97));
+  border:1px solid rgba(77,243,255,0.35); padding:18px 16px 16px;
+  clip-path:polygon(18px 0,100% 0,100% calc(100% - 18px),calc(100% - 18px) 100%,0 100%,0 18px); }
+.help-hd { font-family:'Chakra Petch',sans-serif; font-weight:700; font-size:18px; letter-spacing:6px;
+  color:#eaffff; text-shadow:0 0 16px rgba(77,243,255,0.7); text-align:center; margin-bottom:14px; }
+.help-sec { font-family:'Chakra Petch',sans-serif; font-size:9px; letter-spacing:3px;
+  color:rgba(77,243,255,0.55); border-bottom:1px solid rgba(77,243,255,0.14);
+  margin:12px 0 6px; padding-bottom:3px; }
+.help-row { font-family:'Rajdhani',sans-serif; font-size:13px; color:rgba(190,225,255,0.85);
+  padding:4px 2px; line-height:1.5; }
+.help-kw { color:#4df3ff; font-family:'Chakra Petch',sans-serif; font-size:11px; font-weight:700;
+  letter-spacing:1px; display:inline-block; min-width:80px; }
+
 /* SP獲得表示(リザルト) */
 .sp-earned { margin:6px 0 16px; font-family:'Chakra Petch',sans-serif; font-size:14px;
   letter-spacing:3px; color:#ffd257; text-align:center; text-shadow:0 0 12px rgba(255,210,87,0.6); }
@@ -568,6 +583,7 @@ html, body { width:100%; height:100%; overflow:hidden; background:#05090f; touch
       <button class="title-sub-btn" id="continueBtn" style="display:none">CONTINUE</button>
       <button class="title-sub-btn" id="checkpointBtn" style="display:none">SELECT WAVE</button>
       <button class="title-sub-btn" id="upgradeBtn">SKILL POINTS</button>
+      <button class="title-sub-btn" id="helpBtn" style="font-size:12px;letter-spacing:4px">HELP</button>
     </div>
     <div class="title-meta">
       <div class="meta-item"><div class="v" id="bestWaveDisp">—</div><div class="k">BEST WAVE</div></div>
@@ -588,6 +604,15 @@ html, body { width:100%; height:100%; overflow:hidden; background:#05090f; touch
       <div id="spMigrateNotice" class="sp-migrate-notice" style="display:none">スキルポイントを振り直しました</div>
       <div id="spItems"></div>
       <button id="permaCloseBtn" class="store-close">BACK</button>
+    </div>
+  </div>
+
+  <!-- HELP画面 -->
+  <div class="screen" id="scrHelp">
+    <div class="help-panel">
+      <div class="help-hd">HELP</div>
+      <div class="help-body" id="helpBody"></div>
+      <button id="helpCloseBtn" class="store-close">BACK</button>
     </div>
   </div>
 
@@ -1280,6 +1305,8 @@ var bossSpawnFn  = null;
 var enemyBullets = [];
 /* 新敵告知 — ゲームを止めない軽量オーバーレイ */
 var newEnemyAlert = null;
+/* チュートリアルヒント — 初見向け1回表示のオーバーレイ */
+var tutorialHint = null; /* { title, text, timer, maxTimer } */
 
 /* 特殊武器 */
 var weapons = { subTurret: 0, pierce: 0, attrFire: 0, attrIce: 0, attrLightning: 0, orbital: 0, explosion: 0, satellite: 0, field: 0 };
@@ -1350,7 +1377,8 @@ function defaultSaveData(){
     unlockedCheckpoints: [1],
     suspendedRun: null,
     settings: { mute: false, speedIdx: 1 },
-    v4MigrateNotify: false
+    v4MigrateNotify: false,
+    seenHints: {}
   };
 }
 
@@ -1473,6 +1501,7 @@ function migrateSave(data){
     d.unlockedCheckpoints = cps;
   }
   if(data.suspendedRun && typeof data.suspendedRun === 'object') d.suspendedRun = data.suspendedRun;
+  if(data.seenHints && typeof data.seenHints === 'object') d.seenHints = data.seenHints;
   if(data.settings && typeof data.settings === 'object'){
     if(typeof data.settings.mute === 'boolean') d.settings.mute = data.settings.mute;
     if(typeof data.settings.speedIdx === 'number' &&
@@ -1748,6 +1777,7 @@ function spawnRareItem(x, y){
   if(pool.length === 0) pool = ['barrier'];
   var effect = pool[Math.floor(Math.random() * pool.length)];
   rareItems.push({ x: x, y: y, life: CFG.DROP_RARE_LIFE, effect: effect });
+  showTutorialHint('raredrop', 'RARE DROP!', 'Gold hexagon drifts toward your tower — move close to collect it');
 }
 
 function applyRareEffect(effect, ix, iy){
@@ -1823,6 +1853,7 @@ function doLevelUp(){
   STATE = 'levelup';
   renderLvCards();
   showScreen('scrLevelup');
+  showTutorialHint('levelup', 'LEVEL UP!', 'Pick one card to upgrade your run — shown on pause screen');
 }
 
 /* カードプールからランダム3択 */
@@ -1897,7 +1928,7 @@ function applyUpgrade(id){
   }
   if(id === 'speed')   { tower.bulletSpeed = tower.bulletSpeed * 1.15; }
   if(id === 'heal')    { tower.hp = Math.min(tower.maxHp, tower.hp + 30); }
-  if(id === 'barrier') { barrierCount = Math.min(CFG.BARRIER_MAX, barrierCount + 1); }
+  if(id === 'barrier') { barrierCount = Math.min(CFG.BARRIER_MAX, barrierCount + 1); showTutorialHint('barrier', 'BARRIER', 'Absorbs one hit completely — max 3. Watch the hex rings around your tower'); }
   if(id === 'attrLv' && chosenElement){
     var attrKey = 'attr' + chosenElement.charAt(0).toUpperCase() + chosenElement.slice(1);
     weapons[attrKey] = Math.min(3, (weapons[attrKey] || 0) + 1);
@@ -2170,7 +2201,7 @@ function resetGame(){
   barrierCount = 0; barrierBreakTimer = 0; bossesKilled = 0;
   enemies = []; bullets = []; missiles = []; particles = []; floaters = []; enemyBullets = [];
   missileTimer = 0;
-  boss = null; warningTimer = 0; bossSpawnFn = null; newEnemyAlert = null;
+  boss = null; warningTimer = 0; bossSpawnFn = null; newEnemyAlert = null; tutorialHint = null;
   weapons = { subTurret: 0, pierce: 0, attrFire: 0, attrIce: 0, attrLightning: 0, orbital: 0, explosion: 0, satellite: 0, field: 0 };
   chosenElement = null;
   attrRangeMult = 1.0;
@@ -2207,6 +2238,10 @@ function startWave(){
   if(wave === CFG.ENEMY_SNIPER_WAVE_START) triggerNewEnemyAlert('SNIPER', CFG.ENEMY_SNIPER_COLOR);
   if(wave === CFG.ENEMY_SPLIT_WAVE_START)  triggerNewEnemyAlert('SPLITTER', CFG.ENEMY_SPLIT_COLOR);
   if(wave === CFG.ENEMY_WEAVER_WAVE_START) triggerNewEnemyAlert('WEAVER', CFG.ENEMY_WEAVER_COLOR);
+  /* チュートリアル: W1で必殺ゲージを紹介 */
+  if(wave === 1){
+    showTutorialHint('special', 'SPECIAL GAUGE', 'Shoot to fill the gauge — tap buttons below to unleash specials');
+  }
   if(wave === 5){
     spawnQueue = 0; spawnTimer = 0;
     triggerBossWarning('MINI BOSS', 'CHARGER', spawnMiniCharger);
@@ -2783,6 +2818,11 @@ function loop(t){
     if(newEnemyAlert !== null){
       newEnemyAlert.timer -= dt;
       if(newEnemyAlert.timer <= 0) newEnemyAlert = null;
+    }
+    /* チュートリアルヒントタイマー */
+    if(tutorialHint !== null){
+      tutorialHint.timer -= dt;
+      if(tutorialHint.timer <= 0) tutorialHint = null;
     }
     if(shakeTimer > 0){
       shakeTimer -= dt;
@@ -3415,6 +3455,17 @@ function moveWeaver(e, dx, dy, d, effSpd, dt){
 ===================================================================== */
 function triggerNewEnemyAlert(name, color){
   newEnemyAlert = { name: name, color: color, timer: CFG.NEW_ENEMY_ALERT_DUR };
+}
+
+/* =====================================================================
+   チュートリアルヒント(初見向け・1回のみ・ゲーム継続)
+===================================================================== */
+function showTutorialHint(key, title, text){
+  if(!saveData.seenHints) saveData.seenHints = {};
+  if(saveData.seenHints[key]) return;
+  saveData.seenHints[key] = true;
+  persistSave();
+  tutorialHint = { title: title, text: text, timer: 4.5, maxTimer: 4.5 };
 }
 
 /* =====================================================================
@@ -4184,6 +4235,7 @@ function showSpecialUnlock(id, name, color, desc){
 
 function showElementChoice(){
   /* W5ボス撃破後の属性3択 */
+  showTutorialHint('element', 'ELEMENT CHOICE', 'Fire/Ice/Lightning applies to ALL weapons — commit to one build');
   STATE = 'weapon_reward';
   var container = document.getElementById('wpnCards');
   container.innerHTML = '';
@@ -4280,6 +4332,7 @@ function makeWpnCard(id, icon, name, desc, disabled){
 
 function onWeaponSelect(){
   playSound('button');
+  showTutorialHint('subweapon', 'SUB WEAPON', 'New weapon added — check STATUS screen to see all active weapons');
   var id = this.getAttribute('data-wpn');
   if(id === 'sub_turret')    weapons.subTurret     = Math.min(weapons.subTurret     + 1, 4);
   if(id === 'pierce')        weapons.pierce         = Math.min(weapons.pierce        + 1, CFG.PIERCE_LV.length - 1);
@@ -4660,6 +4713,35 @@ function drawHUDLayer(tm){
     ctx.fillText('NEW ENEMY : ' + newEnemyAlert.name, cx(), cy() - Math.floor(H * 0.22));
     ctx.shadowBlur = 0;
     ctx.restore();
+    ctx.globalAlpha = 1;
+  }
+  /* チュートリアルヒント(初見向け・ゲーム継続) */
+  if(tutorialHint !== null){
+    var thMax = tutorialHint.maxTimer;
+    var thT   = tutorialHint.timer;
+    var thFade = thT > thMax - 0.3 ? (thMax - thT) / 0.3 : Math.min(1.0, thT / 0.4);
+    ctx.globalAlpha = thFade * 0.95;
+    ctx.save(); ctx.textAlign = 'center';
+    var thBig = Math.floor(Math.min(W, H) * 0.040);
+    var thSml = Math.floor(Math.min(W, H) * 0.028);
+    var thY   = cy() + Math.floor(H * 0.16);
+    /* 背景パネル */
+    ctx.globalAlpha = thFade * 0.55;
+    ctx.fillStyle = 'rgba(4,10,24,0.88)';
+    var thPW = Math.min(W - 40, 480), thPH = 62;
+    ctx.fillRect(cx() - thPW / 2, thY - thBig - 6, thPW, thPH);
+    /* タイトル */
+    ctx.globalAlpha = thFade * 0.95;
+    ctx.shadowColor = '#4df3ff'; ctx.shadowBlur = 16;
+    ctx.fillStyle = '#4df3ff';
+    ctx.font = '700 ' + thBig + 'px "Chakra Petch", Arial';
+    ctx.fillText(tutorialHint.title, cx(), thY);
+    /* テキスト */
+    ctx.shadowColor = '#aee6ff'; ctx.shadowBlur = 8;
+    ctx.fillStyle = 'rgba(200,235,255,0.90)';
+    ctx.font = '600 ' + thSml + 'px "Rajdhani", Arial';
+    ctx.fillText(tutorialHint.text, cx(), thY + thBig + 4);
+    ctx.shadowBlur = 0; ctx.restore();
     ctx.globalAlpha = 1;
   }
   /* WARNING演出 */
@@ -5687,6 +5769,51 @@ function closePermaScreen(){
   updateTitleScreen();
 }
 
+function openHelp(){
+  var body = document.getElementById('helpBody');
+  body.innerHTML =
+    '<div class="help-sec">SPECIAL GAUGE</div>' +
+    '<div class="help-row"><span class="help-kw">PULSE</span> 全方位20発の弾(33%消費). 囲まれたら即使用</div>' +
+    '<div class="help-row"><span class="help-kw">RAILGUN</span> ボス優先・最HP敵を一撃貫通(50%消費). ボス戦の切り札</div>' +
+    '<div class="help-row"><span class="help-kw">OVERDRIVE</span> 8秒間 発射間隔×3・ダメージ×2・射程×1.5(100%消費)</div>' +
+    '<div class="help-row"><span class="help-kw">BEAM</span> 10秒間 持続レーザー。ドラッグで向き変更(100%消費). W15解放</div>' +
+    '<div class="help-sec">LEVEL UP CARDS</div>' +
+    '<div class="help-row">敵を倒してXPを貯めるとレベルアップ。3択カードで任意の強化を選ぶ</div>' +
+    '<div class="help-row">W11以降はサブウェポン強化カードも出現(高確率)</div>' +
+    '<div class="help-sec">ELEMENT (W5選択)</div>' +
+    '<div class="help-row"><span class="help-kw">FIRE</span> 着弾後に継続ダメージ(DoT). 単体硬い敵に有効</div>' +
+    '<div class="help-row"><span class="help-kw">ICE</span> 命中した敵を減速. 生存優先・時間稼ぎ向き</div>' +
+    '<div class="help-row"><span class="help-kw">LIGHTNING</span> 1体から電撃連鎖. 群れ・多数の敵に有効</div>' +
+    '<div class="help-sec">SUB WEAPONS (ウェーブ報酬)</div>' +
+    '<div class="help-row"><span class="help-kw">SUB TURRET</span> タワー周囲に補助砲台(最大4基)</div>' +
+    '<div class="help-row"><span class="help-kw">ORBITAL</span> タワーを公転する球(接触ダメージ. 最大6個)</div>' +
+    '<div class="help-row"><span class="help-kw">SATELLITE</span> 射程外を狙撃する衛星砲台(最大5基)</div>' +
+    '<div class="help-row"><span class="help-kw">FIELD</span> タップした位置にダメージフィールドを設置</div>' +
+    '<div class="help-row"><span class="help-kw">EXPLOSIVE</span> 弾着弾時に範囲爆発</div>' +
+    '<div class="help-sec">BARRIER</div>' +
+    '<div class="help-row">タワー周囲に六角形シェル。ダメージを1回完全無効化(最大3枚)</div>' +
+    '<div class="help-row">レベルアップカード「BARRIER+1」で取得</div>' +
+    '<div class="help-sec">RARE DROP (金色六角形)</div>' +
+    '<div class="help-row">敵撃破時・ボス撃破時にランダムドロップ</div>' +
+    '<div class="help-row">タワーに近づくと自動取得。武器強化・バリア・属性強化などの効果</div>' +
+    '<div class="help-sec">SKILL POINTS (SP)</div>' +
+    '<div class="help-row">ゲーム終了時に到達ウェーブ+ボス撃破数に応じて獲得</div>' +
+    '<div class="help-row">タイトル「SKILL POINTS」画面でATK/DEF/SPD/BARRIERなどに恒久投資</div>' +
+    '<div class="help-sec">BOSSES</div>' +
+    '<div class="help-row"><span class="help-kw">CHARGER</span> 予告線→高速突進。突進前に横に回避</div>' +
+    '<div class="help-row"><span class="help-kw">BARRAGE</span> 円形・螺旋弾幕。外周を周回しながら発射</div>' +
+    '<div class="help-row"><span class="help-kw">SUMMONER</span> 雑魚召喚+弾幕。召喚された敵から先に処理</div>' +
+    '<div class="help-row"><span class="help-kw">DIVIDER</span> 撃破で中型ボス2体に分裂。耐久力に注意</div>' +
+    '<div class="help-row"><span class="help-kw">REFLECTOR</span> シールド中は被弾が跳ね返る。シールドが切れるまで温存</div>' +
+    '<div class="help-row"><span class="help-kw">PHANTOM</span> 分身を生成。弾を撃っている個体が本体</div>';
+  showScreen('scrHelp');
+}
+
+function closeHelp(){
+  hideScreen('scrHelp');
+  showScreen('scrTitle');
+}
+
 function updateTitleScreen(){
   document.getElementById('bestWaveDisp').textContent = bestWave > 0 ? 'W.' + bestWave : '—';
   document.getElementById('spDisp').textContent = String(saveData.skillPoints);
@@ -5702,6 +5829,11 @@ function endGame(win){
 
   /* ベストウェーブ更新 */
   if(wave > bestWave){ bestWave = wave; }
+
+  /* 初回敗北: SP画面の使い方を紹介 */
+  if(!win){
+    showTutorialHint('spscreen', 'SKILL POINTS EARNED', 'Invest SP in SKILL POINTS on the title screen to start stronger next run');
+  }
 
   /* トータルキル累積 */
   saveData.totalKills += kills;
@@ -5823,6 +5955,17 @@ document.getElementById('suspendBtn').addEventListener('click', function(){
 
 document.getElementById('permaCloseBtn').addEventListener('click', function(){
   closePermaScreen();
+});
+
+document.getElementById('helpBtn').addEventListener('click', function(){
+  playSound('button');
+  hideScreen('scrTitle');
+  openHelp();
+});
+
+document.getElementById('helpCloseBtn').addEventListener('click', function(){
+  playSound('button');
+  closeHelp();
 });
 
 document.getElementById('upgradeFromResultBtn').addEventListener('click', function(){
