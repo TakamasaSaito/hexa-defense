@@ -15,6 +15,7 @@
  *   H. レアドロップ全キル経路 コードパターン検査 (#24 再発防止)
  *   I. ミサイル属性効果 コードパターン検査 (#24 再発防止)
  *   J. サブウェポン5種 ラン内成長レベルがパラメータに反映されること
+ *   K. チェックポイント制・中断セーブ (#23 整合性検証)
  */
 
 var fs     = require('fs');
@@ -456,6 +457,106 @@ assert(
 assert(
   src.indexOf('var sDmg = tower.dmg * CFG.SUB_TURRET_DMG_RATIO') !== -1,
   'subTurret: sDmg = tower.dmg * SUB_TURRET_DMG_RATIO'
+);
+
+/* =====================================================================
+   K. チェックポイント制・中断セーブ (#23 整合性検証)
+===================================================================== */
+suite('K: チェックポイント制・中断セーブ');
+
+var g23 = loadGame();
+var migrateSave23 = g23.migrateSave;
+
+/* K01: unlockedCheckpoints が有効値のみ保持される */
+(function(){
+  var d = migrateSave23({ version: 4, skillPoints: 5, spAlloc: {}, unlockedCheckpoints: [1, 10, 20, 30, 40] });
+  var cps = d.unlockedCheckpoints;
+  assert(
+    cps.length === 5 && cps[0] === 1 && cps[4] === 40,
+    'K01: 全4CP+W1 が保持される'
+  );
+})();
+
+/* K02: 無効な値はフィルタされる */
+(function(){
+  var d = migrateSave23({ version: 4, skillPoints: 0, spAlloc: {}, unlockedCheckpoints: [1, 5, 10, 99, 30] });
+  var cps = d.unlockedCheckpoints;
+  assert(
+    cps.length === 3 && cps[0] === 1 && cps[1] === 10 && cps[2] === 30,
+    'K02: 無効値(5, 99)がフィルタされる'
+  );
+})();
+
+/* K03: unlockedCheckpoints が空のとき [1] にフォールバック */
+(function(){
+  var d = migrateSave23({ version: 4, skillPoints: 0, spAlloc: {}, unlockedCheckpoints: [] });
+  var cps = d.unlockedCheckpoints;
+  assert(
+    cps.length === 1 && cps[0] === 1,
+    'K03: 空のとき [1] にフォールバック'
+  );
+})();
+
+/* K04: suspendedRun オブジェクトが引き継がれる */
+(function(){
+  var sr = { wave: 20, hp: 80, maxHp: 100, dmg: 15, fireInterval: 0.4,
+             bulletSpeed: 400, range: 220, level: 8, xp: 120, xpNext: 180,
+             kills: 90, specialGauge: 0, fieldUsesLeft: 2, barrierCount: 1,
+             chosenElement: 'fire', attrRangeMult: 1.2,
+             weapons: { subTurret: 2, pierce: 0, attrFire: 1, attrIce: 0, attrLightning: 0,
+                        orbital: 1, explosion: 0, satellite: 0, field: 0 },
+             specials: { railgunUnlocked: false, overdriveUnlocked: false, beamUnlocked: false },
+             upgradeCounts: { rate: 1, dmg: 2, range: 0, speed: 0, barrier: 0, heal: 0 } };
+  var d = migrateSave23({ version: 4, skillPoints: 10, spAlloc: {}, suspendedRun: sr });
+  assert(
+    d.suspendedRun !== null && d.suspendedRun.wave === 20 && d.suspendedRun.chosenElement === 'fire',
+    'K04: suspendedRun が v4 マイグレーション後も引き継がれる'
+  );
+})();
+
+/* K05: suspendedRun が v1 マイグレーション経由でも引き継がれる */
+(function(){
+  var sr = { wave: 30, hp: 60, maxHp: 100 };
+  var d = migrateSave23({ version: 1, metaCoins: 0, suspendedRun: sr });
+  assert(
+    d.suspendedRun !== null && d.suspendedRun.wave === 30,
+    'K05: suspendedRun が v1→v4 マイグレーション後も引き継がれる'
+  );
+})();
+
+/* K06: suspendedRun = null のときは null のまま */
+(function(){
+  var d = migrateSave23({ version: 4, skillPoints: 0, spAlloc: {}, suspendedRun: null });
+  assert(
+    d.suspendedRun === null,
+    'K06: suspendedRun=null は null のまま'
+  );
+})();
+
+/* K07: `coins` への代入がソースに残っていない(廃止済み変数 strict mode 保護) */
+var src23 = g23._scriptSrc;
+assert(
+  src23.indexOf('coins = 0') === -1,
+  'K07: `coins = 0` がソースに存在しない(廃止済みコイン変数を参照していない)'
+);
+
+/* K08: checkpointWeaponMode フラグが onCheckpointSelect で使われている */
+assert(
+  src23.indexOf('checkpointWeaponMode = true') !== -1,
+  'K08: checkpointWeaponMode フラグが設定されている'
+);
+
+/* K09: suspendRun が suspendedRun に weapons を保存している */
+assert(
+  src23.indexOf('saveData.suspendedRun = {') !== -1,
+  'K09: suspendRun() が saveData.suspendedRun にオブジェクトを保存'
+);
+
+/* K10: resumeRun が suspendedRun を null クリアしてpersistSaveを呼ぶ */
+assert(
+  src23.indexOf('saveData.suspendedRun = null') !== -1 &&
+  src23.indexOf('persistSave()') !== -1,
+  'K10: resumeRun() が suspendedRun をクリアして永続化'
 );
 
 /* =====================================================================

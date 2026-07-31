@@ -4809,8 +4809,6 @@ function onCheckpointSelect(){
   } else {
     wave = w;
     document.getElementById('waveNum').textContent = String(wave);
-    coins = 0;
-    updateCoinHud();
     checkpointWeaponMode = true;
     showWeaponReward();
   }
@@ -4992,7 +4990,6 @@ function resumeRun(){
   level           = sr.level;
   xp              = sr.xp;
   xpNext          = sr.xpNext || xpRequiredForLevel(level);
-  coins           = 0;
   kills           = sr.kills;
   specialGauge    = sr.specialGauge || 0;
   specials.pulse.cd    = 0; specials.railgun.cd    = 0; specials.overdrive.cd    = 0;
