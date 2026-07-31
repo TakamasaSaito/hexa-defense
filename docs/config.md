@@ -196,47 +196,41 @@ CONFIGオブジェクトは `index.html` 冒頭にまとめる。マジックナ
 | `BOSS_SUMMONER_BULLET_INTERVAL_P3` | **0.55** | P3弾幕間隔(秒) (旧1.0) |
 | `BOSS_SUMMONER_BULLET_COUNT_P3` | **13** | P3弾数 (旧8) |
 
-## コイン経済
+## SP制 (#19でコイン経済から移行)
+
+ラン内コイン・ショップを廃止。SPを唯一の恒久強化リソースとして一本化。
+
 | キー | 値 | 説明 |
 |---|---|---|
-| `META_COIN_RATE` | **0.6** | ラン終了コインのメタコイン変換率 |
-| `PERM_MAX_LEVEL` | **10** | ピップ表示上限(Lv11〜は数値表示, #15) |
-| `PERM_LEVEL_BREAK` | 5 | 前半/後半ティアの境界 |
-| `PERM_LEVEL_ULTRA` | 10 | 後半/超後半ティアの境界(#15) |
-| `PERM_BASE_PRICE` | **25** | 前半Lv1〜5 Tier1価格 |
-| `PERM_PRICE_SCALE` | 1.8 | 前半価格倍率 |
-| `PERM_BASE_LATE` | 80 | 後半Lv6〜 ベース価格(上限なし継続, #15) |
-| `PERM_PRICE_SCALE_LATE` | 1.4 | 後半〜超後半価格倍率 |
-| `PERM_DMG_PER_LV` | 0.20 | ダメージ+20%/LV(Lv1〜5) |
-| `PERM_DMG_PER_LV_LATE` | 0.30 | ダメージ+30%/LV(Lv6〜10) |
-| `PERM_DMG_PER_LV_ULTRA` | 0.08 | ダメージ+8%/LV(Lv11〜, 逓減, #15) |
-| `PERM_RATE_PER_LV` | 0.15 | 発射間隔-15%/LV(Lv1〜5) |
-| `PERM_RATE_PER_LV_LATE` | 0.20 | 発射間隔-20%/LV(Lv6〜10) |
-| `PERM_RATE_PER_LV_ULTRA` | 0.05 | 発射間隔-5%/LV(Lv11〜, 逓減, #15) |
-| `PERM_HP_PER_LV` | 25 | HP+25/LV(Lv1〜5) |
-| `PERM_HP_PER_LV_LATE` | 50 | HP+50/LV(Lv6〜10) |
-| `PERM_HP_PER_LV_ULTRA` | 15 | HP+15/LV(Lv11〜, 逓減, #15) |
-| `PERM_RANGE_PER_LV` | 0.10 | 射程+10%/LV(Lv1〜5) |
-| `PERM_RANGE_PER_LV_LATE` | 0.15 | 射程+15%/LV(Lv6〜10) |
-| `PERM_RANGE_PER_LV_ULTRA` | 0.04 | 射程+4%/LV(Lv11〜, 逓減, #15) |
-| `PERM_COIN_GAIN_PER_LV` | 0.18 | コイン獲得+18%/LV(Lv1〜5) |
-| `PERM_COIN_GAIN_PER_LV_LATE` | 0.25 | コイン獲得+25%/LV(Lv6〜10) |
-| `PERM_COIN_GAIN_PER_LV_ULTRA` | 0.08 | コイン獲得+8%/LV(Lv11〜, 逓減, #15) |
-| `PERM_BARRIER_BASE` | 200 | 初期バリア Tier1価格 (#14) |
-| `PERM_BARRIER_SCALE` | 1.8 | 初期バリア価格倍率 (#14) |
-| `PERM_BARRIER_MAX` | 3 | 初期バリア最大段数 (#14) |
-| `PERM_GAUGE_RATE_PER_LV` | 0.20 | 必殺ゲージ効率+20%/LV (#14) |
-| `PERM_GAUGE_RATE_MAX` | 5 | ゲージ効率最大段数 (#14) |
-| `PERM_ELEM_START_MAX` | 2 | 初期属性Lv最大段数 (#14) |
-| `ELEM_CHOICE_PRIORITY` | 3 | 選択属性の報酬プール重み (#14) |
+| `SP_WAVE_RATE` | 0.06 | floor(wave × rate) = ベースSP/ラン |
+| `SP_BOSS_BONUS` | 1 | ボス1体撃破あたりボーナスSP |
+| `SP_MIGRATE_RATE` | 80 | v1→v2マイグレーション: 旧コスト÷この値=SP |
+| `SP_ATK_RATE` | 0.10 | ATK: 各ポイントの初期乗数 |
+| `SP_ATK_DECAY` | 0.04 | ATK: 乗数の逓減率(n番目 = rate/(1+decay*n)) |
+| `SP_DEF_SCALE` | 20 | DEF: アーマー公式 20/(20+n) の分子 |
+| `SP_SPD_RATE` | 0.08 | SPD: 各ポイントの初期間隔短縮率 |
+| `SP_SPD_DECAY` | 0.035 | SPD: 短縮率の逓減率 |
+| `SP_SUB_MAX_TURRET` | 4 | サブ砲台最大Lv |
+| `SP_SUB_MAX_ORBITAL` | 6 | オービタル最大Lv |
+| `SP_SUB_MAX_SATELLITE` | 5 | 衛星砲台最大Lv |
+| `SP_SUB_MAX_FIELD` | 5 | 設置フィールド最大Lv |
+| `SP_SUB_MAX_BLAST` | 3 | 範囲爆発最大Lv |
 
-**前半価格(Lv1〜5):** 25, 45, 81, 146, 263 (合計560/系統)
-**後半価格(Lv6〜10):** 80, 112, 157, 220, 307 (合計876/系統)
-**超後半価格(Lv11〜15):** 430, 602, 843, 1180, 1652 (Lv15到達合計4707/系統)
-**初期バリア:** 200, 360, 648 (合計1208)
+**SP効果式:**
+- ATK Lv.n: `∏(1 + 0.10/(1+0.04*i))` for i=0..n-1 (逓減乗算)
+- DEF Lv.n: 被ダメ = `20/(20+n)` 倍 (DEF10で33%軽減, DEF20で50%軽減)
+- SPD Lv.n: `∏(1 - 0.08/(1+0.035*i))` for i=0..n-1 (発射間隔短縮)
 
-**主要5系統の天井撤廃(#15):** 実質的な軟天井は価格逓増で形成。Lv11〜は効果量が逓減するため
-インフレ抑止。UI: Lv1〜10はピップ表示、Lv11〜は「Lv N」数値バッジに切替。
+**HP回復ドロップ (#19上方修正):**
+| キー | 値 | 説明 |
+|---|---|---|
+| `DROP_HEAL_CHANCE` | **0.09** | HP回復ドロップ出現率 (旧0.05) |
+| `DROP_HEAL_AMOUNT` | **20** | HP回復量 (旧15) |
+
+**廃止キー (#19):** `META_COIN_RATE`, `PERM_*` (全系統), `COIN_RED`, `COIN_ORANGE`, `COIN_BOSS`,
+`SHOP_BASE_PRICE`, `SHOP_PRICE_SCALE`, `CHECKPOINT_START_COINS`
+
+残存キー (ゲージ効率・属性初期値は仕様継続): `PERM_GAUGE_RATE_PER_LV`, `PERM_ELEM_START_MAX`, `ELEM_CHOICE_PRIORITY`
 
 **経済目標:** W5前後敗北ランで60〜80コイン → メタコイン36〜48 → 2ランに1個ペースでTier1購入
 

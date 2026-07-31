@@ -1,0 +1,393 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+<meta charset="UTF-8">
+<title>HEXA DEFENSE — Assets</title>
+<link href="https://fonts.googleapis.com/css2?family=Chakra+Petch:wght@600;700&display=swap" rel="stylesheet">
+<style>
+  body{margin:0;padding:32px 20px 60px;background:#070d16;color:#d8ecff;
+       font-family:'Chakra Petch',-apple-system,sans-serif}
+  h1{font-size:17px;letter-spacing:4px;margin:0 0 4px}
+  .sub{font-size:11px;color:rgba(140,200,235,.55);letter-spacing:2px;margin-bottom:30px}
+  h2{font-size:11px;letter-spacing:4px;color:rgba(140,200,235,.85);margin:34px 0 16px;
+     border-bottom:1px solid rgba(77,243,255,.18);padding-bottom:7px}
+  .grid{display:flex;flex-wrap:wrap;gap:14px}
+  .cell{width:88px;text-align:center;background:rgba(14,28,48,.6);
+        border:1px solid rgba(77,243,255,.14);padding:12px 4px 9px;
+        clip-path:polygon(9px 0,100% 0,100% calc(100% - 9px),calc(100% - 9px) 100%,0 100%,0 9px)}
+  .cell svg{display:block;margin:0 auto}
+  .cell b{display:block;font-size:9px;letter-spacing:1px;margin-top:7px;font-weight:600}
+  .cell i{display:block;font-size:8px;color:rgba(140,200,235,.5);font-style:normal;margin-top:2px}
+  .bgrid{display:flex;flex-wrap:wrap;gap:16px}
+  .bcell{width:150px;text-align:center;background:radial-gradient(circle at 50% 42%,#101f34,#060b13);
+         border:1px solid rgba(255,61,129,.2);padding:10px 4px 12px;
+         clip-path:polygon(12px 0,100% 0,100% calc(100% - 12px),calc(100% - 12px) 100%,0 100%,0 12px)}
+  .bcell b{display:block;font-size:10px;letter-spacing:2px;margin-top:6px}
+  .bcell i{display:block;font-size:8px;color:rgba(180,200,225,.5);font-style:normal;margin-top:3px}
+  .small{display:flex;gap:10px;align-items:center;margin-top:10px}
+</style>
+</head>
+<body>
+
+<h1>HEXA DEFENSE — ASSETS</h1>
+<div class="sub">UI ICONS 18 / BOSS VISUALS 6</div>
+
+<!-- ================= DEFS ================= -->
+<svg width="0" height="0" style="position:absolute" aria-hidden="true"><defs>
+
+<filter id="ng" x="-60%" y="-60%" width="220%" height="220%">
+  <feGaussianBlur stdDeviation="1.6" result="b"/>
+  <feMerge><feMergeNode in="b"/><feMergeNode in="SourceGraphic"/></feMerge>
+</filter>
+<filter id="ngB" x="-60%" y="-60%" width="220%" height="220%">
+  <feGaussianBlur stdDeviation="3" result="b"/>
+  <feMerge><feMergeNode in="b"/><feMergeNode in="SourceGraphic"/></feMerge>
+</filter>
+<radialGradient id="coreW"><stop offset="0%" stop-color="#fff"/><stop offset="100%" stop-color="#fff" stop-opacity="0"/></radialGradient>
+
+<!-- ---------- BASE STATS (gold) ---------- -->
+<symbol id="ic-atk" viewBox="0 0 64 64">
+  <g filter="url(#ng)" fill="none" stroke="#FFD257" stroke-width="3.4" stroke-linejoin="round">
+    <path d="M32 6 L39 25 L58 32 L39 39 L32 58 L25 39 L6 32 L25 25 Z"/>
+  </g>
+  <circle cx="32" cy="32" r="4" fill="#FFD257"/>
+</symbol>
+<symbol id="ic-def" viewBox="0 0 64 64">
+  <g filter="url(#ng)" fill="none" stroke="#FFD257" stroke-width="3.4" stroke-linejoin="round">
+    <path d="M32 6 L53 17 V35 C53 46 43 55 32 59 C21 55 11 46 11 35 V17 Z"/>
+    <path d="M32 18 L43 24 V35 C43 41 38 46 32 48 C26 46 21 41 21 35 V24 Z" opacity=".55"/>
+  </g>
+</symbol>
+<symbol id="ic-spd" viewBox="0 0 64 64">
+  <g filter="url(#ng)" fill="none" stroke="#FFD257" stroke-width="3.8" stroke-linecap="round" stroke-linejoin="round">
+    <path d="M14 13 L33 32 L14 51"/><path d="M33 13 L52 32 L33 51"/>
+  </g>
+</symbol>
+
+<!-- ---------- SUB WEAPONS (cyan) ---------- -->
+<symbol id="ic-subturret" viewBox="0 0 64 64">
+  <g filter="url(#ng)" fill="none" stroke="#4DF3FF" stroke-width="3.2" stroke-linejoin="round">
+    <polygon points="32,12 48,21 48,39 32,48 16,39 16,21"/>
+  </g>
+  <rect x="30" y="2" width="4" height="13" rx="1" fill="#BDEEFF"/>
+  <circle cx="32" cy="30" r="5" fill="url(#coreW)"/>
+</symbol>
+<symbol id="ic-orbital" viewBox="0 0 64 64">
+  <ellipse cx="32" cy="32" rx="25" ry="12" fill="none" stroke="#4DF3FF" stroke-width="2.4"
+           stroke-dasharray="5 5" transform="rotate(-24 32 32)"/>
+  <g filter="url(#ng)">
+    <circle cx="32" cy="32" r="7.5" fill="none" stroke="#4DF3FF" stroke-width="3"/>
+    <circle cx="53" cy="23" r="5" fill="#BDEEFF"/>
+    <circle cx="11" cy="41" r="3.4" fill="#7FDCF0"/>
+  </g>
+</symbol>
+<symbol id="ic-satellite" viewBox="0 0 64 64">
+  <circle cx="32" cy="32" r="23" fill="none" stroke="#4DF3FF" stroke-width="2" stroke-dasharray="4 6" opacity=".7"/>
+  <g filter="url(#ng)">
+    <polygon points="32,3 41,8 41,18 32,23 23,18 23,8" fill="none" stroke="#4DF3FF" stroke-width="3"/>
+    <path d="M32 24 L32 40" stroke="#BDEEFF" stroke-width="3.4" stroke-linecap="round"/>
+  </g>
+  <circle cx="32" cy="49" r="4" fill="none" stroke="#4DF3FF" stroke-width="2.4" opacity=".8"/>
+</symbol>
+<symbol id="ic-field" viewBox="0 0 64 64">
+  <g filter="url(#ng)" fill="none" stroke="#4DF3FF" stroke-width="2.8">
+    <circle cx="32" cy="34" r="22" stroke-dasharray="6 5"/>
+    <ellipse cx="32" cy="34" rx="13" ry="7"/>
+  </g>
+  <g stroke="#4DF3FF" stroke-width="2.6" stroke-linecap="round" opacity=".85">
+    <path d="M32 6 V19"/><path d="M25 12 L32 6 L39 12"/>
+  </g>
+</symbol>
+<symbol id="ic-blast" viewBox="0 0 64 64">
+  <g filter="url(#ng)" fill="none" stroke="#4DF3FF" stroke-width="3">
+    <circle cx="32" cy="32" r="9"/>
+    <path d="M32 32 m-19 0 a19 19 0 0 1 8-15" stroke-linecap="round"/>
+    <path d="M32 32 m19 0 a19 19 0 0 1 -8 15" stroke-linecap="round"/>
+  </g>
+  <g stroke="#BDEEFF" stroke-width="3" stroke-linecap="round">
+    <path d="M32 4 V13"/><path d="M32 51 V60"/><path d="M4 32 H13"/><path d="M51 32 H60"/>
+  </g>
+</symbol>
+
+<!-- ---------- ELEMENTS ---------- -->
+<symbol id="ic-fire" viewBox="0 0 64 64">
+  <g filter="url(#ng)" fill="none" stroke="#FF6B2E" stroke-width="3.4" stroke-linejoin="round">
+    <path d="M32 4 C40 17 51 22 51 36 C51 48 42 58 32 58 C22 58 13 48 13 36 C13 24 22 22 26 12 C29 20 32 20 32 4 Z"/>
+  </g>
+  <path d="M32 30 C36 37 39 40 39 45 C39 51 36 54 32 54 C28 54 25 51 25 45 C25 39 30 38 32 30 Z"
+        fill="#FFD257" opacity=".85"/>
+</symbol>
+<symbol id="ic-ice" viewBox="0 0 64 64">
+  <g filter="url(#ng)" stroke="#6FD8FF" stroke-width="3.2" stroke-linecap="round">
+    <path d="M32 5 V59"/><path d="M9 18 L55 46"/><path d="M55 18 L9 46"/>
+  </g>
+  <g stroke="#BDEEFF" stroke-width="2.6" stroke-linecap="round">
+    <path d="M25 13 L32 20 L39 13"/><path d="M25 51 L32 44 L39 51"/>
+    <path d="M12 28 L14 19 L23 21"/><path d="M52 36 L50 45 L41 43"/>
+    <path d="M52 28 L50 19 L41 21"/><path d="M12 36 L14 45 L23 43"/>
+  </g>
+</symbol>
+<symbol id="ic-thunder" viewBox="0 0 64 64">
+  <g filter="url(#ng)">
+    <path d="M37 3 L17 35 H30 L26 61 L48 27 H34 Z" fill="none" stroke="#FFE566" stroke-width="3.4"
+          stroke-linejoin="round"/>
+  </g>
+  <path d="M37 3 L17 35 H30 L26 61 L48 27 H34 Z" fill="#FFE566" opacity=".2"/>
+</symbol>
+
+<!-- ---------- SPECIALS (magenta) ---------- -->
+<symbol id="ic-pulse" viewBox="0 0 64 64">
+  <g filter="url(#ng)" fill="none" stroke="#FF3D81" stroke-width="3">
+    <circle cx="32" cy="32" r="6"/>
+    <circle cx="32" cy="32" r="14" opacity=".75"/>
+    <circle cx="32" cy="32" r="22" opacity=".45"/>
+  </g>
+  <g fill="#FF8AB0">
+    <circle cx="32" cy="6" r="2.6"/><circle cx="32" cy="58" r="2.6"/>
+    <circle cx="6" cy="32" r="2.6"/><circle cx="58" cy="32" r="2.6"/>
+  </g>
+</symbol>
+<symbol id="ic-railgun" viewBox="0 0 64 64">
+  <g filter="url(#ng)">
+    <path d="M4 32 H44" stroke="#FF3D81" stroke-width="7" stroke-linecap="round"/>
+    <path d="M42 22 L60 32 L42 42 Z" fill="#FF8AB0"/>
+  </g>
+  <g stroke="#FF3D81" stroke-width="2.6" opacity=".8" stroke-linecap="round">
+    <path d="M10 20 V44"/><path d="M20 23 V41"/>
+  </g>
+</symbol>
+<symbol id="ic-overdrive" viewBox="0 0 64 64">
+  <g filter="url(#ng)" fill="none" stroke="#FF3D81" stroke-width="3.2" stroke-linejoin="round">
+    <polygon points="32,5 54,18 54,44 32,57 10,44 10,18"/>
+  </g>
+  <g stroke="#FFD257" stroke-width="3.4" stroke-linecap="round" stroke-linejoin="round">
+    <path d="M22 40 L32 30 L42 40"/><path d="M22 28 L32 18 L42 28"/>
+  </g>
+</symbol>
+<symbol id="ic-beam" viewBox="0 0 64 64">
+  <path d="M32 8 L57 56 H7 Z" fill="#FF3D81" opacity=".18"/>
+  <g filter="url(#ng)" fill="none" stroke="#FF3D81" stroke-width="3.2" stroke-linejoin="round">
+    <path d="M32 8 L57 56 H7 Z"/>
+  </g>
+  <path d="M32 12 V54" stroke="#FFF" stroke-width="3.6" stroke-linecap="round" opacity=".9"/>
+</symbol>
+
+<!-- ---------- MISC ---------- -->
+<symbol id="ic-barrier" viewBox="0 0 64 64">
+  <g fill="none" stroke="#4DF3FF" stroke-linejoin="round">
+    <polygon points="32,4 56,17 56,45 32,58 8,45 8,17" stroke-width="2.4" opacity=".35"/>
+    <polygon points="32,12 49,21 49,41 32,50 15,41 15,21" stroke-width="2.8" opacity=".65"/>
+    <polygon points="32,20 42,25 42,37 32,42 22,37 22,25" stroke-width="3.2" filter="url(#ng)"/>
+  </g>
+</symbol>
+<symbol id="ic-hp" viewBox="0 0 64 64">
+  <g filter="url(#ng)" fill="none" stroke="#3DDC74" stroke-width="3.2" stroke-linejoin="round">
+    <polygon points="32,6 54,19 54,45 32,58 10,45 10,19"/>
+  </g>
+  <g stroke="#8FFFB8" stroke-width="5" stroke-linecap="round">
+    <path d="M32 21 V43"/><path d="M21 32 H43"/>
+  </g>
+</symbol>
+<symbol id="ic-sp" viewBox="0 0 64 64">
+  <g filter="url(#ng)" fill="none" stroke="#FFD257" stroke-width="3.2" stroke-linejoin="round">
+    <polygon points="32,5 54,18 54,44 32,57 10,44 10,18"/>
+    <path d="M32 5 L32 57 M10 18 L54 44 M54 18 L10 44" stroke-width="1.6" opacity=".45"/>
+  </g>
+  <circle cx="32" cy="31" r="7" fill="#FFD257" opacity=".9"/>
+</symbol>
+<symbol id="ic-wave" viewBox="0 0 64 64">
+  <g filter="url(#ng)" fill="none" stroke="#4DF3FF" stroke-width="3" stroke-linecap="round">
+    <path d="M5 40 C13 22 21 22 29 40 C37 58 45 58 53 40"/>
+    <path d="M5 24 C13 6 21 6 29 24" opacity=".5"/>
+  </g>
+</symbol>
+
+<!-- ================= BOSSES ================= -->
+<!-- W5 MINI CHARGER -->
+<symbol id="bs-mini" viewBox="0 0 120 120">
+  <g filter="url(#ngB)">
+    <path d="M60 16 L92 74 L60 62 L28 74 Z" fill="none" stroke="#FF6B2E" stroke-width="5" stroke-linejoin="round"/>
+    <path d="M60 16 L92 74 L60 62 L28 74 Z" fill="#FF6B2E" opacity=".14"/>
+    <path d="M44 82 L60 70 L76 82" fill="none" stroke="#FF6B2E" stroke-width="4" stroke-linejoin="round" opacity=".8"/>
+  </g>
+  <circle cx="60" cy="55" r="9" fill="url(#coreW)"/>
+  <circle cx="60" cy="55" r="4.5" fill="#FFD9C0"/>
+</symbol>
+
+<!-- CHARGER (W10/45) -->
+<symbol id="bs-charger" viewBox="0 0 120 120">
+  <g filter="url(#ngB)" fill="none" stroke="#FF2E4C" stroke-width="5.5" stroke-linejoin="round">
+    <path d="M60 6 L100 60 L82 60 L82 92 L60 106 L38 92 L38 60 L20 60 Z"/>
+  </g>
+  <path d="M60 6 L100 60 L82 60 L82 92 L60 106 L38 92 L38 60 L20 60 Z" fill="#FF2E4C" opacity=".13"/>
+  <g stroke="#FF8A9C" stroke-width="3.4" stroke-linecap="round" opacity=".85">
+    <path d="M30 100 L38 84"/><path d="M90 100 L82 84"/><path d="M60 112 V96"/>
+  </g>
+  <g filter="url(#ngB)">
+    <polygon points="60,40 74,52 68,70 52,70 46,52" fill="none" stroke="#FFD257" stroke-width="4"/>
+  </g>
+  <circle cx="60" cy="57" r="8" fill="url(#coreW)"/>
+</symbol>
+
+<!-- SUMMONER (W20/40) -->
+<symbol id="bs-summoner" viewBox="0 0 120 120">
+  <circle cx="60" cy="60" r="46" fill="none" stroke="#B14DFF" stroke-width="2.6"
+          stroke-dasharray="7 8" opacity=".65"/>
+  <g filter="url(#ngB)" fill="none" stroke="#B14DFF" stroke-width="5" stroke-linejoin="round">
+    <polygon points="60,22 93,41 93,79 60,98 27,79 27,41"/>
+    <polygon points="60,40 78,50 78,70 60,80 42,70 42,50" stroke-width="3.4" opacity=".75"/>
+  </g>
+  <polygon points="60,22 93,41 93,79 60,98 27,79 27,41" fill="#B14DFF" opacity=".12"/>
+  <g fill="#D9A0FF" filter="url(#ngB)">
+    <polygon points="60,4 68,9 68,19 60,24 52,19 52,9"/>
+    <polygon points="106,54 112,58 112,66 106,70 100,66 100,58"/>
+    <polygon points="14,54 20,58 20,66 14,70 8,66 8,58"/>
+    <polygon points="60,96 68,101 68,111 60,116 52,111 52,101"/>
+  </g>
+  <circle cx="60" cy="60" r="10" fill="url(#coreW)"/>
+</symbol>
+
+<!-- DIVIDER (W30) -->
+<symbol id="bs-divider" viewBox="0 0 120 120">
+  <g filter="url(#ngB)" fill="none" stroke="#3DDC74" stroke-width="5" stroke-linejoin="round">
+    <path d="M56 14 L26 34 L26 74 L56 94 L56 14 Z"/>
+    <path d="M64 14 L94 34 L94 74 L64 94 L64 14 Z"/>
+  </g>
+  <path d="M56 14 L26 34 L26 74 L56 94 Z" fill="#3DDC74" opacity=".12"/>
+  <path d="M64 14 L94 34 L94 74 L64 94 Z" fill="#3DDC74" opacity=".12"/>
+  <g stroke="#9BFFC4" stroke-width="2.6" opacity=".8" stroke-linecap="round">
+    <path d="M40 40 L52 50"/><path d="M40 68 L52 58"/>
+    <path d="M80 40 L68 50"/><path d="M80 68 L68 58"/>
+  </g>
+  <g filter="url(#ngB)">
+    <circle cx="47" cy="54" r="6" fill="#DFFFE9"/>
+    <circle cx="73" cy="54" r="6" fill="#DFFFE9"/>
+  </g>
+  <g stroke="#3DDC74" stroke-width="3" stroke-linecap="round" opacity=".55">
+    <path d="M60 8 V22"/><path d="M60 98 V112"/>
+  </g>
+</symbol>
+
+<!-- BARRAGE (W35) -->
+<symbol id="bs-barrage" viewBox="0 0 120 120">
+  <g filter="url(#ngB)" fill="none" stroke="#FF3D81" stroke-width="5" stroke-linejoin="round">
+    <circle cx="60" cy="60" r="30"/>
+    <circle cx="60" cy="60" r="16" stroke-width="3.4" opacity=".8"/>
+  </g>
+  <circle cx="60" cy="60" r="30" fill="#FF3D81" opacity=".12"/>
+  <g fill="none" stroke="#FF3D81" stroke-width="6" stroke-linecap="round" filter="url(#ngB)">
+    <path d="M60 30 V12"/><path d="M60 90 V108"/><path d="M30 60 H12"/><path d="M90 60 H108"/>
+    <path d="M39 39 L26 26"/><path d="M81 39 L94 26"/><path d="M39 81 L26 94"/><path d="M81 81 L94 94"/>
+  </g>
+  <g fill="#FFB3CE">
+    <circle cx="60" cy="9" r="4"/><circle cx="60" cy="111" r="4"/>
+    <circle cx="9" cy="60" r="4"/><circle cx="111" cy="60" r="4"/>
+    <circle cx="23" cy="23" r="3.4"/><circle cx="97" cy="23" r="3.4"/>
+    <circle cx="23" cy="97" r="3.4"/><circle cx="97" cy="97" r="3.4"/>
+  </g>
+  <circle cx="60" cy="60" r="9" fill="url(#coreW)"/>
+</symbol>
+
+<!-- FINAL BOSS (W50) -->
+<symbol id="bs-final" viewBox="0 0 120 120">
+  <g fill="none" stroke="#FF3D81" stroke-width="2.4" stroke-dasharray="5 7" opacity=".6">
+    <circle cx="60" cy="60" r="55"/>
+  </g>
+  <g filter="url(#ngB)" fill="none" stroke="#FF3D81" stroke-width="5" stroke-linejoin="round">
+    <polygon points="60,8 105,34 105,86 60,112 15,86 15,34"/>
+  </g>
+  <polygon points="60,8 105,34 105,86 60,112 15,86 15,34" fill="#FF3D81" opacity=".10"/>
+  <g filter="url(#ngB)" fill="none" stroke="#FFD257" stroke-width="4" stroke-linejoin="round">
+    <polygon points="34,60 60,26 86,60 60,94"/>
+  </g>
+  <g filter="url(#ngB)" fill="none" stroke="#BDEEFF" stroke-width="3.2" stroke-linejoin="round">
+    <polygon points="60,42 76,60 60,78 44,60"/>
+  </g>
+  <g stroke="#FF8AB0" stroke-width="4" stroke-linecap="round" filter="url(#ngB)">
+    <path d="M60 8 V0"/><path d="M105 34 L112 30"/><path d="M105 86 L112 90"/>
+    <path d="M60 112 V120"/><path d="M15 86 L8 90"/><path d="M15 34 L8 30"/>
+  </g>
+  <circle cx="60" cy="60" r="15" fill="url(#coreW)"/>
+  <circle cx="60" cy="60" r="6" fill="#FFFFFF"/>
+</symbol>
+
+</defs></svg>
+
+<!-- ================= PREVIEW ================= -->
+<h2>基礎ステータス（SP系統・ゴールド）</h2>
+<div class="grid">
+  <div class="cell"><svg width="46" height="46"><use href="#ic-atk"/></svg><b>ATTACK</b><i>攻撃</i></div>
+  <div class="cell"><svg width="46" height="46"><use href="#ic-def"/></svg><b>DEFENSE</b><i>防御</i></div>
+  <div class="cell"><svg width="46" height="46"><use href="#ic-spd"/></svg><b>SPEED</b><i>素早さ</i></div>
+  <div class="cell"><svg width="46" height="46"><use href="#ic-sp"/></svg><b>SP</b><i>スキルP</i></div>
+</div>
+
+<h2>サブウェポン（シアン）</h2>
+<div class="grid">
+  <div class="cell"><svg width="46" height="46"><use href="#ic-subturret"/></svg><b>SUB TURRET</b><i>サブ砲台</i></div>
+  <div class="cell"><svg width="46" height="46"><use href="#ic-orbital"/></svg><b>ORBITAL</b><i>オービタル</i></div>
+  <div class="cell"><svg width="46" height="46"><use href="#ic-satellite"/></svg><b>SATELLITE</b><i>衛星砲台</i></div>
+  <div class="cell"><svg width="46" height="46"><use href="#ic-field"/></svg><b>FIELD</b><i>設置型</i></div>
+  <div class="cell"><svg width="46" height="46"><use href="#ic-blast"/></svg><b>BLAST</b><i>範囲爆発</i></div>
+</div>
+
+<h2>属性</h2>
+<div class="grid">
+  <div class="cell"><svg width="46" height="46"><use href="#ic-fire"/></svg><b>FIRE</b><i>炎・継続</i></div>
+  <div class="cell"><svg width="46" height="46"><use href="#ic-ice"/></svg><b>ICE</b><i>氷・減速</i></div>
+  <div class="cell"><svg width="46" height="46"><use href="#ic-thunder"/></svg><b>THUNDER</b><i>雷・連鎖</i></div>
+</div>
+
+<h2>必殺（マゼンタ）</h2>
+<div class="grid">
+  <div class="cell"><svg width="46" height="46"><use href="#ic-pulse"/></svg><b>PULSE</b><i>33%</i></div>
+  <div class="cell"><svg width="46" height="46"><use href="#ic-railgun"/></svg><b>RAILGUN</b><i>50%</i></div>
+  <div class="cell"><svg width="46" height="46"><use href="#ic-overdrive"/></svg><b>OVERDRIVE</b><i>70%</i></div>
+  <div class="cell"><svg width="46" height="46"><use href="#ic-beam"/></svg><b>BEAM</b><i>70%</i></div>
+</div>
+
+<h2>その他</h2>
+<div class="grid">
+  <div class="cell"><svg width="46" height="46"><use href="#ic-barrier"/></svg><b>BARRIER</b><i>バリア</i></div>
+  <div class="cell"><svg width="46" height="46"><use href="#ic-hp"/></svg><b>HP</b><i>耐久</i></div>
+  <div class="cell"><svg width="46" height="46"><use href="#ic-wave"/></svg><b>WAVE</b><i>到達</i></div>
+</div>
+
+<h2>ボスビジュアル</h2>
+<div class="bgrid">
+  <div class="bcell"><svg width="118" height="118"><use href="#bs-mini"/></svg><b>MINI CHARGER</b><i>W5 / 1,000HP</i></div>
+  <div class="bcell"><svg width="118" height="118"><use href="#bs-charger"/></svg><b>CHARGER</b><i>W10・W45 / 突進</i></div>
+  <div class="bcell"><svg width="118" height="118"><use href="#bs-summoner"/></svg><b>SUMMONER</b><i>W20・W40 / 召喚</i></div>
+  <div class="bcell"><svg width="118" height="118"><use href="#bs-divider"/></svg><b>DIVIDER</b><i>W30 / 分裂</i></div>
+  <div class="bcell"><svg width="118" height="118"><use href="#bs-barrage"/></svg><b>BARRAGE</b><i>W35 / 弾幕</i></div>
+  <div class="bcell"><svg width="118" height="118"><use href="#bs-final"/></svg><b>FINAL BOSS</b><i>W50 / 35,000HP</i></div>
+</div>
+
+<h2>小サイズ確認（HUD想定 24px / 18px）</h2>
+<div class="small">
+  <svg width="24" height="24"><use href="#ic-atk"/></svg>
+  <svg width="24" height="24"><use href="#ic-def"/></svg>
+  <svg width="24" height="24"><use href="#ic-spd"/></svg>
+  <svg width="24" height="24"><use href="#ic-subturret"/></svg>
+  <svg width="24" height="24"><use href="#ic-orbital"/></svg>
+  <svg width="24" height="24"><use href="#ic-satellite"/></svg>
+  <svg width="24" height="24"><use href="#ic-field"/></svg>
+  <svg width="24" height="24"><use href="#ic-fire"/></svg>
+  <svg width="24" height="24"><use href="#ic-ice"/></svg>
+  <svg width="24" height="24"><use href="#ic-thunder"/></svg>
+  <svg width="24" height="24"><use href="#ic-barrier"/></svg>
+  <svg width="24" height="24"><use href="#ic-hp"/></svg>
+</div>
+<div class="small">
+  <svg width="18" height="18"><use href="#ic-atk"/></svg>
+  <svg width="18" height="18"><use href="#ic-def"/></svg>
+  <svg width="18" height="18"><use href="#ic-spd"/></svg>
+  <svg width="18" height="18"><use href="#ic-subturret"/></svg>
+  <svg width="18" height="18"><use href="#ic-orbital"/></svg>
+  <svg width="18" height="18"><use href="#ic-satellite"/></svg>
+  <svg width="18" height="18"><use href="#ic-field"/></svg>
+  <svg width="18" height="18"><use href="#ic-barrier"/></svg>
+</div>
+
+</body>
+</html>
