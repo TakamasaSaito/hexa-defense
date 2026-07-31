@@ -94,7 +94,9 @@ function loadGame() {
     '  _hdExports.getDefDmgMult   = function(){ return defDmgMult; };',
     '  _hdExports.getBarrierCount = function(){ return barrierCount; };',
     '  _hdExports.getTower        = function(){ return { dmg: tower.dmg, fireInterval: tower.fireInterval, hp: tower.hp }; };',
-    '  _hdExports.getSaveData     = function(){ return saveData; };',
+    '  _hdExports.getSaveData          = function(){ return saveData; };',
+    '  _hdExports.exportSaveToString   = exportSaveToString;',
+    '  _hdExports.importSaveFromString = importSaveFromString;',
     '  _hdExports.resetForTest    = function(){',
     '    tower.dmg          = CFG.TOWER_DMG;',
     '    tower.fireInterval = CFG.TOWER_FIRE_INTERVAL;',
@@ -152,7 +154,9 @@ function loadGame() {
     Boolean: Boolean, Error: Error, TypeError: TypeError,
     console: console,
     setTimeout: setTimeout, clearTimeout: clearTimeout,
-    setInterval: setInterval, clearInterval: clearInterval
+    setInterval: setInterval, clearInterval: clearInterval,
+    btoa: function(s){ return Buffer.from(s, 'binary').toString('base64'); },
+    atob: function(s){ return Buffer.from(s, 'base64').toString('binary'); }
   };
   /* window 自己参照 */
   sandbox.window = sandbox;

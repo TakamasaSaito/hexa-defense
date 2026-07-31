@@ -211,6 +211,48 @@ html, body { width:100%; height:100%; overflow:hidden; background:#05090f; touch
   padding:4px 2px; line-height:1.5; }
 .help-kw { color:#4df3ff; font-family:'Chakra Petch',sans-serif; font-size:11px; font-weight:700;
   letter-spacing:1px; display:inline-block; min-width:80px; }
+.help-data-link { pointer-events:auto; background:none; border:none; cursor:pointer;
+  color:#4df3ff; font-family:'Chakra Petch',sans-serif; font-size:11px; font-weight:700;
+  letter-spacing:1px; text-decoration:underline; padding:0; }
+
+/* DATA画面 */
+.data-panel { width:min(92vw,400px); max-height:84vh; overflow-y:auto; -webkit-overflow-scrolling:touch;
+  background:linear-gradient(180deg,rgba(10,22,42,0.97),rgba(6,12,26,0.97));
+  border:1px solid rgba(77,243,255,0.35); padding:18px 16px 16px;
+  clip-path:polygon(18px 0,100% 0,100% calc(100% - 18px),calc(100% - 18px) 100%,0 100%,0 18px); }
+.data-hd { font-family:'Chakra Petch',sans-serif; font-weight:700; font-size:18px; letter-spacing:6px;
+  color:#eaffff; text-shadow:0 0 16px rgba(77,243,255,0.7); text-align:center; margin-bottom:14px; }
+.data-sec { font-family:'Chakra Petch',sans-serif; font-size:9px; letter-spacing:3px;
+  color:rgba(77,243,255,0.55); border-bottom:1px solid rgba(77,243,255,0.14);
+  margin:10px 0 6px; padding-bottom:3px; }
+.data-textarea { width:100%; height:80px; background:rgba(0,10,30,0.7);
+  border:1px solid rgba(77,243,255,0.30); color:rgba(200,230,255,0.9);
+  font-family:monospace; font-size:10px; padding:6px 8px; resize:none;
+  -webkit-overflow-scrolling:touch; outline:none; box-sizing:border-box; }
+.data-action-row { display:flex; gap:8px; margin-top:6px; }
+.data-btn { pointer-events:auto; flex:1; padding:10px; border:none; cursor:pointer;
+  font-family:'Chakra Petch',sans-serif; font-weight:700; font-size:11px; letter-spacing:3px;
+  color:#4df3ff; background:rgba(77,243,255,0.08); border:1px solid rgba(77,243,255,0.35);
+  clip-path:polygon(6px 0,100% 0,100% calc(100% - 6px),calc(100% - 6px) 100%,0 100%,0 6px); }
+.data-btn:active { background:rgba(77,243,255,0.2); }
+.data-msg { font-size:10px; letter-spacing:1px; text-align:center; min-height:16px; margin-top:5px;
+  font-family:'Chakra Petch',sans-serif; }
+.data-msg.ok  { color:rgba(77,243,100,0.9); }
+.data-msg.err { color:rgba(255,80,80,0.9); }
+.data-confirm { position:absolute; inset:0; background:rgba(3,7,15,0.85);
+  display:flex; align-items:center; justify-content:center; z-index:20; }
+.data-confirm-box { padding:20px 18px; background:rgba(10,22,42,0.98);
+  border:1px solid rgba(77,243,255,0.5); max-width:280px; width:90%; text-align:center;
+  clip-path:polygon(12px 0,100% 0,100% calc(100% - 12px),calc(100% - 12px) 100%,0 100%,0 12px); }
+.data-confirm-msg { font-family:'Rajdhani',sans-serif; font-size:14px;
+  color:rgba(190,225,255,0.9); margin-bottom:16px; line-height:1.5; }
+.data-confirm-btns { display:flex; gap:10px; justify-content:center; }
+.data-confirm-btn { pointer-events:auto; padding:10px 20px; border:none; cursor:pointer;
+  font-family:'Chakra Petch',sans-serif; font-weight:700; font-size:12px; letter-spacing:2px; }
+.data-confirm-btn.ok     { color:#eaffff; background:rgba(255,80,80,0.15); border:1px solid rgba(255,80,80,0.5); }
+.data-confirm-btn.cancel { color:#4df3ff; background:rgba(77,243,255,0.07); border:1px solid rgba(77,243,255,0.4); }
+.ios-hint { font-family:'Rajdhani',sans-serif; font-size:11px; letter-spacing:1px;
+  color:rgba(255,210,87,0.7); text-align:center; padding:4px 16px; }
 
 /* SP獲得表示(リザルト) */
 .sp-earned { margin:6px 0 16px; font-family:'Chakra Petch',sans-serif; font-size:14px;
@@ -584,7 +626,9 @@ html, body { width:100%; height:100%; overflow:hidden; background:#05090f; touch
       <button class="title-sub-btn" id="checkpointBtn" style="display:none">SELECT WAVE</button>
       <button class="title-sub-btn" id="upgradeBtn">SKILL POINTS</button>
       <button class="title-sub-btn" id="helpBtn" style="font-size:12px;letter-spacing:4px">HELP</button>
+      <button class="title-sub-btn" id="dataBtn" style="font-size:12px;letter-spacing:4px">DATA</button>
     </div>
+    <div class="ios-hint" id="iosHint" style="display:none">ホーム画面に追加するとデータが保持されやすくなります</div>
     <div class="title-meta">
       <div class="meta-item"><div class="v" id="bestWaveDisp">—</div><div class="k">BEST WAVE</div></div>
       <div class="meta-item"><div class="v" id="spDisp" style="color:#ffd257">0</div><div class="k">SKILL POINTS</div></div>
@@ -613,6 +657,35 @@ html, body { width:100%; height:100%; overflow:hidden; background:#05090f; touch
       <div class="help-hd">HELP</div>
       <div class="help-body" id="helpBody"></div>
       <button id="helpCloseBtn" class="store-close">BACK</button>
+    </div>
+  </div>
+
+  <!-- DATA画面 -->
+  <div class="screen" id="scrData">
+    <div class="data-panel">
+      <div class="data-hd">DATA</div>
+      <div class="data-sec">EXPORT</div>
+      <textarea class="data-textarea" id="dataExportText" readonly></textarea>
+      <div class="data-action-row">
+        <button class="data-btn" id="dataCopyBtn">COPY</button>
+      </div>
+      <div class="data-msg" id="dataCopyMsg"></div>
+      <div class="data-sec" style="margin-top:14px">IMPORT</div>
+      <textarea class="data-textarea" id="dataImportText" placeholder="ここにデータを貼り付け"></textarea>
+      <div class="data-action-row">
+        <button class="data-btn" id="dataRestoreBtn">RESTORE</button>
+      </div>
+      <div class="data-msg" id="dataRestoreMsg"></div>
+      <button class="store-close" id="dataCloseBtn">BACK</button>
+    </div>
+    <div class="data-confirm" id="dataConfirm" style="display:none">
+      <div class="data-confirm-box">
+        <div class="data-confirm-msg">現在のデータを上書きします。よろしいですか?</div>
+        <div class="data-confirm-btns">
+          <button class="data-confirm-btn ok" id="dataConfirmOk">OK</button>
+          <button class="data-confirm-btn cancel" id="dataConfirmCancel">CANCEL</button>
+        </div>
+      </div>
     </div>
   </div>
 
@@ -5805,7 +5878,17 @@ function openHelp(){
     '<div class="help-row"><span class="help-kw">SUMMONER</span> 雑魚召喚+弾幕。召喚された敵から先に処理</div>' +
     '<div class="help-row"><span class="help-kw">DIVIDER</span> 撃破で中型ボス2体に分裂。耐久力に注意</div>' +
     '<div class="help-row"><span class="help-kw">REFLECTOR</span> シールド中は被弾が跳ね返る。シールドが切れるまで温存</div>' +
-    '<div class="help-row"><span class="help-kw">PHANTOM</span> 分身を生成。弾を撃っている個体が本体</div>';
+    '<div class="help-row"><span class="help-kw">PHANTOM</span> 分身を生成。弾を撃っている個体が本体</div>' +
+    '<div class="help-sec" style="margin-top:14px">DATA BACKUP</div>' +
+    (isIosSafariNonStandalone() ? '<div class="ios-hint" style="margin-top:0;margin-bottom:6px">ホーム画面に追加するとデータが保持されやすくなります</div>' : '') +
+    '<div class="help-row"><button class="help-data-link" id="helpDataBtn">▶ セーブデータのバックアップ(DATA画面)</button></div>';
+  var helpDataBtn = document.getElementById('helpDataBtn');
+  if(helpDataBtn){
+    helpDataBtn.addEventListener('click', function(){
+      hideScreen('scrHelp');
+      openDataScreen(true);
+    });
+  }
   showScreen('scrHelp');
 }
 
@@ -5814,11 +5897,72 @@ function closeHelp(){
   showScreen('scrTitle');
 }
 
+/* =====================================================================
+   DATA画面(エクスポート/インポート)
+===================================================================== */
+function isIosSafariNonStandalone(){
+  var ua = navigator.userAgent;
+  var isIos     = /iPhone|iPad|iPod/.test(ua);
+  var isSafari  = /Safari/.test(ua) && !/Chrome|CriOS|FxiOS/.test(ua);
+  var isAlone   = (typeof window.navigator.standalone === 'boolean') && window.navigator.standalone;
+  return isIos && isSafari && !isAlone;
+}
+
+function exportSaveToString(){
+  return btoa(JSON.stringify(saveData));
+}
+
+function importSaveFromString(str){
+  var decoded;
+  try {
+    decoded = JSON.parse(atob(str.trim()));
+  } catch(e) {
+    return { ok: false, msg: 'データの解析に失敗しました' };
+  }
+  if(!decoded || typeof decoded !== 'object'){
+    return { ok: false, msg: '無効なデータ形式です' };
+  }
+  var migrated = migrateSave(decoded);
+  return { ok: true, data: migrated };
+}
+
+var _dataScreenFromHelp = false;
+var _pendingImportData  = null;
+
+function openDataScreen(fromHelp){
+  _dataScreenFromHelp = fromHelp;
+  document.getElementById('dataExportText').value       = exportSaveToString();
+  document.getElementById('dataImportText').value       = '';
+  document.getElementById('dataCopyMsg').textContent    = '';
+  document.getElementById('dataCopyMsg').className      = 'data-msg';
+  document.getElementById('dataRestoreMsg').textContent = '';
+  document.getElementById('dataRestoreMsg').className   = 'data-msg';
+  document.getElementById('dataConfirm').style.display  = 'none';
+  _pendingImportData = null;
+  showScreen('scrData');
+}
+
+function closeDataScreen(){
+  hideScreen('scrData');
+  if(_dataScreenFromHelp){
+    openHelp();
+  } else {
+    showScreen('scrTitle');
+  }
+}
+
+function updateTitleIosHint(){
+  var el = document.getElementById('iosHint');
+  if(!el) return;
+  el.style.display = isIosSafariNonStandalone() ? 'block' : 'none';
+}
+
 function updateTitleScreen(){
   document.getElementById('bestWaveDisp').textContent = bestWave > 0 ? 'W.' + bestWave : '—';
   document.getElementById('spDisp').textContent = String(saveData.skillPoints);
   document.getElementById('continueBtn').style.display  = saveData.suspendedRun ? 'block' : 'none';
   document.getElementById('checkpointBtn').style.display = saveData.unlockedCheckpoints.length > 1 ? 'block' : 'none';
+  updateTitleIosHint();
 }
 
 /* =====================================================================
@@ -5966,6 +6110,83 @@ document.getElementById('helpBtn').addEventListener('click', function(){
 document.getElementById('helpCloseBtn').addEventListener('click', function(){
   playSound('button');
   closeHelp();
+});
+
+document.getElementById('dataBtn').addEventListener('click', function(){
+  playSound('button');
+  hideScreen('scrTitle');
+  openDataScreen(false);
+});
+
+document.getElementById('dataCopyBtn').addEventListener('click', function(){
+  var txt   = document.getElementById('dataExportText').value;
+  var msgEl = document.getElementById('dataCopyMsg');
+  if(navigator.clipboard && navigator.clipboard.writeText){
+    navigator.clipboard.writeText(txt).then(function(){
+      msgEl.className   = 'data-msg ok';
+      msgEl.textContent = 'コピーしました';
+    }, function(){
+      document.getElementById('dataExportText').select();
+      msgEl.className   = 'data-msg ok';
+      msgEl.textContent = '選択しました — 手動でコピーしてください';
+    });
+  } else {
+    document.getElementById('dataExportText').select();
+    msgEl.className   = 'data-msg ok';
+    msgEl.textContent = '選択しました — 手動でコピーしてください';
+  }
+});
+
+document.getElementById('dataRestoreBtn').addEventListener('click', function(){
+  var str   = document.getElementById('dataImportText').value;
+  var msgEl = document.getElementById('dataRestoreMsg');
+  if(!str.trim()){
+    msgEl.className   = 'data-msg err';
+    msgEl.textContent = 'データを貼り付けてください';
+    return;
+  }
+  var result = importSaveFromString(str);
+  if(!result.ok){
+    msgEl.className   = 'data-msg err';
+    msgEl.textContent = result.msg;
+    return;
+  }
+  _pendingImportData = result.data;
+  msgEl.textContent  = '';
+  document.getElementById('dataConfirm').style.display = 'flex';
+});
+
+document.getElementById('dataConfirmOk').addEventListener('click', function(){
+  if(!_pendingImportData) return;
+  saveData.version             = _pendingImportData.version;
+  saveData.skillPoints         = _pendingImportData.skillPoints;
+  saveData.spAlloc             = _pendingImportData.spAlloc;
+  saveData.bestWave            = _pendingImportData.bestWave;
+  saveData.totalKills          = _pendingImportData.totalKills;
+  saveData.unlockedCheckpoints = _pendingImportData.unlockedCheckpoints;
+  saveData.suspendedRun        = _pendingImportData.suspendedRun;
+  saveData.settings.mute       = _pendingImportData.settings.mute;
+  saveData.settings.speedIdx   = _pendingImportData.settings.speedIdx;
+  saveData.v4MigrateNotify     = _pendingImportData.v4MigrateNotify;
+  saveData.seenHints           = _pendingImportData.seenHints;
+  bestWave = saveData.bestWave;
+  persistSave();
+  _pendingImportData = null;
+  document.getElementById('dataConfirm').style.display  = 'none';
+  document.getElementById('dataRestoreMsg').className   = 'data-msg ok';
+  document.getElementById('dataRestoreMsg').textContent = '復元しました';
+  document.getElementById('dataExportText').value = exportSaveToString();
+  updateTitleScreen();
+});
+
+document.getElementById('dataConfirmCancel').addEventListener('click', function(){
+  _pendingImportData = null;
+  document.getElementById('dataConfirm').style.display = 'none';
+});
+
+document.getElementById('dataCloseBtn').addEventListener('click', function(){
+  playSound('button');
+  closeDataScreen();
 });
 
 document.getElementById('upgradeFromResultBtn').addEventListener('click', function(){

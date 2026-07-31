@@ -560,6 +560,63 @@ assert(
 );
 
 /* =====================================================================
+   L. エクスポート/インポート往復テスト
+===================================================================== */
+suite('L. エクスポート/インポート往復テスト');
+
+/* L01: exportSaveToString が文字列を返す */
+var exportStr = g.exportSaveToString();
+assert(typeof exportStr === 'string' && exportStr.length > 0, 'L01: exportSaveToString が非空文字列を返す');
+
+/* L02: importSaveFromString が ok:true を返す */
+var importResult = g.importSaveFromString(exportStr);
+assert(importResult.ok === true, 'L02: importSaveFromString(exportStr).ok === true');
+
+/* L03: 往復後の skillPoints が一致 */
+var origData = g.getSaveData();
+assertEq(
+  importResult.data.skillPoints,
+  origData.skillPoints,
+  'L03: 往復後 skillPoints 一致'
+);
+
+/* L04: 往復後の bestWave が一致 */
+assertEq(
+  importResult.data.bestWave,
+  origData.bestWave,
+  'L04: 往復後 bestWave 一致'
+);
+
+/* L05: 往復後の spAlloc.atk が一致 */
+assertEq(
+  importResult.data.spAlloc.atk,
+  origData.spAlloc.atk,
+  'L05: 往復後 spAlloc.atk 一致'
+);
+
+/* L06: 往復後の unlockedCheckpoints 長さが一致 */
+assertEq(
+  importResult.data.unlockedCheckpoints.length,
+  origData.unlockedCheckpoints.length,
+  'L06: 往復後 unlockedCheckpoints.length 一致'
+);
+
+/* L07: 不正Base64文字列はエラーを返す */
+var badResult = g.importSaveFromString('!!not-valid-base64!!');
+assert(badResult.ok === false && typeof badResult.msg === 'string', 'L07: 不正Base64はok:false+msg');
+
+/* L08: 正常Base64だが不正JSONはエラーを返す */
+var badJsonStr = Buffer.from('not valid json', 'binary').toString('base64');
+var badJsonResult = g.importSaveFromString(badJsonStr);
+assert(badJsonResult.ok === false, 'L08: 不正JSONはok:false');
+
+/* L09: バージョン付きデータが migrateSave を通って version:4 になる */
+var v3Data = { version: 3, skillPoints: 10, spAlloc: { atk: 2, def: 1, spd: 0 }, bestWave: 5 };
+var v3Str  = Buffer.from(JSON.stringify(v3Data), 'binary').toString('base64');
+var v3Result = g.importSaveFromString(v3Str);
+assert(v3Result.ok === true && v3Result.data.version === 4, 'L09: v3データを import するとマイグレーションされて version=4');
+
+/* =====================================================================
    結果サマリー
 ===================================================================== */
 console.log('\n==============================');
