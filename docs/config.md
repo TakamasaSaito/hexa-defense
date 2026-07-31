@@ -45,13 +45,14 @@ CONFIGオブジェクトは `index.html` 冒頭にまとめる。マジックナ
 | `WAVE_SPAWN_INTERVAL_MIN` | 0.18 | 最小スポーン間隔(秒) |
 | `WAVE_HEAL_ON_CLEAR` | 20 | ウェーブクリア回復量 |
 
-## 5帯難度スケール係数 (#16帯別体験再設計)
+## 5帯難度スケール係数 (#18更新)
 | キー | 値 | 説明 |
 |---|---|---|
-| `WAVE_HP_SCALES` | **[1.0, 1.3, 2.5, 6.0, 4.5]** | W31-40が最高HP(最難関)、W41-50はやや低め(爽快感) |
-| `WAVE_SPEED_SCALES` | **[1.0, 1.1, 1.6, 3.2, 2.6]** | W31-40が最速、W41-50はやや緩和 |
-| `WAVE_SPAWN_SCALES` | **[1.0, 1.3, 2.0, 3.2, 5.0]** | W41-50が最大スポーン(大群一掃の爽快感) |
+| `WAVE_HP_SCALES` | **[1.0, 1.5, 3.2, 8.0, 5.5]** | W31-40が最高HP(明確な壁)、W41-50はやや低め(爽快感) |
+| `WAVE_SPEED_SCALES` | **[1.0, 1.2, 2.0, 4.0, 3.0]** | W31-40が最速、W41-50はやや緩和 |
+| `WAVE_SPAWN_SCALES` | **[1.0, 1.4, 2.2, 3.6, 5.5]** | W41-50が最大スポーン(大群一掃の爽快感) |
 
+旧係数(#16): HP=[1.0,1.3,2.5,6.0,4.5], 速度=[1.0,1.1,1.6,3.2,2.6], 出現=[1.0,1.3,2.0,3.2,5.0]
 旧係数(#15): HP=[1.0,1.35,2.4,4.0,6.0], 速度=[1.0,1.15,1.7,2.4,3.2], 出現=[1.0,1.2,1.8,2.4,3.1]
 旧係数(#12): HP=[1.0,1.8,3.0,4.5,6.5], 速度=[1.0,1.4,2.0,2.7,3.5]
 旧係数(#11): HP=[1.0,2.0,3.5,5.5,8.0], 速度=[1.0,1.5,2.2,3.0,4.0]
@@ -107,7 +108,7 @@ CONFIGオブジェクトは `index.html` 冒頭にまとめる。マジックナ
 ### OVERDRIVE(W20解放)
 | キー | 値 | 説明 |
 |---|---|---|
-| `OVERDRIVE_COST` | 1000 | コスト(100%) |
+| `OVERDRIVE_COST` | **700** | コスト(**70%**, 旧100%, #18引下げ) |
 | `OVERDRIVE_CD` | 15 | クールダウン(秒) |
 | `OVERDRIVE_DUR` | 8 | 持続時間(秒) |
 | `OVERDRIVE_RATE_MULT` | 3.0 | 発射間隔を1/3に |
@@ -117,7 +118,7 @@ CONFIGオブジェクトは `index.html` 冒頭にまとめる。マジックナ
 ### BEAM(W15解放, #15新規) — 操作型ビーム
 | キー | 値 | 説明 |
 |---|---|---|
-| `BEAM_COST` | 1000 | コスト(100%) |
+| `BEAM_COST` | **700** | コスト(**70%**, 旧100%, #18引下げ) |
 | `BEAM_CD` | 20 | クールダウン(秒) |
 | `BEAM_DUR` | 10 | 持続時間(秒) |
 | `BEAM_WIDTH` | 26 | 当たり判定半幅(px) |
@@ -133,56 +134,67 @@ CONFIGオブジェクトは `index.html` 冒頭にまとめる。マジックナ
 
 ## ボス設定
 
-### チャージャー系 (W5/10/25/45)
+### チャージャー系 (W5/10/25/45) — #18大幅強化
 | キー | 値 | 説明 |
 |---|---|---|
-| `BOSS_MINI_HP` | 700 | W5ミニボスHP |
-| `BOSS_CHARGER_HP` | 2200 | W10ノーマルHP |
-| `BOSS_CHARGER_HP_HARD` | 4200 | W25(hard)HP |
-| `BOSS_CHARGER_HP_ULTRA` | **9500** | W45(ultra)HP (#16強化) |
-| `BOSS_CHARGER_DMG` | 38 | 突進接触ダメージ |
-| `BOSS_CHARGER_DMG_HARD` | 58 | hard突進ダメージ |
-| `BOSS_CHARGER_DMG_ULTRA` | 80 | ultra突進ダメージ |
+| `BOSS_MINI_HP` | **1000** | W5ミニボスHP (旧700) |
+| `BOSS_CHARGER_HP` | **3500** | W10ノーマルHP (旧2200) |
+| `BOSS_CHARGER_HP_HARD` | **8500** | W25(hard)HP (旧4200) |
+| `BOSS_CHARGER_HP_ULTRA` | **20000** | W45(ultra)HP (旧9500) |
+| `BOSS_CHARGER_DMG` | **52** | 突進接触ダメージ (旧38) |
+| `BOSS_CHARGER_DMG_HARD` | **85** | hard突進ダメージ (旧58) |
+| `BOSS_CHARGER_DMG_ULTRA` | **130** | ultra突進ダメージ (旧80) |
 | `BOSS_CHARGER_SPEED_CHARGE` | 430 | 突進速度(px/s) |
+| `BOSS_CHARGER_SHOCKWAVE_DMG` | **85** | 着地衝撃波ダメージ (旧55) |
 | `BOSS_PHASE2_HP_RATIO` | 0.60 | フェーズ2移行HP割合 |
 | `BOSS_PHASE3_HP_RATIO` | 0.30 | フェーズ3移行HP割合(W25以降) |
-| `BOSS_CHARGER_WANDER_DUR_P3` | 0.9 | フェーズ3周回時間(秒) |
-| `BOSS_CHARGER_REST_DUR_P3` | 0.4 | フェーズ3休止時間(秒) |
+| `BOSS_CHARGER_WANDER_DUR_P3` | **0.7** | フェーズ3周回時間(秒) (旧0.9) |
+| `BOSS_CHARGER_REST_DUR_P3` | **0.3** | フェーズ3休止時間(秒) (旧0.4) |
 
-### バラージ系(W15/35) — (#11新規, #16強化)
+### バラージ系(W15/35) — #18大幅強化
 | キー | 値 | 説明 |
 |---|---|---|
-| `BOSS_BARRAGE_HP` | 1600 | W15HP |
-| `BOSS_BARRAGE_HP_HARD` | **5500** | W35HP (#16: 3400→5500) |
-| `BOSS_BARRAGE_BULLET_INTERVAL_HARD` | **1.7** | W35初期弾幕間隔(秒)(通常2.2) (#16新規) |
+| `BOSS_BARRAGE_HP` | **2800** | W15HP (旧1600) |
+| `BOSS_BARRAGE_HP_HARD` | **14000** | W35HP (旧5500) |
+| `BOSS_BARRAGE_BULLET_INTERVAL_HARD` | **1.0** | W35初期弾幕間隔(秒) (旧1.7) |
+| `BOSS_BARRAGE_BULLET_INTERVAL` | **1.8** | 通常弾幕間隔(秒) (旧2.2) |
 | `BOSS_BARRAGE_ORBIT_SPEED` | 0.5 | 軌道回転速度(rad/s) |
-| `BOSS_BARRAGE_INTERVAL_P1` | 2.2 | フェーズ1弾幕間隔(秒) |
-| `BOSS_BARRAGE_INTERVAL_P2` | 1.54 | フェーズ2弾幕間隔(×0.7) |
-| `BOSS_BARRAGE_INTERVAL_P3` | 0.6 | フェーズ3弾幕間隔(秒、W35のみ) |
-| `BOSS_BARRAGE_COUNT_P1` | 8 | フェーズ1弾数(円形) |
-| `BOSS_BARRAGE_COUNT_P2` | 12 | フェーズ2弾数(螺旋) |
-| `BOSS_BARRAGE_COUNT_P3` | 18 | フェーズ3弾数(高密度螺旋) |
-| `BOSS_BARRAGE_BULLET_SPEED` | 160 | 弾速(px/s) |
-| `BOSS_BARRAGE_DMG` | 12 | 弾ダメージ |
+| `BOSS_BARRAGE_COUNT_P1` | **12** | フェーズ1弾数(円形) (旧8) |
+| `BOSS_BARRAGE_COUNT_P2` | **16** | フェーズ2弾数(螺旋) (旧12) |
+| `BOSS_BARRAGE_COUNT_P3` | **24** | フェーズ3弾数(高密度螺旋) (旧18) |
+| `BOSS_BARRAGE_BULLET_SPEED` | 170 | 弾速(px/s) |
+| `BOSS_BARRAGE_BULLET_DMG` | **30** | 弾ダメージ (旧22) |
 
-### ディバイダー(W30) — 新規 (#11), #16強化
+### ディバイダー(W30) — #18大幅強化
 | キー | 値 | 説明 |
 |---|---|---|
-| `BOSS_DIVIDER_HP` | **4200** | 親HP (#16: 2800→4200, 最難関前哨) |
+| `BOSS_DIVIDER_HP` | **9500** | 親HP (旧4200) |
+| `BOSS_DIVIDER_DMG` | **50** | 突進ダメージ (旧32) |
+| `BOSS_DIVIDER_CHILD_DMG` | **35** | 子突進ダメージ (旧22) |
 | `BOSS_DIVIDER_ORBIT_SPEED` | 0.6 | 軌道速度(rad/s) |
-| `BOSS_DIVIDER_CHARGE_SPEED` | 350 | 突進速度(px/s) |
+| `BOSS_DIVIDER_CHARGE_SPEED` | 360 | 突進速度(px/s) |
 | `BOSS_DIVIDER_CHILD_HP_RATIO` | 0.4 | 子のHP比(親最大HPの40%) |
-| `BOSS_DIVIDER_CHILD_COIN` | 25 | 子撃破コイン |
-| `BOSS_DIVIDER_DMG` | 20 | 突進ダメージ |
+| `BOSS_DIVIDER_WANDER_DUR_P2` | **1.2** | フェーズ2周回時間(秒) (旧1.6) |
+| `BOSS_DIVIDER_REST_DUR_P2` | **0.6** | フェーズ2休止時間(秒) (旧0.9) |
 
-### サモナー系 (W20/40/50)
+### サモナー系 (W20/40/50) — #18大幅強化・フェーズ移行攻撃密度増加
 | キー | 値 | 説明 |
 |---|---|---|
-| `BOSS_SUMMONER_HP` | 2000 | W20HP |
-| `BOSS_SUMMONER_HP_HARD` | **8000** | W40HP (#16: 5500→8000, 最難関帯ラスト) |
-| `BOSS_SUMMONER_HP_ULTRA` | **12000** | W50 FINAL BOSS HP (#16: 9000→12000) |
-| `BOSS_SUMMONER_P3_SUMMON_INTERVAL` | 1.5 | フェーズ3召喚間隔(秒) |
-| `BOSS_SUMMONER_P3_BULLET_COUNT` | 16 | フェーズ3弾数 |
+| `BOSS_SUMMONER_HP` | **5500** | W20HP (旧3000) |
+| `BOSS_SUMMONER_HP_HARD` | **22000** | W40HP (旧8000) |
+| `BOSS_SUMMONER_HP_ULTRA` | **35000** | W50 FINAL BOSS HP (旧12000) |
+| `BOSS_SUMMONER_BULLET_INTERVAL` | **1.8** | P1弾幕間隔(秒) (旧2.2) |
+| `BOSS_SUMMONER_BULLET_COUNT` | **3** | P1弾数 (旧2) |
+| `BOSS_SUMMONER_BULLET_COUNT_HARD` | **6** | P1 hard弾数 (旧4) |
+| `BOSS_SUMMONER_BULLET_DMG` | **30** | 弾ダメージ (旧22) |
+| `BOSS_SUMMONER_SUMMON_INTERVAL_P2` | **2.0** | P2召喚間隔(秒) (旧2.8) |
+| `BOSS_SUMMONER_SUMMON_COUNT_P2` | **7** | P2召喚数 (旧5) |
+| `BOSS_SUMMONER_BULLET_INTERVAL_P2` | **1.0** | P2弾幕間隔(秒) (旧1.5) |
+| `BOSS_SUMMONER_BULLET_COUNT_P2` | **8** | P2弾数 (旧5) |
+| `BOSS_SUMMONER_SUMMON_INTERVAL_P3` | **1.2** | P3召喚間隔(秒) (旧1.8) |
+| `BOSS_SUMMONER_SUMMON_COUNT_P3` | **12** | P3召喚数 (旧8) |
+| `BOSS_SUMMONER_BULLET_INTERVAL_P3` | **0.55** | P3弾幕間隔(秒) (旧1.0) |
+| `BOSS_SUMMONER_BULLET_COUNT_P3` | **13** | P3弾数 (旧8) |
 
 ## コイン経済
 | キー | 値 | 説明 |
@@ -335,17 +347,22 @@ localStorageキー: `hd_save`。
 
 配置位置は `tower.range + 24`px の円周上に等間隔。属性効果適用。
 
-## 設置型フィールド (#13で追加)
+## 設置型フィールド (#13追加, #18大幅再設計 — 切り札型)
 | キー | 値 | 説明 |
 |---|---|---|
-| `FIELD_DMG_PER_SEC` | [6,10,15] | Lv1〜3の継続ダメージ(/秒) |
-| `FIELD_SLOW_MULT` | 0.55 | 敵速度倍率(減速) |
-| `FIELD_DURATION` | 10.0 | フィールド持続時間(秒) |
-| `FIELD_COOLDOWN` | 15.0 | 設置クールダウン(秒) |
-| `FIELD_RADIUS` | [65,80,95] | Lv1〜3の効果半径(px) |
+| `FIELD_DMG_PER_SEC` | **[15,20,28,36,45]** | Lv1〜5の継続ダメージ(/秒) (旧[6,10,15]) |
+| `FIELD_SLOW_MULT` | **0.45** | 敵速度倍率(減速) (旧0.55) |
+| `FIELD_DURATION` | 8.0 | フィールド持続時間(秒) |
+| `FIELD_COOLDOWN` | 0 | 廃止 (使用回数制に移行) |
+| `FIELD_RADIUS` | **[200,220,240,260,280]** | Lv1〜5の効果半径(px) (旧[65,80,95]) |
+| `FIELD_BASE_USES` | **3** | 初回取得時の使用回数(新規) |
+| `FIELD_EXTRA_USES` | **2** | 2回目以降取得・レアドロップ時の追加回数(新規) |
 
-タップ位置に設置。Lvで同時設置数(1〜5)が増加。
-スポーン時に `fieldCooldown = FIELD_COOLDOWN` をセット。残時間は `fields[].timer`で管理。
+**再設計(#18)**: CDシステムを廃止し使用回数制に変更。`fieldUsesLeft`変数で今ランの残回数を管理。
+- 初回カード取得: fieldUsesLeft += 3、2回目以降・レアドロップ: fieldUsesLeft += 2
+- 同時設置は1枚まで(範囲が広大なため)
+- HUD表示: 「FIELD x{残回数}」(残0なら薄色表示)
+- save/restoreRunにfieldUsesLeftを追加
 
 ## サブウェポン上限 (#16で拡張)
 | 種別 | 旧上限 | 新上限 | 解放条件 |
