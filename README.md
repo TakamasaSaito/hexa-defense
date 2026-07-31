@@ -102,3 +102,30 @@ ConoHa VPS(`160.251.252.203`) の `/var/www/hexa-defense` へ配信。
 ```
 
 `index.html`・`manifest.json`・アイコン類を scp で転送し、完了メッセージを表示して終了。
+`index.html` にはビルド日時(`YYYY-MM-DD`)が自動で埋め込まれるため、タイトル画面の `v1.0.0` 表記でデプロイ日付を目視確認できる。
+
+### キャッシュ制御(nginx設定)
+
+`deploy/nginx-hexa-defense.conf` に location ブロックを用意してある。
+VPS初回セットアップ時に以下の手順で適用すること。
+
+```bash
+# 1. 設定ファイルをVPSにコピー
+scp deploy/nginx-hexa-defense.conf root@160.251.252.203:/etc/nginx/snippets/hexa-defense.conf
+
+# 2. サイト設定に include を追加
+#    /etc/nginx/sites-available/hexa-defense.ea-journey.com (または相当ファイル) の
+#    server {} ブロック内の既存 location / の前に以下を追記:
+#      include /etc/nginx/snippets/hexa-defense.conf;
+#
+#    ※ 既存の location / と重複する場合は conf 内の location / を削除し、
+#       no-cache の location ブロックだけ追加する。
+
+# 3. 設定確認・リロード
+ssh root@160.251.252.203 "nginx -t && systemctl reload nginx"
+```
+
+**キャッシュ戦略:**
+- `index.html` / `manifest.json` → `no-cache`（デプロイ即時反映）
+- `*.png` / `*.svg` → `max-age=31536000, immutable`（アイコン類は長期キャッシュ）
+- その他 → `max-age=3600`
