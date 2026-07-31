@@ -987,10 +987,12 @@ var CFG = {
   ATTR_LIGHTNING_FRAC:    0.55,
 
   /* オービタル */
-  ORBITAL_RADIUS:         88,
+  ORBITAL_RADIUS_RATIO:   0.55,
   ORBITAL_SPEED:          2.2,
   ORBITAL_DMG_MULT:       1.2,
-  ORBITAL_BALL_SIZE:      7,
+  ORBITAL_BALL_BASE:      9,
+  ORBITAL_BALL_GROW:      1.5,
+  ORBITAL_TRAIL_LEN:      10,
   ORBITAL_HIT_CD:         0.65,
 
   /* 範囲爆発弾 */
@@ -1388,9 +1390,10 @@ var settings = saveData.settings;
 
 /* サウンドスロットル変数 */
 var audioCtx        = null;
-var shootSoundTimer = 0;
-var hitSoundTimer   = 0;
-var killSoundTimer  = 0;
+var shootSoundTimer    = 0;
+var hitSoundTimer      = 0;
+var killSoundTimer     = 0;
+var orbHitSoundTimer   = 0;
 
 function persistSave(){ saveData.bestWave = bestWave; storage.save(saveData); }
 function saveBestWave(){ persistSave(); }
@@ -1425,8 +1428,9 @@ function playSound(id){
   else if(id === 'boss')    sndBoss();
   else if(id === 'damage')  sndDamage();
   else if(id === 'barrier') sndBarrierBreak();
-  else if(id === 'button')  sndButton();
-  else if(id === 'rare')    sndRare();
+  else if(id === 'button')      sndButton();
+  else if(id === 'rare')        sndRare();
+  else if(id === 'orbitalhit')  sndOrbitalHit();
 }
 
 function oscPlay(type, freq, freqEnd, gainStart, dur){
@@ -1471,6 +1475,12 @@ function sndHit(){
   if(mult >= 10) hitSoundTimer = 0.08;
   else if(mult >= 3) hitSoundTimer = 0.04;
   noisePlay(0.06, 0.05);
+}
+
+function sndOrbitalHit(){
+  if(orbHitSoundTimer > 0) return;
+  orbHitSoundTimer = 0.12;
+  oscPlay('sine', 160, 55, 0.12, 0.14);
 }
 
 function sndKill(){
@@ -2331,17 +2341,22 @@ function rebuildOrbitals(){
   var n = weapons.orbital;
   var i;
   for(i = 0; i < n; i++){
-    orbitals.push({ angle: Math.PI * 2 / (n > 0 ? n : 1) * i, hitCds: [] });
+    orbitals.push({ angle: Math.PI * 2 / (n > 0 ? n : 1) * i, hitCds: [], trail: [], x: 0, y: 0 });
   }
 }
 
 function updateOrbitals(dt){
   var oi, ci, i;
+  var orbitR = tower.range * CFG.ORBITAL_RADIUS_RATIO;
+  var orbBallSz = CFG.ORBITAL_BALL_BASE + (orbitals.length - 1) * CFG.ORBITAL_BALL_GROW;
   for(oi = 0; oi < orbitals.length; oi++){
     var orb = orbitals[oi];
     orb.angle += CFG.ORBITAL_SPEED * dt;
-    var ox = cx() + Math.cos(orb.angle) * CFG.ORBITAL_RADIUS;
-    var oy = cy() + Math.sin(orb.angle) * CFG.ORBITAL_RADIUS;
+    var ox = cx() + Math.cos(orb.angle) * orbitR;
+    var oy = cy() + Math.sin(orb.angle) * orbitR;
+    orb.x = ox; orb.y = oy;
+    orb.trail.unshift({x:ox, y:oy});
+    while(orb.trail.length > CFG.ORBITAL_TRAIL_LEN) orb.trail.pop();
     for(i = orb.hitCds.length - 1; i >= 0; i--){
       orb.hitCds[i].cd -= dt;
       if(orb.hitCds[i].cd <= 0) orb.hitCds.splice(i, 1);
@@ -2357,14 +2372,15 @@ function updateOrbitals(dt){
       }
       if(onCd) continue;
       var edx = e.x - ox, edy = e.y - oy;
-      var hitR = CFG.ORBITAL_BALL_SIZE + e.size * 0.5;
+      var hitR = orbBallSz + e.size * 0.5;
       if(edx*edx + edy*edy < hitR * hitR){
         var oDmg = tower.dmg * CFG.ORBITAL_DMG_MULT;
         e.hp -= oDmg;
         gainSpecial(oDmg);
         applyAttrEffects(e, oDmg, ox, oy);
         floater(e.x, e.y - e.size, '-' + String(Math.round(oDmg)), '#40e0ff');
-        burst(ox, oy, '#40e0ff', 4);
+        burst(ox, oy, '#40e0ff', 8);
+        playSound('orbitalhit');
         orb.hitCds.push({ e: e, cd: CFG.ORBITAL_HIT_CD });
         if(e.hp <= 0){
           burst(e.x, e.y, e.color, e.isBoss ? 40 : 22);
@@ -2606,8 +2622,8 @@ function loop(t){
     /* サウンドスロットルも実時間 */
     if(shootSoundTimer > 0) shootSoundTimer -= dt;
     if(hitSoundTimer > 0) hitSoundTimer -= dt;
-
     if(killSoundTimer > 0) killSoundTimer -= dt;
+    if(orbHitSoundTimer > 0) orbHitSoundTimer -= dt;
     /* 警告タイマーも実時間(倍速無関係) */
     if(warningTimer > 0){
       warningTimer -= dt;
@@ -4500,16 +4516,42 @@ function draw(tm, dt){
 
   /* オービタル */
   if(orbitals.length > 0){
-    var orbAttr = getBulletAttrColor('#ffffff', '#aaaaff');
+    var orbitRD = tower.range * CFG.ORBITAL_RADIUS_RATIO;
+    var orbBallD = CFG.ORBITAL_BALL_BASE + (orbitals.length - 1) * CFG.ORBITAL_BALL_GROW;
+    /* 軌道リング: ソリッド薄青紫(射程リング破線・衛星リング黄色と別線種) */
+    ctx.save();
+    ctx.globalAlpha = 0.10 + 0.04 * Math.abs(Math.sin(tm * 1.2));
+    ctx.strokeStyle = 'rgba(100,160,255,1)';
+    ctx.lineWidth = 1;
+    ctx.beginPath(); ctx.arc(cx(), cy(), orbitRD, 0, Math.PI * 2); ctx.stroke();
+    ctx.globalAlpha = 1; ctx.restore();
     for(var oi = 0; oi < orbitals.length; oi++){
       var orb = orbitals[oi];
+      /* トレイル: 古い順に描画(新しいものが上に来る) */
+      var ti;
+      for(ti = orb.trail.length - 1; ti >= 0; ti--){
+        var tp = orb.trail[ti];
+        var trA = (1 - ti / CFG.ORBITAL_TRAIL_LEN) * 0.38;
+        var trR = orbBallD * (1 - ti / CFG.ORBITAL_TRAIL_LEN * 0.70);
+        ctx.save();
+        ctx.globalAlpha = trA;
+        ctx.fillStyle = '#40e0ff';
+        ctx.beginPath(); ctx.arc(tp.x, tp.y, trR, 0, Math.PI * 2); ctx.fill();
+        ctx.globalAlpha = 1; ctx.restore();
+      }
+      /* 球: アウターグロー + 本体 + 白コア */
       ctx.save();
-      ctx.shadowColor = orbAttr.g; ctx.shadowBlur = 18;
-      ctx.fillStyle = orbAttr.c; ctx.globalAlpha = 0.88;
-      ctx.beginPath(); ctx.arc(orb.x, orb.y, CFG.ORBITAL_BALL_SIZE, 0, Math.PI * 2); ctx.fill();
-      ctx.globalAlpha = 0.28; ctx.fillStyle = orbAttr.g;
-      ctx.beginPath(); ctx.arc(orb.x, orb.y, CFG.ORBITAL_BALL_SIZE * 2.0, 0, Math.PI * 2); ctx.fill();
-      ctx.globalAlpha = 1; ctx.shadowBlur = 0; ctx.restore();
+      ctx.shadowColor = '#40e0ff'; ctx.shadowBlur = 20 + orbBallD;
+      ctx.globalAlpha = 0.22;
+      ctx.fillStyle = '#40e0ff';
+      ctx.beginPath(); ctx.arc(orb.x, orb.y, orbBallD * 2.2, 0, Math.PI * 2); ctx.fill();
+      ctx.globalAlpha = 0.92;
+      ctx.beginPath(); ctx.arc(orb.x, orb.y, orbBallD, 0, Math.PI * 2); ctx.fill();
+      ctx.globalAlpha = 1;
+      ctx.fillStyle = '#ffffff';
+      ctx.shadowBlur = 8;
+      ctx.beginPath(); ctx.arc(orb.x, orb.y, orbBallD * 0.45, 0, Math.PI * 2); ctx.fill();
+      ctx.shadowBlur = 0; ctx.restore();
     }
   }
 
