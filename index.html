@@ -656,6 +656,55 @@ html, body { width:100%; height:100%; overflow:hidden; background:#05090f; touch
 (function(){
 'use strict';
 
+/*
+ * =====================================================================
+ * SCRIPT TABLE OF CONTENTS  (行番号は近似値)
+ * =====================================================================
+ *
+ * [C]  CONFIG ................................  706
+ * [V]  ゲーム変数 .............................  1180
+ * [S]  SaveData / StorageAdapter .............  1285
+ * [A]  Audio .................................  1477
+ * [T]  Tower / Damage ........................  1651
+ * [I]  Items / Drops .........................  1674
+ * [X]  XP / Level Up .........................  1736
+ * [P]  Specials (PULSE/RAILGUN/OVERDRIVE/BEAM)  1863
+ * [F]  Game Flow (reset / wave) ..............  2093
+ * [E]  Enemy Spawn ...........................  2203
+ * [G]  Special Enemies (sniper/split/weaver) .  2254
+ * [R]  Particles / Floaters ..................  2306
+ * [B]  Attribute Effects / Sub-Weapon Systems   2333
+ * [L]  Game Loop
+ *        loop() ..............................  2683
+ *        updateItems / updateParticlesAndFloaters
+ *        updateEnemyBullets / updateSpecials .  2738
+ *        update() ...........................  2872
+ * [M]  Enemy Movement (sniper / weaver) ......  3270
+ * [N]  New Enemy Alert .......................  3325
+ * [O]  Boss: MiniCharger .....................  3332
+ *      Boss: Warning .........................  3431
+ *      Boss: Charger (W10/25/45) .............  3441
+ *      Boss: Summoner ........................  3548
+ *      Boss: Barrage .........................  3639
+ *      Boss: Divider .........................  3716
+ * [U]  Sub Turret Update .....................  3837
+ * [W]  Card / Weapon UI ......................  3882
+ * [D]  Draw
+ *        drawEnemiesLayer ....................  4035
+ *        drawBossLayer .......................  4101
+ *        drawSubWeaponsLayer .................  4159
+ *        drawHUDLayer ........................  4279
+ *        draw() .............................  4554
+ * [K]  Checkpoint ............................  4837
+ * [Z]  Suspend Save / Pause / Status .........  4892
+ * [Q]  SP Upgrades ...........................  5111
+ * [Y]  SP Screen UI ..........................  5187
+ * [J]  Title / End Screen ....................  5308
+ * [H]  Event Handlers ........................  5365
+ *
+ * =====================================================================
+ */
+
 /* =====================================================================
    CONFIG — すべての数値定数
 ===================================================================== */
@@ -2687,6 +2736,141 @@ function loop(t){
   draw(t / 1000, dt);
 }
 
+/* ---- update サブ関数 ---- */
+function updateItems(dt){
+  var i;
+  /* 回復アイテム: タワーへ漂い + タワー接触で取得 */
+  for(i = healItems.length - 1; i >= 0; i--){
+    var hit = healItems[i];
+    var hdx = cx() - hit.x, hdy = cy() - hit.y;
+    var hdd = Math.sqrt(hdx * hdx + hdy * hdy);
+    if(hdd > 1){
+      hit.x += hdx / hdd * CFG.DROP_SPEED * dt;
+      hit.y += hdy / hdd * CFG.DROP_SPEED * dt;
+    }
+    hit.life -= dt;
+    if(hdd < CFG.TOWER_HIT_RADIUS + 12){
+      tower.hp = Math.min(tower.maxHp, tower.hp + CFG.DROP_HEAL_AMOUNT);
+      floater(hit.x, hit.y - 10, '+' + CFG.DROP_HEAL_AMOUNT + ' HP', '#3ddc74');
+      healItems.splice(i, 1);
+    } else if(hit.life <= 0){
+      healItems.splice(i, 1);
+    }
+  }
+  /* レアアイテム: タワーへ漂い + タワー接触で取得 */
+  for(i = rareItems.length - 1; i >= 0; i--){
+    var ri = rareItems[i];
+    var rdx = cx() - ri.x, rdy = cy() - ri.y;
+    var rdd = Math.sqrt(rdx * rdx + rdy * rdy);
+    if(rdd > 1){
+      ri.x += rdx / rdd * CFG.DROP_RARE_SPEED * dt;
+      ri.y += rdy / rdd * CFG.DROP_RARE_SPEED * dt;
+    }
+    ri.life -= dt;
+    if(rdd < CFG.TOWER_HIT_RADIUS + 14){
+      applyRareEffect(ri.effect, ri.x, ri.y);
+      rareItems.splice(i, 1);
+    } else if(ri.life <= 0){
+      rareItems.splice(i, 1);
+    }
+  }
+}
+
+function updateParticlesAndFloaters(dt){
+  var i;
+  /* パーティクル */
+  for(i = particles.length - 1; i >= 0; i--){
+    var p = particles[i];
+    p.x += p.vx * dt; p.y += p.vy * dt;
+    p.vx *= 0.95; p.vy *= 0.95;
+    p.life -= dt;
+    if(p.life <= 0) particles.splice(i, 1);
+  }
+  /* フローター */
+  for(i = floaters.length - 1; i >= 0; i--){
+    var f = floaters[i];
+    f.y -= 44 * dt; f.life -= dt;
+    if(f.life <= 0) floaters.splice(i, 1);
+  }
+}
+
+/* 敵弾が即死ダメージを与えた場合 true を返す(呼び元で return) */
+function updateEnemyBullets(dt){
+  var i, eb, etx, ety;
+  for(i = enemyBullets.length - 1; i >= 0; i--){
+    eb = enemyBullets[i];
+    eb.x += eb.vx * dt; eb.y += eb.vy * dt; eb.life -= dt;
+    etx = eb.x - cx(); ety = eb.y - cy();
+    if(etx * etx + ety * ety < CFG.TOWER_HIT_RADIUS * CFG.TOWER_HIT_RADIUS){
+      burst(cx(), cy(), eb.color || '#c84dff', 8);
+      enemyBullets.splice(i, 1);
+      if(takeDamage(eb.dmg)){ endGame(false); return true; }
+    } else if(eb.life <= 0 || eb.x < -120 || eb.x > W + 120 || eb.y < -120 || eb.y > H + 120){
+      enemyBullets.splice(i, 1);
+    }
+  }
+  return false;
+}
+
+function updateSpecials(dt){
+  /* 必殺クールダウン */
+  if(specials.pulse.cd    > 0){ specials.pulse.cd    -= dt; if(specials.pulse.cd    < 0) specials.pulse.cd    = 0; }
+  if(specials.railgun.cd  > 0){ specials.railgun.cd  -= dt; if(specials.railgun.cd  < 0) specials.railgun.cd  = 0; }
+  if(specials.overdrive.cd> 0){ specials.overdrive.cd -= dt; if(specials.overdrive.cd < 0) specials.overdrive.cd = 0; }
+  /* OVERDRIVE 残時間 */
+  if(overdriveTimer > 0){
+    overdriveTimer -= dt;
+    if(overdriveTimer <= 0){
+      overdriveTimer = 0;
+      tower.fireInterval = overdriveSavedInterval;
+      tower.dmg          = overdriveSavedDmg;
+      tower.range        = overdriveSavedRange;
+      specials.overdrive.cd = CFG.OVERDRIVE_CD;
+    }
+  }
+  /* BEAMアクティブ: ダメージ判定 + タイマー */
+  if(beamTimer > 0){
+    beamTimer -= dt;
+    if(beamTimer <= 0){
+      beamTimer = 0;
+      specials.beam.cd = CFG.BEAM_CD;
+    } else {
+      var bcos = Math.cos(beamAngle), bsin = Math.sin(beamAngle);
+      var bAll = enemies.slice();
+      if(boss !== null) bAll.push(boss);
+      var bi3;
+      for(bi3 = 0; bi3 < bAll.length; bi3++){
+        var btgt = bAll[bi3];
+        /* 点→直線距離でビーム当たり判定(タワーから beamAngle 方向の無限線) */
+        var bdx3 = btgt.x - cx(), bdy3 = btgt.y - cy();
+        var bproj = bdx3 * bcos + bdy3 * bsin; /* 射影距離(正=ビーム前方) */
+        var bperp = Math.abs(-bdx3 * bsin + bdy3 * bcos);
+        if(bproj > 0 && bperp < CFG.BEAM_WIDTH){
+          var bDmg3 = CFG.BEAM_DMG_PER_SEC * dt;
+          btgt.hp -= bDmg3;
+          gainSpecial(bDmg3 * 0.1);
+          applyAttrEffects(btgt, bDmg3, cx() + bcos * bproj, cy() + bsin * bproj);
+        }
+      }
+    }
+  } else if(specials.beam.cd > 0){
+    specials.beam.cd -= dt;
+    if(specials.beam.cd < 0) specials.beam.cd = 0;
+  }
+  /* レールガンビームフェード */
+  if(railgunCharge){
+    railgunCharge.timer += dt;
+    if(railgunCharge.timer >= railgunCharge.maxTimer){
+      executeRailgunBeam(railgunCharge.ang);
+      railgunCharge = null;
+    }
+  }
+  if(railgunBeam){ railgunBeam.timer -= dt; if(railgunBeam.timer <= 0) railgunBeam = null; }
+  /* 必殺HUD更新(0.25秒ごと) */
+  specialHudTimer -= dt;
+  if(specialHudTimer <= 0){ specialHudTimer = 0.25; updateSpecialHud(); }
+}
+
 function update(dt){
   /* スポーン */
   if(spawnQueue > 0){
@@ -3051,72 +3235,9 @@ function update(dt){
     }
   }
 
-  /* 回復アイテム: タワーへ漂い + タワー接触で取得 */
-  for(i = healItems.length - 1; i >= 0; i--){
-    var hit = healItems[i];
-    var hdx = cx() - hit.x, hdy = cy() - hit.y;
-    var hdd = Math.sqrt(hdx * hdx + hdy * hdy);
-    if(hdd > 1){
-      hit.x += hdx / hdd * CFG.DROP_SPEED * dt;
-      hit.y += hdy / hdd * CFG.DROP_SPEED * dt;
-    }
-    hit.life -= dt;
-    if(hdd < CFG.TOWER_HIT_RADIUS + 12){
-      tower.hp = Math.min(tower.maxHp, tower.hp + CFG.DROP_HEAL_AMOUNT);
-      floater(hit.x, hit.y - 10, '+' + CFG.DROP_HEAL_AMOUNT + ' HP', '#3ddc74');
-      healItems.splice(i, 1);
-    } else if(hit.life <= 0){
-      healItems.splice(i, 1);
-    }
-  }
-
-  /* レアアイテム: タワーへ漂い + タワー接触で取得 */
-  for(i = rareItems.length - 1; i >= 0; i--){
-    var ri = rareItems[i];
-    var rdx = cx() - ri.x, rdy = cy() - ri.y;
-    var rdd = Math.sqrt(rdx * rdx + rdy * rdy);
-    if(rdd > 1){
-      ri.x += rdx / rdd * CFG.DROP_RARE_SPEED * dt;
-      ri.y += rdy / rdd * CFG.DROP_RARE_SPEED * dt;
-    }
-    ri.life -= dt;
-    if(rdd < CFG.TOWER_HIT_RADIUS + 14){
-      applyRareEffect(ri.effect, ri.x, ri.y);
-      rareItems.splice(i, 1);
-    } else if(ri.life <= 0){
-      rareItems.splice(i, 1);
-    }
-  }
-
-  /* パーティクル */
-  for(i = particles.length - 1; i >= 0; i--){
-    var p = particles[i];
-    p.x += p.vx * dt; p.y += p.vy * dt;
-    p.vx *= 0.95; p.vy *= 0.95;
-    p.life -= dt;
-    if(p.life <= 0) particles.splice(i, 1);
-  }
-
-  /* フローター */
-  for(i = floaters.length - 1; i >= 0; i--){
-    var f = floaters[i];
-    f.y -= 44 * dt; f.life -= dt;
-    if(f.life <= 0) floaters.splice(i, 1);
-  }
-
-  /* 敵弾(サモナー) */
-  for(i = enemyBullets.length - 1; i >= 0; i--){
-    var eb = enemyBullets[i];
-    eb.x += eb.vx * dt; eb.y += eb.vy * dt; eb.life -= dt;
-    var etx = eb.x - cx(), ety = eb.y - cy();
-    if(etx * etx + ety * ety < CFG.TOWER_HIT_RADIUS * CFG.TOWER_HIT_RADIUS){
-      burst(cx(), cy(), eb.color || '#c84dff', 8);
-      enemyBullets.splice(i, 1);
-      if(takeDamage(eb.dmg)){ endGame(false); return; }
-    } else if(eb.life <= 0 || eb.x < -120 || eb.x > W + 120 || eb.y < -120 || eb.y > H + 120){
-      enemyBullets.splice(i, 1);
-    }
-  }
+  updateItems(dt);
+  updateParticlesAndFloaters(dt);
+  if(updateEnemyBullets(dt)) return;
 
   /* ボス処理 */
   if(boss !== null) updateBoss(dt);
@@ -3140,66 +3261,7 @@ function update(dt){
     if(explosionFlashes[efi].timer <= 0) explosionFlashes.splice(efi, 1);
   }
 
-  /* 必殺クールダウン */
-  if(specials.pulse.cd    > 0){ specials.pulse.cd    -= dt; if(specials.pulse.cd    < 0) specials.pulse.cd    = 0; }
-  if(specials.railgun.cd  > 0){ specials.railgun.cd  -= dt; if(specials.railgun.cd  < 0) specials.railgun.cd  = 0; }
-  if(specials.overdrive.cd> 0){ specials.overdrive.cd -= dt; if(specials.overdrive.cd < 0) specials.overdrive.cd = 0; }
-
-  /* OVERDRIVE 残時間 */
-  if(overdriveTimer > 0){
-    overdriveTimer -= dt;
-    if(overdriveTimer <= 0){
-      overdriveTimer = 0;
-      tower.fireInterval = overdriveSavedInterval;
-      tower.dmg          = overdriveSavedDmg;
-      tower.range        = overdriveSavedRange;
-      specials.overdrive.cd = CFG.OVERDRIVE_CD;
-    }
-  }
-
-  /* BEAMアクティブ: ダメージ判定 + タイマー */
-  if(beamTimer > 0){
-    beamTimer -= dt;
-    if(beamTimer <= 0){
-      beamTimer = 0;
-      specials.beam.cd = CFG.BEAM_CD;
-    } else {
-      var bcos = Math.cos(beamAngle), bsin = Math.sin(beamAngle);
-      var bAll = enemies.slice();
-      if(boss !== null) bAll.push(boss);
-      var bi3;
-      for(bi3 = 0; bi3 < bAll.length; bi3++){
-        var btgt = bAll[bi3];
-        /* 点→直線距離でビーム当たり判定(タワーから beamAngle 方向の無限線) */
-        var bdx3 = btgt.x - cx(), bdy3 = btgt.y - cy();
-        var bproj = bdx3 * bcos + bdy3 * bsin; /* 射影距離(正=ビーム前方) */
-        var bperp = Math.abs(-bdx3 * bsin + bdy3 * bcos);
-        if(bproj > 0 && bperp < CFG.BEAM_WIDTH){
-          var bDmg3 = CFG.BEAM_DMG_PER_SEC * dt;
-          btgt.hp -= bDmg3;
-          gainSpecial(bDmg3 * 0.1);
-          applyAttrEffects(btgt, bDmg3, cx() + bcos * bproj, cy() + bsin * bproj);
-        }
-      }
-    }
-  } else if(specials.beam.cd > 0){
-    specials.beam.cd -= dt;
-    if(specials.beam.cd < 0) specials.beam.cd = 0;
-  }
-
-  /* レールガンビームフェード */
-  if(railgunCharge){
-    railgunCharge.timer += dt;
-    if(railgunCharge.timer >= railgunCharge.maxTimer){
-      executeRailgunBeam(railgunCharge.ang);
-      railgunCharge = null;
-    }
-  }
-  if(railgunBeam){ railgunBeam.timer -= dt; if(railgunBeam.timer <= 0) railgunBeam = null; }
-
-  /* 必殺HUD更新(0.25秒ごと) */
-  specialHudTimer -= dt;
-  if(specialHudTimer <= 0){ specialHudTimer = 0.25; updateSpecialHud(); }
+  updateSpecials(dt);
 
   /* ウェーブクリア判定 — warningTimer>0中は保留 */
   if(spawnQueue === 0 && enemies.length === 0 && boss === null && warningTimer <= 0 && STATE === 'play'){
@@ -3971,6 +4033,353 @@ function proceedAfterWeaponReward(){
 /* =====================================================================
    描画
 ===================================================================== */
+/* ---- draw サブ関数 ---- */
+function drawEnemiesLayer(tm){
+  var j, e;
+  for(j = 0; j < enemies.length; j++){
+    e = enemies[j];
+    ctx.save(); ctx.translate(e.x, e.y); ctx.rotate(e.rot);
+    ctx.shadowColor = e.color;
+    ctx.shadowBlur = (e.type === 'sniper') ? 22 : 14;
+    ctx.strokeStyle = e.color; ctx.lineWidth = 3.5;
+
+    if(e.type === 'sniper'){
+      /* 三角形(先端がタワーを向く) */
+      ctx.beginPath();
+      ctx.moveTo(0, -e.size * 0.78);
+      ctx.lineTo(e.size * 0.48, e.size * 0.52);
+      ctx.lineTo(-e.size * 0.48, e.size * 0.52);
+      ctx.closePath(); ctx.stroke();
+      ctx.globalAlpha = 0.22; ctx.fillStyle = e.color; ctx.fill();
+    } else if(e.type === 'divider_child'){
+      /* 分裂子ボス: 二重六角形 */
+      ctx.lineWidth = 3.5;
+      hexPath(e.size * 0.65, 0); ctx.stroke();
+      ctx.lineWidth = 1.5;
+      hexPath(e.size * 0.38, e.rot); ctx.stroke();
+      ctx.globalAlpha = 0.18; ctx.fillStyle = e.color;
+      hexPath(e.size * 0.65, 0); ctx.fill();
+    } else if(e.type === 'split' && e.splitOnDeath){
+      /* 親分裂体: 六角形 */
+      ctx.lineWidth = 3;
+      hexPath(e.size * 0.62, 0); ctx.stroke();
+      ctx.globalAlpha = 0.2; ctx.fillStyle = e.color;
+      hexPath(e.size * 0.62, 0); ctx.fill();
+    } else {
+      /* 通常(赤・オレンジ・子分裂体・ウィーバー) */
+      ctx.strokeRect(-e.size / 2, -e.size / 2, e.size, e.size);
+      ctx.globalAlpha = 0.15; ctx.fillStyle = e.color;
+      ctx.fillRect(-e.size / 2, -e.size / 2, e.size, e.size);
+    }
+    ctx.globalAlpha = 1; ctx.restore();
+    /* 炎エフェクト */
+    if(e.dotFire){
+      var fp = 0.55 + 0.45 * Math.abs(Math.sin(tm * 9.0 + j * 0.7));
+      ctx.save(); ctx.globalAlpha = fp * 0.55;
+      ctx.shadowColor = '#ff6600'; ctx.shadowBlur = 14;
+      ctx.fillStyle = 'rgba(255,120,20,0.7)';
+      ctx.beginPath(); ctx.arc(e.x, e.y, e.size * 0.58, 0, Math.PI * 2); ctx.fill();
+      ctx.globalAlpha = 1; ctx.shadowBlur = 0; ctx.restore();
+    }
+    /* 氷エフェクト */
+    if(e.slowIce){
+      var ip = 0.5 + 0.4 * Math.abs(Math.sin(tm * 4.0 + j * 0.5));
+      ctx.save(); ctx.globalAlpha = ip * 0.42;
+      ctx.shadowColor = '#88ddff'; ctx.shadowBlur = 10;
+      ctx.fillStyle = 'rgba(80,180,255,0.65)';
+      ctx.beginPath(); ctx.arc(e.x, e.y, e.size * 0.62, 0, Math.PI * 2); ctx.fill();
+      ctx.globalAlpha = 1; ctx.shadowBlur = 0; ctx.restore();
+    }
+    if(e.hp < e.maxHp){
+      var bw = e.size * 1.6;
+      ctx.fillStyle = 'rgba(0,0,0,0.55)';
+      ctx.fillRect(e.x - bw / 2, e.y - e.size - 11, bw, 4);
+      ctx.fillStyle = '#ff5560';
+      ctx.fillRect(e.x - bw / 2, e.y - e.size - 11, bw * (e.hp / e.maxHp), 4);
+    }
+  }
+}
+
+function drawBossLayer(tm){
+  if(boss === null) return;
+  /* サモナー/バラージ: 巡回軌道リング */
+  if(boss.type === 'summoner' || boss.type === 'barrage'){
+    var orbitColor = boss.type === 'barrage' ? 'rgba(255,68,136,0.15)' : 'rgba(200,77,255,0.18)';
+    ctx.save();
+    ctx.strokeStyle = orbitColor; ctx.lineWidth = boss.size * 2.2;
+    ctx.setLineDash([6, 14]);
+    ctx.beginPath(); ctx.arc(cx(), cy(), boss.orbitDist, 0, Math.PI * 2); ctx.stroke();
+    ctx.setLineDash([]);
+    ctx.restore();
+  }
+  /* チャージャー/ディバイダー系: 突進予告帯 */
+  if((boss.type === 'charger' || boss.type === 'mini_charger' || boss.type === 'divider') && boss.phase === 'warn'){
+    var bperpX = -boss.dirY, bperpY = boss.dirX;
+    var bHW    = boss.size * 1.4;
+    var bfarX  = boss.x + boss.dirX * (W + H);
+    var bfarY  = boss.y + boss.dirY * (W + H);
+    var warnAlpha = boss.type === 'charger'
+      ? (0.35 + 0.28 * Math.abs(Math.sin(tm * Math.PI * 12)))
+      : (0.45 + 0.35 * Math.abs(Math.sin(tm * Math.PI * 10)));
+    ctx.globalAlpha = warnAlpha;
+    ctx.fillStyle = boss.type === 'charger' ? 'rgba(255,107,53,0.55)' : 'rgba(255,61,129,0.45)';
+    ctx.beginPath();
+    ctx.moveTo(boss.x + bperpX * bHW, boss.y + bperpY * bHW);
+    ctx.lineTo(bfarX  + bperpX * bHW, bfarY  + bperpY * bHW);
+    ctx.lineTo(bfarX  - bperpX * bHW, bfarY  - bperpY * bHW);
+    ctx.lineTo(boss.x - bperpX * bHW, boss.y - bperpY * bHW);
+    ctx.closePath(); ctx.fill();
+    ctx.globalAlpha = 1;
+    ctx.strokeStyle = boss.type === 'charger' ? '#ff6b35' : '#ff3d81';
+    ctx.lineWidth = 1.5; ctx.setLineDash([8, 6]);
+    ctx.beginPath(); ctx.moveTo(boss.x, boss.y); ctx.lineTo(bfarX, bfarY); ctx.stroke();
+    ctx.setLineDash([]); ctx.globalAlpha = 1;
+  }
+  /* ボス本体 */
+  drawBossBody();
+  /* フェーズ3表示: 輝きリング */
+  if(boss.phase3){
+    var p3pulse = 0.5 + 0.5 * Math.abs(Math.sin(tm * 6));
+    ctx.save(); ctx.translate(boss.x, boss.y);
+    ctx.strokeStyle = '#ff0044'; ctx.lineWidth = 1.5;
+    ctx.globalAlpha = 0.3 + p3pulse * 0.4;
+    ctx.shadowColor = '#ff0044'; ctx.shadowBlur = 12;
+    ctx.beginPath(); ctx.arc(0, 0, boss.size * 1.35, 0, Math.PI * 2); ctx.stroke();
+    ctx.globalAlpha = 1; ctx.shadowBlur = 0; ctx.restore();
+  }
+  /* ボス炎エフェクト */
+  if(boss.dotFire){
+    var bfp = 0.55 + 0.45 * Math.abs(Math.sin(tm * 9.0));
+    ctx.save(); ctx.globalAlpha = bfp * 0.50;
+    ctx.shadowColor = '#ff6600'; ctx.shadowBlur = 22;
+    ctx.fillStyle = 'rgba(255,100,10,0.65)';
+    ctx.beginPath(); ctx.arc(boss.x, boss.y, boss.size * 0.62, 0, Math.PI * 2); ctx.fill();
+    ctx.globalAlpha = 1; ctx.shadowBlur = 0; ctx.restore();
+  }
+}
+
+function drawSubWeaponsLayer(tm){
+  var j;
+  /* サブ砲台 */
+  for(var si = 0; si < weapons.subTurret && si < CFG.SUB_TURRET_OFFSETS.length; si++){
+    var soff = CFG.SUB_TURRET_OFFSETS[si];
+    ctx.save(); ctx.translate(cx() + soff.dx, cy() + soff.dy);
+    ctx.shadowColor = '#4df3ff'; ctx.shadowBlur = 12;
+    ctx.strokeStyle = 'rgba(77,243,255,0.8)'; ctx.lineWidth = 2;
+    hexPath(11, -hexRot * 2); ctx.stroke();
+    ctx.rotate(subTurretAngles[si]);
+    ctx.fillStyle = '#d8f6ff'; ctx.fillRect(7, -2, 11, 4);
+    ctx.shadowBlur = 0; ctx.restore();
+  }
+  /* 設置型フィールド */
+  var fdi;
+  for(fdi = 0; fdi < fields.length; fdi++){
+    var fd = fields[fdi];
+    var fdAlpha = fd.timer / fd.maxTimer;
+    var fdPulse = 0.45 + 0.35 * Math.abs(Math.sin(tm * 3.0 + fdi * 1.2));
+    ctx.save();
+    ctx.globalAlpha = fdAlpha * (0.18 + fdPulse * 0.12);
+    ctx.fillStyle = '#aa44ff';
+    ctx.shadowColor = '#cc66ff'; ctx.shadowBlur = 22;
+    ctx.beginPath(); ctx.arc(fd.x, fd.y, fd.radius, 0, Math.PI * 2); ctx.fill();
+    ctx.globalAlpha = fdAlpha * (0.55 + fdPulse * 0.30);
+    ctx.strokeStyle = '#cc66ff'; ctx.lineWidth = 2;
+    ctx.beginPath(); ctx.arc(fd.x, fd.y, fd.radius, 0, Math.PI * 2); ctx.stroke();
+    /* 残時間バー(上部アーク) */
+    ctx.globalAlpha = fdAlpha * 0.75;
+    ctx.strokeStyle = '#ff99ff'; ctx.lineWidth = 3;
+    ctx.beginPath();
+    ctx.arc(fd.x, fd.y, fd.radius + 5, -Math.PI / 2, -Math.PI / 2 + Math.PI * 2 * fdAlpha);
+    ctx.stroke();
+    ctx.globalAlpha = 1; ctx.shadowBlur = 0; ctx.restore();
+  }
+  /* 主砲射程リング(常時: 薄くゆらぐ破線) */
+  var ringA = 0.09 + 0.05 * Math.abs(Math.sin(tm * 0.7));
+  ctx.save(); ctx.globalAlpha = ringA;
+  ctx.strokeStyle = '#4df3ff'; ctx.lineWidth = 1;
+  ctx.setLineDash([4, 14]);
+  ctx.beginPath(); ctx.arc(cx(), cy(), tower.range, 0, Math.PI * 2); ctx.stroke();
+  ctx.setLineDash([]);
+  ctx.globalAlpha = 1; ctx.restore();
+  /* 衛星砲台 */
+  if(satellites.length > 0){
+    /* 衛星軌道リング(薄い黄色線) */
+    var satR2 = tower.range + 24;
+    ctx.save(); ctx.globalAlpha = 0.08;
+    ctx.strokeStyle = '#ffcc44'; ctx.lineWidth = 1;
+    ctx.setLineDash([3, 12]);
+    ctx.beginPath(); ctx.arc(cx(), cy(), satR2, 0, Math.PI * 2); ctx.stroke();
+    ctx.setLineDash([]);
+    ctx.globalAlpha = 1; ctx.restore();
+    var sai;
+    for(sai = 0; sai < satellites.length; sai++){
+      var sat2 = satellites[sai];
+      var sax = cx() + Math.cos(sat2.angle) * satR2;
+      var say = cy() + Math.sin(sat2.angle) * satR2;
+      ctx.save(); ctx.translate(sax, say);
+      ctx.shadowColor = '#ffcc44'; ctx.shadowBlur = 14;
+      ctx.strokeStyle = 'rgba(255,200,60,0.85)'; ctx.lineWidth = 2;
+      hexPath(10, -hexRot * 1.5); ctx.stroke();
+      ctx.rotate(sat2.targetAngle);
+      ctx.fillStyle = '#ffe080'; ctx.shadowBlur = 8;
+      ctx.fillRect(8, -2, 10, 4);
+      /* 発射フラッシュ: 銃口から延びる短い発射線 */
+      if(sat2.fireFlash > 0){
+        var fA = sat2.fireFlash / 0.18;
+        ctx.globalAlpha = fA * 0.9;
+        ctx.strokeStyle = '#ffff99';
+        ctx.lineWidth = 1.5;
+        ctx.shadowColor = '#ffcc44'; ctx.shadowBlur = 10;
+        ctx.beginPath(); ctx.moveTo(14, 0); ctx.lineTo(52, 0); ctx.stroke();
+        ctx.shadowBlur = 0; ctx.globalAlpha = 1;
+      }
+      ctx.shadowBlur = 0; ctx.restore();
+    }
+  }
+  /* オービタル */
+  if(orbitals.length > 0){
+    var orbitRD = tower.range * CFG.ORBITAL_RADIUS_RATIO;
+    var orbBallD = CFG.ORBITAL_BALL_BASE + (orbitals.length - 1) * CFG.ORBITAL_BALL_GROW;
+    /* 軌道リング: ソリッド薄青紫 */
+    ctx.save();
+    ctx.globalAlpha = 0.10 + 0.04 * Math.abs(Math.sin(tm * 1.2));
+    ctx.strokeStyle = 'rgba(100,160,255,1)';
+    ctx.lineWidth = 1;
+    ctx.beginPath(); ctx.arc(cx(), cy(), orbitRD, 0, Math.PI * 2); ctx.stroke();
+    ctx.globalAlpha = 1; ctx.restore();
+    for(var oi = 0; oi < orbitals.length; oi++){
+      var orb = orbitals[oi];
+      /* トレイル: 古い順に描画(新しいものが上に来る) */
+      var ti;
+      for(ti = orb.trail.length - 1; ti >= 0; ti--){
+        var tp = orb.trail[ti];
+        var trA = (1 - ti / CFG.ORBITAL_TRAIL_LEN) * 0.38;
+        var trR = orbBallD * (1 - ti / CFG.ORBITAL_TRAIL_LEN * 0.70);
+        ctx.save();
+        ctx.globalAlpha = trA;
+        ctx.fillStyle = '#40e0ff';
+        ctx.beginPath(); ctx.arc(tp.x, tp.y, trR, 0, Math.PI * 2); ctx.fill();
+        ctx.globalAlpha = 1; ctx.restore();
+      }
+      /* 球: アウターグロー + 本体 + 白コア */
+      ctx.save();
+      ctx.shadowColor = '#40e0ff'; ctx.shadowBlur = 20 + orbBallD;
+      ctx.globalAlpha = 0.22;
+      ctx.fillStyle = '#40e0ff';
+      ctx.beginPath(); ctx.arc(orb.x, orb.y, orbBallD * 2.2, 0, Math.PI * 2); ctx.fill();
+      ctx.globalAlpha = 0.92;
+      ctx.beginPath(); ctx.arc(orb.x, orb.y, orbBallD, 0, Math.PI * 2); ctx.fill();
+      ctx.globalAlpha = 1;
+      ctx.fillStyle = '#ffffff';
+      ctx.shadowBlur = 8;
+      ctx.beginPath(); ctx.arc(orb.x, orb.y, orbBallD * 0.45, 0, Math.PI * 2); ctx.fill();
+      ctx.shadowBlur = 0; ctx.restore();
+    }
+  }
+}
+
+function drawHUDLayer(tm){
+  /* タワーHPバー(セグメント) */
+  var hw  = CFG.TOWER_HP_BAR_W;
+  var seg = CFG.TOWER_HP_BAR_SEGS;
+  var sw  = hw / seg;
+  var hpRatio = tower.hp / tower.maxHp;
+  var k, on, barColor;
+  for(k = 0; k < seg; k++){
+    on = k < Math.ceil(hpRatio * seg);
+    barColor = on ? (hpRatio > 0.3 ? '#3ddc74' : '#ff5560') : 'rgba(20,40,60,0.8)';
+    ctx.fillStyle = barColor;
+    if(on){ ctx.shadowColor = barColor; ctx.shadowBlur = 7; } else { ctx.shadowBlur = 0; }
+    ctx.fillRect(cx() - hw / 2 + k * sw + 1, cy() + CFG.TOWER_HP_BAR_Y, sw - 3, 6);
+  }
+  ctx.shadowBlur = 0;
+  /* フローター */
+  var j, fl;
+  ctx.textAlign = 'center';
+  for(j = 0; j < floaters.length; j++){
+    fl = floaters[j];
+    ctx.globalAlpha = Math.max(0, fl.life / 0.8);
+    ctx.font = '700 ' + String(fl.size || 15) + 'px "Chakra Petch", Arial';
+    ctx.fillStyle = fl.color;
+    ctx.fillText(fl.text, fl.x, fl.y);
+  }
+  ctx.globalAlpha = 1;
+  /* フィールド残回数表示 */
+  if(weapons.field > 0){
+    var fdText, fdColor;
+    if(fields.length > 0){
+      fdText = 'FIELD ACTIVE';
+      fdColor = 'rgba(220,160,255,' + (0.7 + 0.3 * Math.abs(Math.sin(tm * 4))) + ')';
+    } else if(fieldUsesLeft > 0){
+      fdText = 'FIELD x' + String(fieldUsesLeft);
+      fdColor = 'rgba(220,160,255,' + (0.7 + 0.3 * Math.abs(Math.sin(tm * 2))) + ')';
+    } else {
+      fdText = 'FIELD x0';
+      fdColor = 'rgba(120,80,160,0.55)';
+    }
+    ctx.save(); ctx.textAlign = 'center';
+    ctx.font = '600 13px "Chakra Petch", Arial';
+    ctx.fillStyle = fdColor;
+    ctx.fillText(fdText, cx(), cy() + 52);
+    ctx.restore();
+  }
+  /* BEAMアクティブ中: 操作案内 */
+  if(beamTimer > 0){
+    var bmGuideAlpha = 0.6 + 0.25 * Math.abs(Math.sin(tm * 3.5));
+    ctx.save(); ctx.textAlign = 'center';
+    ctx.font = '600 12px "Chakra Petch", Arial';
+    ctx.fillStyle = 'rgba(255,136,68,' + bmGuideAlpha + ')';
+    ctx.shadowColor = '#ff8844'; ctx.shadowBlur = 8;
+    ctx.fillText('BEAM — DRAG TO AIM  ' + Math.ceil(beamTimer) + 's', cx(), cy() + 52);
+    ctx.restore();
+  }
+  /* 新敵告知(軽量・ゲーム継続) */
+  if(newEnemyAlert !== null){
+    var naf = newEnemyAlert.timer > CFG.NEW_ENEMY_ALERT_DUR - 0.25
+      ? (CFG.NEW_ENEMY_ALERT_DUR - newEnemyAlert.timer) / 0.25
+      : Math.min(1.0, newEnemyAlert.timer / 0.35);
+    ctx.globalAlpha = naf * 0.92;
+    ctx.save();
+    ctx.textAlign = 'center';
+    ctx.shadowColor = newEnemyAlert.color; ctx.shadowBlur = 22;
+    ctx.fillStyle = newEnemyAlert.color;
+    ctx.font = '700 ' + Math.floor(Math.min(W, H) * 0.048) + 'px "Chakra Petch", Arial';
+    ctx.fillText('NEW ENEMY : ' + newEnemyAlert.name, cx(), cy() - Math.floor(H * 0.22));
+    ctx.shadowBlur = 0;
+    ctx.restore();
+    ctx.globalAlpha = 1;
+  }
+  /* WARNING演出 */
+  if(warningTimer > 0){
+    var wFade = warningTimer < 0.35 ? warningTimer / 0.35 : 1.0;
+    var wPulse = 0.5 + 0.5 * Math.abs(Math.sin(tm * Math.PI * 3.5));
+    ctx.globalAlpha = wFade * 0.18 * wPulse;
+    ctx.fillStyle = '#ff0044';
+    ctx.fillRect(0, 0, W, H);
+    ctx.globalAlpha = wFade;
+    ctx.save();
+    ctx.textAlign = 'center';
+    ctx.shadowColor = '#ff0044'; ctx.shadowBlur = 32;
+    ctx.fillStyle = '#ff3d81';
+    ctx.font = '700 ' + Math.floor(Math.min(W, H) * 0.088) + 'px "Chakra Petch", Arial';
+    ctx.fillText('!! WARNING !!', cx(), cy() - 22);
+    ctx.shadowColor = '#ffd257'; ctx.shadowBlur = 18;
+    ctx.fillStyle = '#ffd257';
+    ctx.font = '600 ' + Math.floor(Math.min(W, H) * 0.044) + 'px "Chakra Petch", Arial';
+    ctx.fillText(warningLabel, cx(), cy() + 32);
+    ctx.shadowBlur = 0;
+    ctx.restore();
+    ctx.globalAlpha = 1;
+  }
+  /* 必殺フラッシュ */
+  if(flashTimer > 0){
+    ctx.globalAlpha = (flashTimer / CFG.SPECIAL_FLASH_DUR) * 0.55;
+    ctx.fillStyle = '#ffffff';
+    ctx.fillRect(0, 0, W, H);
+    ctx.globalAlpha = 1;
+  }
+}
+
 function hexPath(r, rot){
   ctx.beginPath();
   for(var k = 0; k < 6; k++){
@@ -4262,126 +4671,10 @@ function draw(tm, dt){
   ctx.globalAlpha = 1;
 
   /* 敵 */
-  for(j = 0; j < enemies.length; j++){
-    var e = enemies[j];
-    ctx.save(); ctx.translate(e.x, e.y); ctx.rotate(e.rot);
-    ctx.shadowColor = e.color;
-    ctx.shadowBlur = (e.type === 'sniper') ? 22 : 14;
-    ctx.strokeStyle = e.color; ctx.lineWidth = 3.5;
-
-    if(e.type === 'sniper'){
-      /* 三角形(先端がタワーを向く) */
-      ctx.beginPath();
-      ctx.moveTo(0, -e.size * 0.78);
-      ctx.lineTo(e.size * 0.48, e.size * 0.52);
-      ctx.lineTo(-e.size * 0.48, e.size * 0.52);
-      ctx.closePath(); ctx.stroke();
-      ctx.globalAlpha = 0.22; ctx.fillStyle = e.color; ctx.fill();
-    } else if(e.type === 'divider_child'){
-      /* 分裂子ボス: 二重六角形 */
-      ctx.lineWidth = 3.5;
-      hexPath(e.size * 0.65, 0); ctx.stroke();
-      ctx.lineWidth = 1.5;
-      hexPath(e.size * 0.38, e.rot); ctx.stroke();
-      ctx.globalAlpha = 0.18; ctx.fillStyle = e.color;
-      hexPath(e.size * 0.65, 0); ctx.fill();
-    } else if(e.type === 'split' && e.splitOnDeath){
-      /* 親分裂体: 六角形 */
-      ctx.lineWidth = 3;
-      hexPath(e.size * 0.62, 0); ctx.stroke();
-      ctx.globalAlpha = 0.2; ctx.fillStyle = e.color;
-      hexPath(e.size * 0.62, 0); ctx.fill();
-    } else {
-      /* 通常(赤・オレンジ・子分裂体・ウィーバー) */
-      ctx.strokeRect(-e.size / 2, -e.size / 2, e.size, e.size);
-      ctx.globalAlpha = 0.15; ctx.fillStyle = e.color;
-      ctx.fillRect(-e.size / 2, -e.size / 2, e.size, e.size);
-    }
-    ctx.globalAlpha = 1; ctx.restore();
-    /* 炎エフェクト */
-    if(e.dotFire){
-      var fp = 0.55 + 0.45 * Math.abs(Math.sin(tm * 9.0 + j * 0.7));
-      ctx.save(); ctx.globalAlpha = fp * 0.55;
-      ctx.shadowColor = '#ff6600'; ctx.shadowBlur = 14;
-      ctx.fillStyle = 'rgba(255,120,20,0.7)';
-      ctx.beginPath(); ctx.arc(e.x, e.y, e.size * 0.58, 0, Math.PI * 2); ctx.fill();
-      ctx.globalAlpha = 1; ctx.shadowBlur = 0; ctx.restore();
-    }
-    /* 氷エフェクト */
-    if(e.slowIce){
-      var ip = 0.5 + 0.4 * Math.abs(Math.sin(tm * 4.0 + j * 0.5));
-      ctx.save(); ctx.globalAlpha = ip * 0.42;
-      ctx.shadowColor = '#88ddff'; ctx.shadowBlur = 10;
-      ctx.fillStyle = 'rgba(80,180,255,0.65)';
-      ctx.beginPath(); ctx.arc(e.x, e.y, e.size * 0.62, 0, Math.PI * 2); ctx.fill();
-      ctx.globalAlpha = 1; ctx.shadowBlur = 0; ctx.restore();
-    }
-    if(e.hp < e.maxHp){
-      var bw = e.size * 1.6;
-      ctx.fillStyle = 'rgba(0,0,0,0.55)';
-      ctx.fillRect(e.x - bw / 2, e.y - e.size - 11, bw, 4);
-      ctx.fillStyle = '#ff5560';
-      ctx.fillRect(e.x - bw / 2, e.y - e.size - 11, bw * (e.hp / e.maxHp), 4);
-    }
-  }
+  drawEnemiesLayer(tm);
 
   /* ボス */
-  if(boss !== null){
-    /* サモナー/バラージ: 巡回軌道リング */
-    if(boss.type === 'summoner' || boss.type === 'barrage'){
-      var orbitColor = boss.type === 'barrage' ? 'rgba(255,68,136,0.15)' : 'rgba(200,77,255,0.18)';
-      ctx.save();
-      ctx.strokeStyle = orbitColor; ctx.lineWidth = boss.size * 2.2;
-      ctx.setLineDash([6, 14]);
-      ctx.beginPath(); ctx.arc(cx(), cy(), boss.orbitDist, 0, Math.PI * 2); ctx.stroke();
-      ctx.setLineDash([]);
-      ctx.restore();
-    }
-    /* チャージャー/ディバイダー系: 突進予告帯 */
-    if((boss.type === 'charger' || boss.type === 'mini_charger' || boss.type === 'divider') && boss.phase === 'warn'){
-      var bperpX = -boss.dirY, bperpY = boss.dirX;
-      var bHW    = boss.size * 1.4;
-      var bfarX  = boss.x + boss.dirX * (W + H);
-      var bfarY  = boss.y + boss.dirY * (W + H);
-      var warnAlpha = boss.type === 'charger'
-        ? (0.35 + 0.28 * Math.abs(Math.sin(tm * Math.PI * 12)))
-        : (0.45 + 0.35 * Math.abs(Math.sin(tm * Math.PI * 10)));
-      ctx.globalAlpha = warnAlpha;
-      ctx.fillStyle = boss.type === 'charger' ? 'rgba(255,107,53,0.55)' : 'rgba(255,61,129,0.45)';
-      ctx.beginPath();
-      ctx.moveTo(boss.x + bperpX * bHW, boss.y + bperpY * bHW);
-      ctx.lineTo(bfarX  + bperpX * bHW, bfarY  + bperpY * bHW);
-      ctx.lineTo(bfarX  - bperpX * bHW, bfarY  - bperpY * bHW);
-      ctx.lineTo(boss.x - bperpX * bHW, boss.y - bperpY * bHW);
-      ctx.closePath(); ctx.fill();
-      ctx.globalAlpha = 1;
-      ctx.strokeStyle = boss.type === 'charger' ? '#ff6b35' : '#ff3d81';
-      ctx.lineWidth = 1.5; ctx.setLineDash([8, 6]);
-      ctx.beginPath(); ctx.moveTo(boss.x, boss.y); ctx.lineTo(bfarX, bfarY); ctx.stroke();
-      ctx.setLineDash([]); ctx.globalAlpha = 1;
-    }
-    /* ボス本体 */
-    drawBossBody();
-    /* フェーズ3表示: 輝きリング */
-    if(boss.phase3){
-      var p3pulse = 0.5 + 0.5 * Math.abs(Math.sin(tm * 6));
-      ctx.save(); ctx.translate(boss.x, boss.y);
-      ctx.strokeStyle = '#ff0044'; ctx.lineWidth = 1.5;
-      ctx.globalAlpha = 0.3 + p3pulse * 0.4;
-      ctx.shadowColor = '#ff0044'; ctx.shadowBlur = 12;
-      ctx.beginPath(); ctx.arc(0, 0, boss.size * 1.35, 0, Math.PI * 2); ctx.stroke();
-      ctx.globalAlpha = 1; ctx.shadowBlur = 0; ctx.restore();
-    }
-    /* ボス炎エフェクト */
-    if(boss.dotFire){
-      var bfp = 0.55 + 0.45 * Math.abs(Math.sin(tm * 9.0));
-      ctx.save(); ctx.globalAlpha = bfp * 0.50;
-      ctx.shadowColor = '#ff6600'; ctx.shadowBlur = 22;
-      ctx.fillStyle = 'rgba(255,100,10,0.65)';
-      ctx.beginPath(); ctx.arc(boss.x, boss.y, boss.size * 0.62, 0, Math.PI * 2); ctx.fill();
-      ctx.globalAlpha = 1; ctx.shadowBlur = 0; ctx.restore();
-    }
-  }
+  drawBossLayer(tm);
 
   /* 敵弾(サモナー弾) */
   var j2;
@@ -4479,126 +4772,8 @@ function draw(tm, dt){
     ctx.globalAlpha = 1; ctx.shadowBlur = 0; ctx.restore();
   }
 
-  /* サブ砲台 */
-  for(var si = 0; si < weapons.subTurret && si < CFG.SUB_TURRET_OFFSETS.length; si++){
-    var soff = CFG.SUB_TURRET_OFFSETS[si];
-    ctx.save(); ctx.translate(cx() + soff.dx, cy() + soff.dy);
-    ctx.shadowColor = '#4df3ff'; ctx.shadowBlur = 12;
-    ctx.strokeStyle = 'rgba(77,243,255,0.8)'; ctx.lineWidth = 2;
-    hexPath(11, -hexRot * 2); ctx.stroke();
-    ctx.rotate(subTurretAngles[si]);
-    ctx.fillStyle = '#d8f6ff'; ctx.fillRect(7, -2, 11, 4);
-    ctx.shadowBlur = 0; ctx.restore();
-  }
-
-  /* 設置型フィールド */
-  var fdi;
-  for(fdi = 0; fdi < fields.length; fdi++){
-    var fd = fields[fdi];
-    var fdAlpha = fd.timer / fd.maxTimer;
-    var fdPulse = 0.45 + 0.35 * Math.abs(Math.sin(tm * 3.0 + fdi * 1.2));
-    ctx.save();
-    ctx.globalAlpha = fdAlpha * (0.18 + fdPulse * 0.12);
-    ctx.fillStyle = '#aa44ff';
-    ctx.shadowColor = '#cc66ff'; ctx.shadowBlur = 22;
-    ctx.beginPath(); ctx.arc(fd.x, fd.y, fd.radius, 0, Math.PI * 2); ctx.fill();
-    ctx.globalAlpha = fdAlpha * (0.55 + fdPulse * 0.30);
-    ctx.strokeStyle = '#cc66ff'; ctx.lineWidth = 2;
-    ctx.beginPath(); ctx.arc(fd.x, fd.y, fd.radius, 0, Math.PI * 2); ctx.stroke();
-    /* 残時間バー(上部アーク) */
-    ctx.globalAlpha = fdAlpha * 0.75;
-    ctx.strokeStyle = '#ff99ff'; ctx.lineWidth = 3;
-    ctx.beginPath();
-    ctx.arc(fd.x, fd.y, fd.radius + 5, -Math.PI / 2, -Math.PI / 2 + Math.PI * 2 * fdAlpha);
-    ctx.stroke();
-    ctx.globalAlpha = 1; ctx.shadowBlur = 0; ctx.restore();
-  }
-  /* 主砲射程リング(常時: 薄くゆらぐ破線) */
-  var ringA = 0.09 + 0.05 * Math.abs(Math.sin(tm * 0.7));
-  ctx.save(); ctx.globalAlpha = ringA;
-  ctx.strokeStyle = '#4df3ff'; ctx.lineWidth = 1;
-  ctx.setLineDash([4, 14]);
-  ctx.beginPath(); ctx.arc(cx(), cy(), tower.range, 0, Math.PI * 2); ctx.stroke();
-  ctx.setLineDash([]);
-  ctx.globalAlpha = 1; ctx.restore();
-
-  /* 衛星砲台 */
-  if(satellites.length > 0){
-    /* 衛星軌道リング(薄い黄色線) */
-    var satR2 = tower.range + 24;
-    ctx.save(); ctx.globalAlpha = 0.08;
-    ctx.strokeStyle = '#ffcc44'; ctx.lineWidth = 1;
-    ctx.setLineDash([3, 12]);
-    ctx.beginPath(); ctx.arc(cx(), cy(), satR2, 0, Math.PI * 2); ctx.stroke();
-    ctx.setLineDash([]);
-    ctx.globalAlpha = 1; ctx.restore();
-
-    var sai;
-    for(sai = 0; sai < satellites.length; sai++){
-      var sat2 = satellites[sai];
-      var sax = cx() + Math.cos(sat2.angle) * satR2;
-      var say = cy() + Math.sin(sat2.angle) * satR2;
-      ctx.save(); ctx.translate(sax, say);
-      ctx.shadowColor = '#ffcc44'; ctx.shadowBlur = 14;
-      ctx.strokeStyle = 'rgba(255,200,60,0.85)'; ctx.lineWidth = 2;
-      hexPath(10, -hexRot * 1.5); ctx.stroke();
-      ctx.rotate(sat2.targetAngle);
-      ctx.fillStyle = '#ffe080'; ctx.shadowBlur = 8;
-      ctx.fillRect(8, -2, 10, 4);
-      /* 発射フラッシュ: 銃口から延びる短い発射線 */
-      if(sat2.fireFlash > 0){
-        var fA = sat2.fireFlash / 0.18;
-        ctx.globalAlpha = fA * 0.9;
-        ctx.strokeStyle = '#ffff99';
-        ctx.lineWidth = 1.5;
-        ctx.shadowColor = '#ffcc44'; ctx.shadowBlur = 10;
-        ctx.beginPath(); ctx.moveTo(14, 0); ctx.lineTo(52, 0); ctx.stroke();
-        ctx.shadowBlur = 0; ctx.globalAlpha = 1;
-      }
-      ctx.shadowBlur = 0; ctx.restore();
-    }
-  }
-
-  /* オービタル */
-  if(orbitals.length > 0){
-    var orbitRD = tower.range * CFG.ORBITAL_RADIUS_RATIO;
-    var orbBallD = CFG.ORBITAL_BALL_BASE + (orbitals.length - 1) * CFG.ORBITAL_BALL_GROW;
-    /* 軌道リング: ソリッド薄青紫(射程リング破線・衛星リング黄色と別線種) */
-    ctx.save();
-    ctx.globalAlpha = 0.10 + 0.04 * Math.abs(Math.sin(tm * 1.2));
-    ctx.strokeStyle = 'rgba(100,160,255,1)';
-    ctx.lineWidth = 1;
-    ctx.beginPath(); ctx.arc(cx(), cy(), orbitRD, 0, Math.PI * 2); ctx.stroke();
-    ctx.globalAlpha = 1; ctx.restore();
-    for(var oi = 0; oi < orbitals.length; oi++){
-      var orb = orbitals[oi];
-      /* トレイル: 古い順に描画(新しいものが上に来る) */
-      var ti;
-      for(ti = orb.trail.length - 1; ti >= 0; ti--){
-        var tp = orb.trail[ti];
-        var trA = (1 - ti / CFG.ORBITAL_TRAIL_LEN) * 0.38;
-        var trR = orbBallD * (1 - ti / CFG.ORBITAL_TRAIL_LEN * 0.70);
-        ctx.save();
-        ctx.globalAlpha = trA;
-        ctx.fillStyle = '#40e0ff';
-        ctx.beginPath(); ctx.arc(tp.x, tp.y, trR, 0, Math.PI * 2); ctx.fill();
-        ctx.globalAlpha = 1; ctx.restore();
-      }
-      /* 球: アウターグロー + 本体 + 白コア */
-      ctx.save();
-      ctx.shadowColor = '#40e0ff'; ctx.shadowBlur = 20 + orbBallD;
-      ctx.globalAlpha = 0.22;
-      ctx.fillStyle = '#40e0ff';
-      ctx.beginPath(); ctx.arc(orb.x, orb.y, orbBallD * 2.2, 0, Math.PI * 2); ctx.fill();
-      ctx.globalAlpha = 0.92;
-      ctx.beginPath(); ctx.arc(orb.x, orb.y, orbBallD, 0, Math.PI * 2); ctx.fill();
-      ctx.globalAlpha = 1;
-      ctx.fillStyle = '#ffffff';
-      ctx.shadowBlur = 8;
-      ctx.beginPath(); ctx.arc(orb.x, orb.y, orbBallD * 0.45, 0, Math.PI * 2); ctx.fill();
-      ctx.shadowBlur = 0; ctx.restore();
-    }
-  }
+  /* サブ砲台 / フィールド / 衛星 / オービタル */
+  drawSubWeaponsLayer(tm);
 
   /* タワー */
   ctx.save(); ctx.translate(cx(), cy());
@@ -4652,109 +4827,8 @@ function draw(tm, dt){
     ctx.globalAlpha = 1;
   }
 
-  /* タワーHPバー(セグメント) */
-  var hw  = CFG.TOWER_HP_BAR_W;
-  var seg = CFG.TOWER_HP_BAR_SEGS;
-  var sw  = hw / seg;
-  var hpRatio = tower.hp / tower.maxHp;
-  for(var k = 0; k < seg; k++){
-    var on = k < Math.ceil(hpRatio * seg);
-    var barColor = on ? (hpRatio > 0.3 ? '#3ddc74' : '#ff5560') : 'rgba(20,40,60,0.8)';
-    ctx.fillStyle = barColor;
-    if(on){ ctx.shadowColor = barColor; ctx.shadowBlur = 7; } else { ctx.shadowBlur = 0; }
-    ctx.fillRect(cx() - hw / 2 + k * sw + 1, cy() + CFG.TOWER_HP_BAR_Y, sw - 3, 6);
-  }
-  ctx.shadowBlur = 0;
-
-  /* フローター */
-  ctx.textAlign = 'center';
-  for(j = 0; j < floaters.length; j++){
-    var fl = floaters[j];
-    ctx.globalAlpha = Math.max(0, fl.life / 0.8);
-    ctx.font = '700 ' + String(fl.size || 15) + 'px "Chakra Petch", Arial';
-    ctx.fillStyle = fl.color;
-    ctx.fillText(fl.text, fl.x, fl.y);
-  }
-  ctx.globalAlpha = 1;
-
-  /* フィールド残回数表示 */
-  if(weapons.field > 0){
-    var fdText, fdColor;
-    if(fields.length > 0){
-      fdText = 'FIELD ACTIVE';
-      fdColor = 'rgba(220,160,255,' + (0.7 + 0.3 * Math.abs(Math.sin(tm * 4))) + ')';
-    } else if(fieldUsesLeft > 0){
-      fdText = 'FIELD x' + String(fieldUsesLeft);
-      fdColor = 'rgba(220,160,255,' + (0.7 + 0.3 * Math.abs(Math.sin(tm * 2))) + ')';
-    } else {
-      fdText = 'FIELD x0';
-      fdColor = 'rgba(120,80,160,0.55)';
-    }
-    ctx.save(); ctx.textAlign = 'center';
-    ctx.font = '600 13px "Chakra Petch", Arial';
-    ctx.fillStyle = fdColor;
-    ctx.fillText(fdText, cx(), cy() + 52);
-    ctx.restore();
-  }
-
-  /* BEAMアクティブ中: 操作案内 */
-  if(beamTimer > 0){
-    var bmGuideAlpha = 0.6 + 0.25 * Math.abs(Math.sin(tm * 3.5));
-    ctx.save(); ctx.textAlign = 'center';
-    ctx.font = '600 12px "Chakra Petch", Arial';
-    ctx.fillStyle = 'rgba(255,136,68,' + bmGuideAlpha + ')';
-    ctx.shadowColor = '#ff8844'; ctx.shadowBlur = 8;
-    ctx.fillText('BEAM — DRAG TO AIM  ' + Math.ceil(beamTimer) + 's', cx(), cy() + 52);
-    ctx.restore();
-  }
-
-  /* 新敵告知(軽量・ゲーム継続) */
-  if(newEnemyAlert !== null){
-    var naf = newEnemyAlert.timer > CFG.NEW_ENEMY_ALERT_DUR - 0.25
-      ? (CFG.NEW_ENEMY_ALERT_DUR - newEnemyAlert.timer) / 0.25
-      : Math.min(1.0, newEnemyAlert.timer / 0.35);
-    ctx.globalAlpha = naf * 0.92;
-    ctx.save();
-    ctx.textAlign = 'center';
-    ctx.shadowColor = newEnemyAlert.color; ctx.shadowBlur = 22;
-    ctx.fillStyle = newEnemyAlert.color;
-    ctx.font = '700 ' + Math.floor(Math.min(W, H) * 0.048) + 'px "Chakra Petch", Arial';
-    ctx.fillText('NEW ENEMY : ' + newEnemyAlert.name, cx(), cy() - Math.floor(H * 0.22));
-    ctx.shadowBlur = 0;
-    ctx.restore();
-    ctx.globalAlpha = 1;
-  }
-
-  /* WARNING演出 */
-  if(warningTimer > 0){
-    var wFade = warningTimer < 0.35 ? warningTimer / 0.35 : 1.0;
-    var wPulse = 0.5 + 0.5 * Math.abs(Math.sin(tm * Math.PI * 3.5));
-    ctx.globalAlpha = wFade * 0.18 * wPulse;
-    ctx.fillStyle = '#ff0044';
-    ctx.fillRect(0, 0, W, H);
-    ctx.globalAlpha = wFade;
-    ctx.save();
-    ctx.textAlign = 'center';
-    ctx.shadowColor = '#ff0044'; ctx.shadowBlur = 32;
-    ctx.fillStyle = '#ff3d81';
-    ctx.font = '700 ' + Math.floor(Math.min(W, H) * 0.088) + 'px "Chakra Petch", Arial';
-    ctx.fillText('!! WARNING !!', cx(), cy() - 22);
-    ctx.shadowColor = '#ffd257'; ctx.shadowBlur = 18;
-    ctx.fillStyle = '#ffd257';
-    ctx.font = '600 ' + Math.floor(Math.min(W, H) * 0.044) + 'px "Chakra Petch", Arial';
-    ctx.fillText(warningLabel, cx(), cy() + 32);
-    ctx.shadowBlur = 0;
-    ctx.restore();
-    ctx.globalAlpha = 1;
-  }
-
-  /* 必殺フラッシュ */
-  if(flashTimer > 0){
-    ctx.globalAlpha = (flashTimer / CFG.SPECIAL_FLASH_DUR) * 0.55;
-    ctx.fillStyle = '#ffffff';
-    ctx.fillRect(0, 0, W, H);
-    ctx.globalAlpha = 1;
-  }
+  /* HPバー / フローター / 各種オーバーレイ */
+  drawHUDLayer(tm);
 
   ctx.restore();
 }
