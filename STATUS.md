@@ -27,4 +27,15 @@
 - オービタル視認性改善: 描画バグ修正・軌道リング・トレイル・Lv別サイズ・ヒット音 fixes #21
 - SPを基礎能力に限定・サブウェポンをラン内成長に移行: BARRIER/LUCK追加・v4マイグレーション・W1からサブウェポンカード出現 fixes #22
 
-次の一手: iPhone Safari実機でW1からサブウェポンカードが出ること・SP画面がATK/DEF/SPD/BARRIER/LUCKのみ表示されることを確認
+残タスク:
+- [#23 [P1] チェックポイント制と中断セーブの動作検証](https://github.com/TakamasaSaito/hexa-defense/issues/23)
+- [#24 [P1] 沈黙バグの洗い出し(効果が計算に乗っているかの全数確認)](https://github.com/TakamasaSaito/hexa-defense/issues/24)
+- [#25 [P1] 自動テストの導入](https://github.com/TakamasaSaito/hexa-defense/issues/25)
+- [#26 [P2] index.htmlの構造整理](https://github.com/TakamasaSaito/hexa-defense/issues/26)
+- [#27 [P2] チュートリアル/初見向けガイドの追加](https://github.com/TakamasaSaito/hexa-defense/issues/27)
+- [#28 [P2] 第三者によるプレイテスト](https://github.com/TakamasaSaito/hexa-defense/issues/28)
+- [#29 [P3] パフォーマンス実測値の記録](https://github.com/TakamasaSaito/hexa-defense/issues/29)
+- [#30 [P3] ドキュメントの棚卸し](https://github.com/TakamasaSaito/hexa-defense/issues/30)
+- [#31 [P3] ボスの新規追加(後半帯W35以降向け)](https://github.com/TakamasaSaito/hexa-defense/issues/31)
+
+次の一手: #23 チェックポイント制と中断セーブの動作検証(SP制移行後の整合性確認)
