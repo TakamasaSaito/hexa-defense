@@ -282,6 +282,25 @@ html, body { width:100%; height:100%; overflow:hidden; background:#05090f; touch
   clip-path:polygon(8px 0,100% 0,100% calc(100% - 8px),calc(100% - 8px) 100%,0 100%,0 8px); }
 .pause-btn:active { background:rgba(77,243,255,0.18); }
 
+/* ステータス画面 */
+.status-panel { width:min(90vw,340px); max-height:80vh; overflow-y:auto; -webkit-overflow-scrolling:touch;
+  background:linear-gradient(180deg,rgba(10,22,42,0.97),rgba(6,12,26,0.97));
+  border:1px solid rgba(77,243,255,0.30); border-radius:2px; padding:20px 16px 14px;
+  text-align:left; }
+.status-hd { font-family:'Chakra Petch',sans-serif; font-weight:700; font-size:16px; letter-spacing:5px;
+  color:#4df3ff; text-align:center; margin-bottom:16px; }
+.status-sec { margin-bottom:12px; }
+.status-sec-lbl { font-family:'Chakra Petch',sans-serif; font-size:10px; letter-spacing:3px;
+  color:rgba(77,243,255,0.50); border-bottom:1px solid rgba(77,243,255,0.14);
+  margin-bottom:6px; padding-bottom:3px; }
+.status-row { display:flex; justify-content:space-between; align-items:baseline;
+  font-family:'Chakra Petch',sans-serif; font-size:11px; color:rgba(255,255,255,0.78);
+  margin-bottom:3px; }
+.status-val { color:#4df3ff; font-weight:600; font-size:12px; }
+.status-lock { color:rgba(255,255,255,0.25); }
+.status-ok { color:#3ddc74; font-weight:600; }
+.status-back { display:block; width:100%; margin-top:14px; }
+
 /* ポーズボタン(HUD) */
 #pauseBtn { pointer-events:auto; display:flex; align-items:center; justify-content:center;
   font-family:'Chakra Petch',sans-serif; font-size:11px; font-weight:700; letter-spacing:2px;
@@ -441,7 +460,17 @@ html, body { width:100%; height:100%; overflow:hidden; background:#05090f; touch
     <div class="pause-panel">
       <div class="pause-title">PAUSED</div>
       <button id="resumeBtn" class="pause-btn">RESUME</button>
+      <button id="statusBtn" class="pause-btn">STATUS</button>
       <button id="suspendBtn" class="pause-btn">SAVE &amp; QUIT</button>
+    </div>
+  </div>
+
+  <!-- ステータス画面 -->
+  <div class="screen" id="scrStatus" style="display:none">
+    <div class="status-panel">
+      <div class="status-hd">STATUS</div>
+      <div id="statusBody"></div>
+      <button id="statusBackBtn" class="pause-btn status-back">BACK</button>
     </div>
   </div>
 
@@ -2287,7 +2316,7 @@ function rebuildSatellites(){
   var n = weapons.satellite;
   var i;
   for(i = 0; i < n; i++){
-    satellites.push({ angle: Math.PI * 2 / (n > 0 ? n : 1) * i, fireTimer: 0, targetAngle: 0 });
+    satellites.push({ angle: Math.PI * 2 / (n > 0 ? n : 1) * i, fireTimer: 0, targetAngle: 0, fireFlash: 0 });
   }
 }
 
@@ -2318,8 +2347,10 @@ function updateSatellites(dt){
       var tang = Math.atan2(target.y - sy, target.x - sx);
       sat.targetAngle = tang;
     }
+    if(sat.fireFlash > 0) sat.fireFlash -= dt;
     if(sat.fireTimer <= 0 && target !== null){
       sat.fireTimer = CFG.SATELLITE_FIRE_INTERVAL;
+      sat.fireFlash = 0.18;
       var sDmg = tower.dmg * CFG.SATELLITE_DMG_MULT;
       var sAttr = getBulletAttrColor('#ffcc44', '#ff8800');
       var pierceMax = CFG.PIERCE_LV[Math.min(weapons.pierce, CFG.PIERCE_LV.length - 1)];
@@ -4192,20 +4223,26 @@ function draw(tm, dt){
     ctx.stroke();
     ctx.globalAlpha = 1; ctx.shadowBlur = 0; ctx.restore();
   }
-  /* フィールドCD表示(CD中は射程リング色を紫に) */
-  if(weapons.field > 0 && fieldCooldown > 0){
-    var cdAlpha = 0.18 + 0.12 * Math.abs(Math.sin(tm * 2.0));
-    ctx.save(); ctx.globalAlpha = cdAlpha;
-    ctx.strokeStyle = '#aa44ff'; ctx.lineWidth = 1.5;
-    ctx.setLineDash([5, 8]);
-    ctx.beginPath(); ctx.arc(cx(), cy(), tower.range + 10, 0, Math.PI * 2); ctx.stroke();
-    ctx.setLineDash([]);
-    ctx.globalAlpha = 1; ctx.restore();
-  }
+  /* 主砲射程リング(常時: 薄くゆらぐ破線) */
+  var ringA = 0.09 + 0.05 * Math.abs(Math.sin(tm * 0.7));
+  ctx.save(); ctx.globalAlpha = ringA;
+  ctx.strokeStyle = '#4df3ff'; ctx.lineWidth = 1;
+  ctx.setLineDash([4, 14]);
+  ctx.beginPath(); ctx.arc(cx(), cy(), tower.range, 0, Math.PI * 2); ctx.stroke();
+  ctx.setLineDash([]);
+  ctx.globalAlpha = 1; ctx.restore();
 
   /* 衛星砲台 */
   if(satellites.length > 0){
+    /* 衛星軌道リング(薄い黄色線) */
     var satR2 = tower.range + 24;
+    ctx.save(); ctx.globalAlpha = 0.08;
+    ctx.strokeStyle = '#ffcc44'; ctx.lineWidth = 1;
+    ctx.setLineDash([3, 12]);
+    ctx.beginPath(); ctx.arc(cx(), cy(), satR2, 0, Math.PI * 2); ctx.stroke();
+    ctx.setLineDash([]);
+    ctx.globalAlpha = 1; ctx.restore();
+
     var sai;
     for(sai = 0; sai < satellites.length; sai++){
       var sat2 = satellites[sai];
@@ -4218,6 +4255,16 @@ function draw(tm, dt){
       ctx.rotate(sat2.targetAngle);
       ctx.fillStyle = '#ffe080'; ctx.shadowBlur = 8;
       ctx.fillRect(8, -2, 10, 4);
+      /* 発射フラッシュ: 銃口から延びる短い発射線 */
+      if(sat2.fireFlash > 0){
+        var fA = sat2.fireFlash / 0.18;
+        ctx.globalAlpha = fA * 0.9;
+        ctx.strokeStyle = '#ffff99';
+        ctx.lineWidth = 1.5;
+        ctx.shadowColor = '#ffcc44'; ctx.shadowBlur = 10;
+        ctx.beginPath(); ctx.moveTo(14, 0); ctx.lineTo(52, 0); ctx.stroke();
+        ctx.shadowBlur = 0; ctx.globalAlpha = 1;
+      }
       ctx.shadowBlur = 0; ctx.restore();
     }
   }
@@ -4465,7 +4512,99 @@ function openPauseScreen(){
 function closePauseScreen(){
   if(STATE !== 'pause') return;
   hideScreen('scrPause');
+  document.getElementById('scrStatus').style.display = 'none';
   STATE = 'play';
+}
+
+function showStatusScreen(){
+  var attrNames = { fire: 'FIRE', ice: 'ICE', lightning: 'LIGHTNING' };
+  var attrDescs = {
+    fire: 'DoTダメージ',
+    ice: '移動速度減速',
+    lightning: '連鎖ダメージ'
+  };
+  var streamCount = Math.min(4, upgradeCounts.rate + 1);
+  var fireMs = Math.round(tower.fireInterval * 1000);
+  var rangeVal = Math.round(tower.range);
+
+  var h = '';
+
+  /* 主砲 */
+  h += '<div class="status-sec"><div class="status-sec-lbl">PRIMARY GUN</div>';
+  h += '<div class="status-row"><span>ダメージ</span><span class="status-val">' + Math.round(tower.dmg) + '  (Lv' + upgradeCounts.dmg + ')</span></div>';
+  h += '<div class="status-row"><span>連射間隔</span><span class="status-val">' + fireMs + 'ms  (Lv' + upgradeCounts.rate + ')</span></div>';
+  h += '<div class="status-row"><span>弾数/連</span><span class="status-val">' + streamCount + '弾</span></div>';
+  h += '<div class="status-row"><span>射程</span><span class="status-val">' + rangeVal + 'px  (Lv' + upgradeCounts.range + ')</span></div>';
+  h += '</div>';
+
+  /* サブウェポン */
+  h += '<div class="status-sec"><div class="status-sec-lbl">SUB WEAPONS</div>';
+  h += subRow('サブ砲台', weapons.subTurret, 4);
+  h += subRow('オービタル', weapons.orbital, 6);
+  h += subRow('衛星砲台', weapons.satellite, 5);
+  if(weapons.field > 0){
+    h += '<div class="status-row"><span>設置型フィールド</span><span class="status-val">Lv' + weapons.field + '  残' + fieldUsesLeft + '回</span></div>';
+  } else {
+    h += '<div class="status-row"><span>設置型フィールド</span><span class="status-lock">未取得</span></div>';
+  }
+  h += subRow('範囲爆発', weapons.explosion, 3);
+  h += '</div>';
+
+  /* 属性 */
+  h += '<div class="status-sec"><div class="status-sec-lbl">ATTRIBUTE</div>';
+  if(chosenElement){
+    var attrLv = weapons['attr' + chosenElement.charAt(0).toUpperCase() + chosenElement.slice(1)] || 0;
+    var rngPct = Math.round((attrRangeMult - 1) * 100);
+    h += '<div class="status-row"><span>' + (attrNames[chosenElement] || chosenElement) + '</span><span class="status-val">Lv' + attrLv + ' - ' + (attrDescs[chosenElement] || '') + '</span></div>';
+    if(rngPct > 0){
+      h += '<div class="status-row"><span>属性範囲ボーナス</span><span class="status-val">+' + rngPct + '%</span></div>';
+    }
+  } else {
+    h += '<div class="status-row"><span>属性</span><span class="status-lock">未選択</span></div>';
+  }
+  h += '</div>';
+
+  /* 必殺 */
+  h += '<div class="status-sec"><div class="status-sec-lbl">SPECIALS</div>';
+  h += spRow('PULSE', specials.pulse.unlocked, specials.pulse.cd, '33%');
+  h += spRow('RAILGUN', specials.railgun.unlocked, specials.railgun.cd, '50%');
+  h += spRow('OVERDRIVE', specials.overdrive.unlocked, specials.overdrive.cd, '70%');
+  h += spRow('BEAM', specials.beam.unlocked, specials.beam.cd, '70%');
+  h += '</div>';
+
+  /* 状態 */
+  h += '<div class="status-sec"><div class="status-sec-lbl">STATE</div>';
+  h += '<div class="status-row"><span>HP</span><span class="status-val">' + tower.hp + ' / ' + tower.maxHp + '</span></div>';
+  h += '<div class="status-row"><span>バリア</span><span class="status-val">' + barrierCount + '</span></div>';
+  h += '<div class="status-row"><span>コイン</span><span class="status-val">' + Math.floor(coins) + '</span></div>';
+  h += '</div>';
+
+  document.getElementById('statusBody').innerHTML = h;
+  document.getElementById('scrPause').style.display = 'none';
+  document.getElementById('scrStatus').style.display = 'flex';
+}
+
+function subRow(label, lv, max){
+  if(lv > 0){
+    return '<div class="status-row"><span>' + label + '</span><span class="status-val">Lv' + lv + ' / ' + max + '</span></div>';
+  }
+  return '<div class="status-row"><span>' + label + '</span><span class="status-lock">未取得</span></div>';
+}
+
+function spRow(name, unlocked, cd, cost){
+  if(!unlocked){
+    return '<div class="status-row"><span>' + name + ' (' + cost + ')</span><span class="status-lock">LOCKED</span></div>';
+  }
+  var cdInt = Math.ceil(cd);
+  if(cdInt > 0){
+    return '<div class="status-row"><span>' + name + ' (' + cost + ')</span><span class="status-val">CD ' + cdInt + 's</span></div>';
+  }
+  return '<div class="status-row"><span>' + name + ' (' + cost + ')</span><span class="status-ok">READY</span></div>';
+}
+
+function hideStatusScreen(){
+  document.getElementById('scrStatus').style.display = 'none';
+  document.getElementById('scrPause').style.display = 'flex';
 }
 
 function suspendRun(){
@@ -4872,6 +5011,16 @@ document.getElementById('pauseBtn').addEventListener('click', function(){
 document.getElementById('resumeBtn').addEventListener('click', function(){
   playSound('button');
   closePauseScreen();
+});
+
+document.getElementById('statusBtn').addEventListener('click', function(){
+  playSound('button');
+  showStatusScreen();
+});
+
+document.getElementById('statusBackBtn').addEventListener('click', function(){
+  playSound('button');
+  hideStatusScreen();
 });
 
 document.getElementById('suspendBtn').addEventListener('click', function(){
