@@ -617,6 +617,57 @@ var v3Result = g.importSaveFromString(v3Str);
 assert(v3Result.ok === true && v3Result.data.version === 4, 'L09: v3データを import するとマイグレーションされて version=4');
 
 /* =====================================================================
+   M. レベルアップ3択 重複排除
+===================================================================== */
+suite('M. レベルアップ3択 重複排除');
+
+var gM = loadGame();
+
+/* M01: W1 通常武器なし — 返却枚数<=3 かつ id 重複なし */
+(function(){
+  var wpns = { orbital:0, satellite:0, field:0, subTurret:0, explosion:0 };
+  var ids = {};
+  var dup = false;
+  for(var t = 0; t < 200; t++){
+    var cards = gM.pickLvCards(1, null, wpns);
+    assert(cards.length <= 3, 'M01[t=' + t + ']: 返却枚数 <= 3');
+    ids = {};
+    for(var ci = 0; ci < cards.length; ci++){
+      if(ids[cards[ci].id]){ dup = true; }
+      ids[cards[ci].id] = true;
+    }
+    if(dup) break;
+  }
+  assert(!dup, 'M01: 200回試行で同一idの重複なし(W1/属性なし)');
+})();
+
+/* M02: W1 サブウェポン全上限 — プール枯渇でも落ちない */
+(function(){
+  var wpns = { orbital:6, satellite:5, field:5, subTurret:4, explosion:3 };
+  var cards = gM.pickLvCards(1, 'fire', wpns);
+  assert(cards.length >= 1, 'M02: サブウェポン全上限でも1枚以上返る');
+  var ids = {};
+  for(var ci = 0; ci < cards.length; ci++){
+    assert(!ids[cards[ci].id], 'M02: 全上限時も重複なし');
+    ids[cards[ci].id] = true;
+  }
+})();
+
+/* M03: 属性選択済みで attrLv カードが含まれうる(排除されない) */
+(function(){
+  var wpns = { orbital:0, satellite:0, field:0, subTurret:0, explosion:0 };
+  var found = false;
+  for(var t = 0; t < 300; t++){
+    var cards = gM.pickLvCards(1, 'fire', wpns);
+    for(var ci = 0; ci < cards.length; ci++){
+      if(cards[ci].id === 'attrLv') found = true;
+    }
+    if(found) break;
+  }
+  assert(found, 'M03: 属性選択済みで attrLv が300回中に1度は出る');
+})();
+
+/* =====================================================================
    結果サマリー
 ===================================================================== */
 console.log('\n==============================');

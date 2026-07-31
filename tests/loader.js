@@ -97,6 +97,7 @@ function loadGame() {
     '  _hdExports.getSaveData          = function(){ return saveData; };',
     '  _hdExports.exportSaveToString   = exportSaveToString;',
     '  _hdExports.importSaveFromString = importSaveFromString;',
+    '  _hdExports.pickLvCards         = pickLvCards;',
     '  _hdExports.resetForTest    = function(){',
     '    tower.dmg          = CFG.TOWER_DMG;',
     '    tower.fireInterval = CFG.TOWER_FIRE_INTERVAL;',

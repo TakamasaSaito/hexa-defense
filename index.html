@@ -1929,36 +1929,42 @@ function doLevelUp(){
   showTutorialHint('levelup', 'LEVEL UP!', 'Pick one card to upgrade your run — shown on pause screen');
 }
 
-/* カードプールからランダム3択 */
-function renderLvCards(){
-  /* 属性未選択の場合は attrLv を除外 */
+/* カードプールからランダム3択(テスト可能な純粋関数) */
+function pickLvCards(curWave, elem, wpns){
   var pool = [];
   var src = CFG.CARD_POOL;
   var si;
   for(si = 0; si < src.length; si++){
-    if(src[si].id === 'attrLv' && !chosenElement) continue;
+    if(src[si].id === 'attrLv' && !elem) continue;
     pool.push(src[si]);
   }
-  /* W11以降: サブウェポンカードを高重みで追加(上限済みは除外) */
-  if(wave >= CFG.CARD_SUB_WAVE){
+  if(curWave >= CFG.CARD_SUB_WAVE){
     var sub = CFG.CARD_POOL_SUB;
     for(si = 0; si < sub.length; si++){
       var c = sub[si];
-      if(c.id === 'cardOrbital'   && weapons.orbital    >= 6) continue;
-      if(c.id === 'cardSatellite' && weapons.satellite  >= 5) continue;
-      if(c.id === 'cardField'     && weapons.field      >= 5) continue;
-      if(c.id === 'cardTurret'    && weapons.subTurret  >= 4) continue;
-      if(c.id === 'cardExplosion' && weapons.explosion  >= 3) continue;
+      if(c.id === 'cardOrbital'   && wpns.orbital    >= 6) continue;
+      if(c.id === 'cardSatellite' && wpns.satellite  >= 5) continue;
+      if(c.id === 'cardField'     && wpns.field      >= 5) continue;
+      if(c.id === 'cardTurret'    && wpns.subTurret  >= 4) continue;
+      if(c.id === 'cardExplosion' && wpns.explosion  >= 3) continue;
       var wt = CFG.CARD_SUB_WEIGHT, wi;
       for(wi = 0; wi < wt; wi++) pool.push(c);
     }
   }
-  /* shuffle */
   for(var i = pool.length - 1; i > 0; i--){
     var j = Math.floor(Math.random() * (i + 1));
     var tmp = pool[i]; pool[i] = pool[j]; pool[j] = tmp;
   }
-  var chosen = pool.slice(0, 3);
+  var chosen = [];
+  var seenIds = {};
+  for(var pi = 0; pi < pool.length && chosen.length < 3; pi++){
+    if(!seenIds[pool[pi].id]){ seenIds[pool[pi].id] = true; chosen.push(pool[pi]); }
+  }
+  return chosen;
+}
+
+function renderLvCards(){
+  var chosen = pickLvCards(wave, chosenElement, weapons);
   var container = document.getElementById('lvCards');
   container.innerHTML = '';
   for(var c = 0; c < chosen.length; c++){
