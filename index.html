@@ -229,6 +229,10 @@ html, body { width:100%; height:100%; overflow:hidden; background:#05090f; touch
   clip-path:polygon(6px 0,100% 0,100% calc(100% - 6px),calc(100% - 6px) 100%,0 100%,0 6px); }
 .sp-plus-btn:active { background:rgba(77,243,255,0.2); }
 .sp-plus-btn:disabled { opacity:0.28; cursor:not-allowed; pointer-events:none; }
+.sp-next-cost { font-size:9px; color:rgba(255,210,87,0.75); margin-top:2px; }
+.sp-migrate-notice { background:rgba(77,243,255,0.10); border:1px solid rgba(77,243,255,0.3);
+  border-radius:6px; padding:8px 10px; margin-bottom:10px; font-size:10px;
+  color:#4df3ff; letter-spacing:1px; text-align:center; }
 
 /* ステータス画面 SVGアイコン */
 .status-svg-ic { display:inline-block; vertical-align:middle; margin-right:4px; }
@@ -575,6 +579,7 @@ html, body { width:100%; height:100%; overflow:hidden; background:#05090f; touch
           <span id="spPanelBal">0</span> SP
         </span>
       </div>
+      <div id="spMigrateNotice" class="sp-migrate-notice" style="display:none">スキルポイントを振り直しました</div>
       <div id="spItems"></div>
       <button id="permaCloseBtn" class="store-close">BACK</button>
     </div>
@@ -766,9 +771,16 @@ var CFG = {
   SPEED_PARTICLE_RATIO:   0.3,
 
   /* SP獲得(ラン終了時) */
-  SP_WAVE_RATE:    0.06,  /* floor(wave * rate) = ベースSP */
-  SP_BOSS_BONUS:   1,     /* ボス1体撃破あたり */
-  SP_MIGRATE_RATE: 80,    /* 旧メタコイン 80枚 = 1 SP */
+  SP_WAVE_RATE:    0.5,   /* floor(wave * rate) = ベースSP(0.06→0.5) */
+  SP_BOSS_BONUS:   3,     /* ボス1体撃破あたり(1→3) */
+  SP_MIGRATE_RATE: 80,    /* 旧メタコイン 80枚 = 1 SP(v1→v2) */
+
+  /* SP価格逓増(v3〜) */
+  SP_PRICE_BASE:   2.59,  /* 基礎ステータス: cost(n)=round(BASE*EXP^(n/10)) */
+  SP_PRICE_EXP:    10.0,  /* 10レベルごとに累計コストが1桁上がる */
+  SP_SUB_PRICE_BASE:   1.5, /* サブウェポン: cost(n)=round(BASE*GROWTH^n) */
+  SP_SUB_PRICE_GROWTH: 2.0, /* サブウェポン倍率(緩めカーブ) */
+  SP_V3_MIGRATE_CAP: 500,   /* v3移行時の払い戻し上限SP */
 
   /* SP効果(基礎ステータス逓減係数) */
   SP_ATK_RATE:  0.10,  /* 1SP当たり+10%(逓減あり) */
@@ -1217,14 +1229,15 @@ var hexRot = 0;
 ===================================================================== */
 function defaultSaveData(){
   return {
-    version: 2,
+    version: 3,
     skillPoints: 0,
     spAlloc: { atk: 0, def: 0, spd: 0, subturret: 0, orbital: 0, satellite: 0, field: 0, blast: 0 },
     bestWave: 0,
     totalKills: 0,
     unlockedCheckpoints: [1],
     suspendedRun: null,
-    settings: { mute: false, speedIdx: 1 }
+    settings: { mute: false, speedIdx: 1 },
+    v3MigrateNotify: false
   };
 }
 
@@ -1276,25 +1289,44 @@ function migrateSave(data){
   if(typeof data.bestWave === 'number') d.bestWave = data.bestWave;
   if(typeof data.totalKills === 'number') d.totalKills = data.totalKills;
 
-  /* v2: SP制セーブデータ */
-  if(data.version === 2){
+  if(data.version === 3){
+    /* v3: 逓増価格対応セーブデータ */
     if(typeof data.skillPoints === 'number') d.skillPoints = data.skillPoints;
     if(data.spAlloc && typeof data.spAlloc === 'object'){
-      var sa = data.spAlloc;
-      var keys = ['atk', 'def', 'spd', 'subturret', 'orbital', 'satellite', 'field', 'blast'];
-      for(var ki = 0; ki < keys.length; ki++){
-        if(typeof sa[keys[ki]] === 'number') d.spAlloc[keys[ki]] = sa[keys[ki]];
+      var sa3 = data.spAlloc;
+      var keys3 = ['atk', 'def', 'spd', 'subturret', 'orbital', 'satellite', 'field', 'blast'];
+      for(var ki3 = 0; ki3 < keys3.length; ki3++){
+        if(typeof sa3[keys3[ki3]] === 'number') d.spAlloc[keys3[ki3]] = sa3[keys3[ki3]];
       }
     }
+    if(typeof data.v3MigrateNotify === 'boolean') d.v3MigrateNotify = data.v3MigrateNotify;
+  } else if(data.version === 2){
+    /* v2 → v3 マイグレーション: 旧投資SP(固定1SP/Lv)を払い戻しリスペック */
+    var sp2 = typeof data.skillPoints === 'number' ? data.skillPoints : 0;
+    var invested2 = 0;
+    if(data.spAlloc && typeof data.spAlloc === 'object'){
+      var sa2 = data.spAlloc;
+      var keys2 = ['atk', 'def', 'spd', 'subturret', 'orbital', 'satellite', 'field', 'blast'];
+      for(var ki2 = 0; ki2 < keys2.length; ki2++){
+        if(typeof sa2[keys2[ki2]] === 'number') invested2 += sa2[keys2[ki2]];
+      }
+    }
+    /* 旧固定価格は1SP/Lvなので投資量=Lv数。上限を適用して払い戻し */
+    var refund2 = sp2 + invested2;
+    if(refund2 > CFG.SP_V3_MIGRATE_CAP) refund2 = CFG.SP_V3_MIGRATE_CAP;
+    d.skillPoints = refund2;
+    d.v3MigrateNotify = true;
   } else {
-    /* v1 → v2 マイグレーション: 旧metaCoins + 旧恒久強化購入コストをSPに換算 */
+    /* v1 → v3 マイグレーション: 旧metaCoins + 旧恒久強化購入コストをSPに換算 */
     var oldMeta = typeof data.metaCoins === 'number' ? data.metaCoins : 0;
     var oldPermCost = 0;
     if(data.permanentUpgrades && typeof data.permanentUpgrades === 'object'){
       oldPermCost = calcLegacyPermCost(data.permanentUpgrades);
     }
     var totalOldCoins = oldMeta + oldPermCost;
-    d.skillPoints = Math.floor(totalOldCoins / CFG.SP_MIGRATE_RATE);
+    var refund1 = Math.floor(totalOldCoins / CFG.SP_MIGRATE_RATE);
+    if(refund1 > CFG.SP_V3_MIGRATE_CAP) refund1 = CFG.SP_V3_MIGRATE_CAP;
+    d.skillPoints = refund1;
   }
 
   if(Array.isArray(data.unlockedCheckpoints)){
@@ -1316,7 +1348,7 @@ function migrateSave(data){
       d.settings.speedIdx = data.settings.speedIdx;
     }
   }
-  d.version = 2;
+  d.version = 3;
   return d;
 }
 
@@ -4973,6 +5005,18 @@ function applySpUpgrades(){
 function applyPermanentUpgrades(){ applySpUpgrades(); }
 
 /* =====================================================================
+   SP価格計算
+===================================================================== */
+function spCostForLevel(id, n){
+  /* 基礎ステータス: cost(n) = round(BASE * EXP^(n/10)) — 10Lvごとに累計1桁上昇 */
+  if(id === 'atk' || id === 'def' || id === 'spd'){
+    return Math.max(1, Math.round(CFG.SP_PRICE_BASE * Math.pow(CFG.SP_PRICE_EXP, n / 10)));
+  }
+  /* サブウェポン: cost(n) = round(SUB_BASE * GROWTH^n) — 緩めカーブ */
+  return Math.max(1, Math.round(CFG.SP_SUB_PRICE_BASE * Math.pow(CFG.SP_SUB_PRICE_GROWTH, n)));
+}
+
+/* =====================================================================
    SP投資UI
 ===================================================================== */
 var SP_DEFS = [
@@ -5002,8 +5046,8 @@ function renderSPScreen(){
     var def = SP_DEFS[d];
     var lv  = saveData.spAlloc[def.id] || 0;
     var maxed = (def.maxLv > 0) && (lv >= def.maxLv);
-    var canInvest = !maxed && saveData.skillPoints >= 1;
-    var sp = saveData.skillPoints;
+    var nextCost = maxed ? 0 : spCostForLevel(def.id, lv);
+    var canInvest = !maxed && saveData.skillPoints >= nextCost;
 
     /* セクションヘッダ */
     if(def.sec && def.sec !== lastSec){
@@ -5018,6 +5062,8 @@ function renderSPScreen(){
     if(def.effFn){ effTxt = def.effFn(lv); }
     else { effTxt = 'Lv ' + lv + (def.maxLv > 0 ? ' / ' + def.maxLv : ''); }
 
+    var costTxt = maxed ? 'MAX' : ('次: ' + nextCost + ' SP');
+
     var row = document.createElement('div');
     row.className = 'sp-inv-row';
     row.innerHTML =
@@ -5025,6 +5071,7 @@ function renderSPScreen(){
       '<div class="sp-inv-body">' +
         '<div class="sp-inv-name">' + def.name + '  <span class="sp-inv-lv">Lv.' + lv + '</span></div>' +
         '<div class="sp-inv-eff">' + effTxt + '</div>' +
+        '<div class="sp-next-cost">' + costTxt + '</div>' +
       '</div>' +
       '<button class="sp-plus-btn"' + (canInvest ? '' : ' disabled') + ' data-sp="' + def.id + '">+</button>';
     container.appendChild(row);
@@ -5064,13 +5111,14 @@ function spPlusEnd(){
 }
 
 function spInvest(id){
-  if(saveData.skillPoints < 1) return false;
   var def = null;
   for(var di = 0; di < SP_DEFS.length; di++){ if(SP_DEFS[di].id === id){ def = SP_DEFS[di]; break; } }
   if(!def) return false;
   var lv = saveData.spAlloc[id] || 0;
   if(def.maxLv > 0 && lv >= def.maxLv) return false;
-  saveData.skillPoints -= 1;
+  var cost = spCostForLevel(id, lv);
+  if(saveData.skillPoints < cost) return false;
+  saveData.skillPoints -= cost;
   saveData.spAlloc[id] = lv + 1;
   persistSave();
   playSound('button');
@@ -5080,6 +5128,16 @@ function spInvest(id){
 
 function openPermaScreen(){
   renderSPScreen();
+  var notice = document.getElementById('spMigrateNotice');
+  if(notice){
+    if(saveData.v3MigrateNotify){
+      notice.style.display = 'block';
+      saveData.v3MigrateNotify = false;
+      persistSave();
+    } else {
+      notice.style.display = 'none';
+    }
+  }
   showScreen('scrPerma');
 }
 
@@ -5126,8 +5184,10 @@ function endGame(win){
 
   /* SP獲得内訳表示 */
   var spMsgEl = document.getElementById('resSpMsg');
-  var spMsgText = 'Wave ' + wave + ' x' + CFG.SP_WAVE_RATE;
-  if(bossesKilled > 0){ spMsgText += ' + ボス' + bossesKilled + '体撃破'; }
+  var waveBase = Math.floor(wave * CFG.SP_WAVE_RATE);
+  var bossBonus = bossesKilled * CFG.SP_BOSS_BONUS;
+  var spMsgText = 'W' + wave + '(' + waveBase + ')';
+  if(bossesKilled > 0){ spMsgText += ' + ボス' + bossesKilled + '(' + bossBonus + ')'; }
   spMsgText += ' → +' + spEarned + ' SP';
   spMsgEl.style.display = 'block';
   spMsgEl.textContent = spMsgText;

@@ -1,6 +1,6 @@
 最終更新日: 2026-07-31
 
-現状: ショップ廃止・SP制移行・アセット差し替え完了(#19)。
+現状: SP価格逓増・v3マイグレーション・SP獲得量調整完了(#20)。
 
 完了済み:
 - M1: プロトタイプ移植+50ウェーブ化+CONFIG集約+XPレベルアップ3択+必殺ゲージ
@@ -52,5 +52,12 @@
   - SVGアセット全18種をinlineでDOMに埋め込み
   - ボスCanvasをhexa-assets.htmlデザインに刷新(mini/charger/summoner/divider/barrage)
   - STATUS画面にSP投資状況・SVGアイコン表示・未解放グレー表示を追加
+- SP価格逓増・v3マイグレーション・SP獲得量調整 fixes #20
+  - SP価格: 固定1→cost(n)=round(2.59×10^(n/10)) (Lv5≈22/Lv10≈90/Lv20≈991/Lv30≈9993)
+  - サブウェポン: cost(n)=round(1.5×2^n) (緩めカーブ)
+  - SP獲得: SP_WAVE_RATE 0.06→0.5 / SP_BOSS_BONUS 1→3
+  - v2→v3マイグレーション: spAlloc全リセット+払い戻し(上限500SP)
+  - UI: 各項目に「次: N SP」表示、残高不足時+ボタンdisabled
+  - docs/DESIGN.md 成長シミュレーション表追記 / docs/decisions/016 決定記録作成
 
-次の一手: iPhone Safari実機でSP投資UI・ボスビジュアル・STATUS画面を確認
+次の一手: iPhone Safari実機でSP価格表示・v3マイグレーション通知を確認
