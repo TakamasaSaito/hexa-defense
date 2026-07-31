@@ -540,12 +540,6 @@ assert(
   'K07: `coins = 0` がソースに存在しない(廃止済みコイン変数を参照していない)'
 );
 
-/* K08: checkpointWeaponMode フラグが onCheckpointSelect で使われている */
-assert(
-  src23.indexOf('checkpointWeaponMode = true') !== -1,
-  'K08: checkpointWeaponMode フラグが設定されている'
-);
-
 /* K09: suspendRun が suspendedRun に weapons を保存している */
 assert(
   src23.indexOf('saveData.suspendedRun = {') !== -1,

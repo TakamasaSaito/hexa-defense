@@ -623,7 +623,6 @@ html, body { width:100%; height:100%; overflow:hidden; background:#05090f; touch
     <div style="display:flex;flex-direction:column;align-items:center">
       <button class="play-btn" id="playBtn">PLAY NOW</button>
       <button class="title-sub-btn" id="continueBtn" style="display:none">CONTINUE</button>
-      <button class="title-sub-btn" id="checkpointBtn" style="display:none">SELECT WAVE</button>
       <button class="title-sub-btn" id="upgradeBtn">SKILL POINTS</button>
       <button class="title-sub-btn" id="helpBtn" style="font-size:12px;letter-spacing:4px">HELP</button>
       <button class="title-sub-btn" id="dataBtn" style="font-size:12px;letter-spacing:4px">DATA</button>
@@ -686,15 +685,6 @@ html, body { width:100%; height:100%; overflow:hidden; background:#05090f; touch
           <button class="data-confirm-btn cancel" id="dataConfirmCancel">CANCEL</button>
         </div>
       </div>
-    </div>
-  </div>
-
-  <!-- チェックポイント選択 -->
-  <div class="screen" id="scrCheckpoint">
-    <div class="cp-panel">
-      <div class="cp-title">START FROM CHECKPOINT</div>
-      <div id="cpButtons"></div>
-      <button id="cpCloseBtn" class="store-close">BACK</button>
     </div>
   </div>
 
@@ -1411,9 +1401,6 @@ var barrierBreakTimer = 0;
 var bossesKilled = 0;  /* ラン中ボス撃破数(SP計算用) */
 var defDmgMult = 1.0;  /* SP DEF による被ダメ軽減倍率 */
 var rareDropMult = 1.0; /* SP LUCK によるレアドロップ率倍率 */
-
-/* チェックポイント: 武器報酬画面をCP開始補償として使う際のフラグ */
-var checkpointWeaponMode = false;
 
 /* 演出 */
 var flashTimer  = 0;
@@ -4431,12 +4418,7 @@ function onWeaponSelect(){
 }
 
 function proceedAfterWeaponReward(){
-  if(checkpointWeaponMode){
-    checkpointWeaponMode = false;
-    startWave(); STATE = 'play';
-  } else {
-    if(wave >= CFG.MAX_WAVE){ endGame(true); } else { wave++; startWave(); STATE = 'play'; }
-  }
+  if(wave >= CFG.MAX_WAVE){ endGame(true); } else { wave++; startWave(); STATE = 'play'; }
 }
 
 /* =====================================================================
@@ -5393,50 +5375,6 @@ function unlockCheckpoint(w){
   }
   saveData.unlockedCheckpoints.push(w);
   persistSave();
-  floater(cx(), cy() - 110, 'CHECKPOINT W' + w + ' UNLOCKED', '#4df3ff');
-}
-
-function openCheckpointScreen(){
-  hideScreen('scrTitle');
-  renderCheckpointScreen();
-  showScreen('scrCheckpoint');
-}
-
-function renderCheckpointScreen(){
-  var container = document.getElementById('cpButtons');
-  container.innerHTML = '';
-  var cps = saveData.unlockedCheckpoints;
-  var allOptions = [1];
-  for(var ci = 0; ci < CFG.CHECKPOINT_WAVES.length; ci++){
-    for(var cj = 0; cj < cps.length; cj++){
-      if(cps[cj] === CFG.CHECKPOINT_WAVES[ci]){ allOptions.push(CFG.CHECKPOINT_WAVES[ci]); break; }
-    }
-  }
-  for(var o = 0; o < allOptions.length; o++){
-    var w = allOptions[o];
-    var btn = document.createElement('button');
-    btn.className = 'cp-wave-btn';
-    btn.textContent = w === 1 ? 'WAVE 1  (START)' : ('WAVE ' + w + '  +WEAPON CHOICE');
-    btn.setAttribute('data-cpw', String(w));
-    btn.addEventListener('click', onCheckpointSelect);
-    container.appendChild(btn);
-  }
-}
-
-function onCheckpointSelect(){
-  var w = parseInt(this.getAttribute('data-cpw'), 10);
-  hideScreen('scrCheckpoint');
-  showGameUI();
-  resetGame();
-  if(w <= 1){
-    startWave();
-    STATE = 'play';
-  } else {
-    wave = w;
-    document.getElementById('waveNum').textContent = String(wave);
-    checkpointWeaponMode = true;
-    showWeaponReward();
-  }
 }
 
 /* =====================================================================
@@ -5967,7 +5905,6 @@ function updateTitleScreen(){
   document.getElementById('bestWaveDisp').textContent = bestWave > 0 ? 'W.' + bestWave : '—';
   document.getElementById('spDisp').textContent = String(saveData.skillPoints);
   document.getElementById('continueBtn').style.display  = saveData.suspendedRun ? 'block' : 'none';
-  document.getElementById('checkpointBtn').style.display = saveData.unlockedCheckpoints.length > 1 ? 'block' : 'none';
   updateTitleIosHint();
 }
 
@@ -6067,15 +6004,6 @@ document.getElementById('continueBtn').addEventListener('click', function(){
   document.getElementById('hudEl').style.display = 'block';
   document.getElementById('specialArea').style.display = 'flex';
   resumeRun();
-});
-
-document.getElementById('checkpointBtn').addEventListener('click', function(){
-  openCheckpointScreen();
-});
-
-document.getElementById('cpCloseBtn').addEventListener('click', function(){
-  hideScreen('scrCheckpoint');
-  showScreen('scrTitle');
 });
 
 document.getElementById('pauseBtn').addEventListener('click', function(){
