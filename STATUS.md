@@ -1,6 +1,6 @@
 最終更新日: 2026-08-01
 
-現状: index.html構造整理(TOC・関数分割) fixes #26。ドキュメント棚卸し fixes #30 済み。
+現状: #27/#29/#31 を実装完了。デバッグオーバーレイ・新ボス2種・チュートリアルヒント追加。
 
 完了済み:
 - M1: プロトタイプ移植+50ウェーブ化+CONFIG集約+XPレベルアップ3択+必殺ゲージ
@@ -26,18 +26,16 @@
 - SP価格逓増化・v3マイグレーション・獲得量調整 fixes #20
 - オービタル視認性改善: 描画バグ修正・軌道リング・トレイル・Lv別サイズ・ヒット音 fixes #21
 - SPを基礎能力に限定・サブウェポンをラン内成長に移行: BARRIER/LUCK追加・v4マイグレーション・W1からサブウェポンカード出現 fixes #22
-- index.html構造整理: TOCコメント・update/draw関数分割(85件全パス) fixes #26
-- ドキュメント棚卸し: DESIGN.md/config.md/README.md更新・決定記録廃止注記 fixes #30
+- チェックポイント/中断セーブ coins残骸除去 fixes #23
+- 沈黙バグ4件修正 fixes #24
+- 自動テスト導入(85件) fixes #25
+- index.html構造整理: TOCコメント・update/draw関数分割 fixes #26
+- チュートリアル/初見向けガイド: インラインヒント7種+HELPボタン fixes #27
+- ドキュメント棚卸し: DESIGN.md/config.md/README.md更新 fixes #30
+- デバッグFPSオーバーレイ・性能計測テンプレート fixes #29
+- 新ボス2種(REFLECTOR/PHANTOM): W35/W45を刷新 fixes #31
 
 残タスク:
-- [#23 [P1] チェックポイント制と中断セーブの動作検証](https://github.com/TakamasaSaito/hexa-defense/issues/23) ← 完了(coins残骸除去・85件パス)
-- [#24 [P1] 沈黙バグの洗い出し(効果が計算に乗っているかの全数確認)](https://github.com/TakamasaSaito/hexa-defense/issues/24) ← 完了(4件修正済み)
-- [#25 [P1] 自動テストの導入](https://github.com/TakamasaSaito/hexa-defense/issues/25) ← 完了(75件パス)
-- [#26 [P2] index.htmlの構造整理](https://github.com/TakamasaSaito/hexa-defense/issues/26) ← 完了(TOC・関数分割・85件パス)
-- [#30 [P3] ドキュメントの棚卸し](https://github.com/TakamasaSaito/hexa-defense/issues/30) ← 完了
-- [#27 [P2] チュートリアル/初見向けガイドの追加](https://github.com/TakamasaSaito/hexa-defense/issues/27)
 - [#28 [P2] 第三者によるプレイテスト](https://github.com/TakamasaSaito/hexa-defense/issues/28)
-- [#29 [P3] パフォーマンス実測値の記録](https://github.com/TakamasaSaito/hexa-defense/issues/29)
-- [#31 [P3] ボスの新規追加(後半帯W35以降向け)](https://github.com/TakamasaSaito/hexa-defense/issues/31)
 
-次の一手: 実機60fps確認 または #27 チュートリアル/初見向けガイド
+次の一手: #28 第三者によるプレイテスト
