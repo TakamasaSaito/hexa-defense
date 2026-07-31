@@ -1969,7 +1969,9 @@ function executeRailgunBeam(ang){
       floater(e.x, e.y - e.size, '-' + String(Math.round(normalDmg)), '#4df3ff');
       burst(e.x, e.y, '#4df3ff', 14);
       if(e.hp <= 0){
-        kills++; gainXP(e.xpReward); gainCoin(e.coinReward || 1, e.x, e.y);
+        kills++; playSound('kill'); gainXP(e.xpReward); gainCoin(e.coinReward || 1, e.x, e.y);
+        if(Math.random() < CFG.DROP_HEAL_CHANCE) healItems.push({ x: e.x, y: e.y, life: 8.0 });
+        if(Math.random() < CFG.DROP_RARE_CHANCE * rareDropMult) spawnRareItem(e.x, e.y);
         enemies.splice(i, 1);
       }
     }
@@ -2907,6 +2909,7 @@ function update(dt){
             if(Math.random() < CFG.DROP_HEAL_CHANCE){
               healItems.push({ x: ct.x, y: ct.y, life: 8.0 });
             }
+            if(Math.random() < CFG.DROP_RARE_CHANCE * rareDropMult) spawnRareItem(ct.x, ct.y);
           }
           combatants.splice(j, 1);
         }
@@ -3002,6 +3005,7 @@ function update(dt){
           var mDmg = tower.dmg * CFG.MISSILE_DMG_MULT;
           mc4.hp -= mDmg;
           gainSpecial(mDmg);
+          applyAttrEffects(mc4, mDmg, ml.x, ml.y);
           floater(mc4.x, mc4.y - mc4.size, String(Math.round(mDmg)), '#ffaa40');
           burst(ml.x, ml.y, '#ffaa40', 14);
           if(mc4.hp <= 0){
@@ -3036,6 +3040,7 @@ function update(dt){
               if(Math.random() < CFG.DROP_HEAL_CHANCE){
                 healItems.push({ x: mc4.x, y: mc4.y, life: 8.0 });
               }
+              if(Math.random() < CFG.DROP_RARE_CHANCE * rareDropMult) spawnRareItem(mc4.x, mc4.y);
             }
             mC2.splice(mk2, 1);
           }
@@ -3463,7 +3468,9 @@ function bossShockwave(b){
       e.hp -= dmg;
       burst(e.x, e.y, '#ff6b35', 8);
       if(e.hp <= 0){
-        kills++; gainXP(e.xpReward); gainCoin(e.coinReward || 1, e.x, e.y);
+        kills++; playSound('kill'); gainXP(e.xpReward); gainCoin(e.coinReward || 1, e.x, e.y);
+        if(Math.random() < CFG.DROP_HEAL_CHANCE) healItems.push({ x: e.x, y: e.y, life: 8.0 });
+        if(Math.random() < CFG.DROP_RARE_CHANCE * rareDropMult) spawnRareItem(e.x, e.y);
         enemies.splice(i, 1);
       }
     }
