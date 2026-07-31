@@ -287,8 +287,10 @@ html, body { width:100%; height:100%; overflow:hidden; background:#05090f; touch
 .sp-plus-btn { pointer-events:auto; width:34px; height:34px; flex:none; border:none; cursor:pointer;
   font-family:'Chakra Petch',sans-serif; font-weight:700; font-size:20px;
   color:#4df3ff; background:rgba(77,243,255,0.08); border:1px solid rgba(77,243,255,0.35);
-  clip-path:polygon(6px 0,100% 0,100% calc(100% - 6px),calc(100% - 6px) 100%,0 100%,0 6px); }
+  clip-path:polygon(6px 0,100% 0,100% calc(100% - 6px),calc(100% - 6px) 100%,0 100%,0 6px);
+  transition:background 0.08s, box-shadow 0.08s; }
 .sp-plus-btn:active { background:rgba(77,243,255,0.2); }
+.sp-plus-btn.sp-tap-flash { background:rgba(77,243,255,0.45); box-shadow:0 0 12px rgba(77,243,255,0.9); }
 .sp-plus-btn:disabled { opacity:0.28; cursor:not-allowed; pointer-events:none; }
 .sp-next-cost { font-size:9px; color:rgba(255,210,87,0.75); margin-top:2px; }
 .sp-migrate-notice { background:rgba(77,243,255,0.10); border:1px solid rgba(77,243,255,0.3);
@@ -5679,8 +5681,9 @@ var SP_DEFS = [
     effFn: function(n){ return 'レアドロ x' + (1 + n * CFG.SP_LUCK_RATE).toFixed(2); } }
 ];
 
-var spLongPressTimer = null;
-var spLongPressId = null;
+var spLongPressTimer  = null;
+var spLongPressId     = null;
+var spLongPressActive = false;
 
 function renderSPScreen(){
   var container = document.getElementById('spItems');
@@ -5736,24 +5739,42 @@ function renderSPScreen(){
 }
 
 function spPlusClick(){
+  /* マウス操作用: touch では spPlusStart/End が処理するため実質ここは呼ばれない */
   var id = this.getAttribute('data-sp');
+  spTapFlash(this);
   spInvest(id);
+}
+
+function spTapFlash(btn){
+  btn.classList.add('sp-tap-flash');
+  setTimeout(function(){ btn.classList.remove('sp-tap-flash'); }, 150);
 }
 
 function spPlusStart(e){
   e.preventDefault();
   var id = this.getAttribute('data-sp');
-  spLongPressId = id;
+  spLongPressId     = id;
+  spLongPressActive = false;
+  var btn = this;
   spLongPressTimer = setTimeout(function(){
+    spLongPressActive = true;
     spLongPressTimer = setInterval(function(){
-      if(!spInvest(spLongPressId)) clearInterval(spLongPressTimer);
+      if(!spInvest(spLongPressId)){ clearInterval(spLongPressTimer); spLongPressTimer = null; }
     }, 80);
   }, 400);
 }
 
 function spPlusEnd(){
   if(spLongPressTimer !== null){ clearInterval(spLongPressTimer); clearTimeout(spLongPressTimer); spLongPressTimer = null; }
-  spLongPressId = null;
+  if(!spLongPressActive && spLongPressId !== null){
+    /* 短タップ: 長押しインターバル未起動なので単発で投資 */
+    var id = spLongPressId;
+    var btn = document.querySelector('.sp-plus-btn[data-sp="' + id + '"]');
+    if(btn) spTapFlash(btn);
+    spInvest(id);
+  }
+  spLongPressId     = null;
+  spLongPressActive = false;
 }
 
 function spInvest(id){
