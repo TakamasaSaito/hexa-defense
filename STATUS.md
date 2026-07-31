@@ -1,6 +1,6 @@
 最終更新日: 2026-08-01
 
-現状: #27/#29/#31 を実装完了。デバッグオーバーレイ・新ボス2種・チュートリアルヒント追加。
+現状: #32/#33 を実装完了。第三者プレイテスト前提の2件(セーブデータ消失対策・キャッシュ制御)が完了。
 
 完了済み:
 - M1: プロトタイプ移植+50ウェーブ化+CONFIG集約+XPレベルアップ3択+必殺ゲージ
@@ -34,6 +34,8 @@
 - ドキュメント棚卸し: DESIGN.md/config.md/README.md更新 fixes #30
 - デバッグFPSオーバーレイ・性能計測テンプレート fixes #29
 - 新ボス2種(REFLECTOR/PHANTOM): W35/W45を刷新 fixes #31
+- セーブデータ消失対策: DATA画面(エクスポート/インポート)+iOS Safari告知 fixes #32
+- キャッシュ制御: nginx設定・deploy.shビルド日時埋め込み・README手順追記 fixes #33
 
 残タスク:
 - [#28 [P2] 第三者によるプレイテスト](https://github.com/TakamasaSaito/hexa-defense/issues/28)
