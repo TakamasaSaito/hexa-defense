@@ -26,6 +26,23 @@ W10 / W20 / W30 / W40 到達時にセーブ。次ランはそこから再開可�
 
 ---
 
+## テスト
+
+Node.js がインストールされていれば、ブラウザなしで自動テストを実行できる。
+
+```bash
+node tests/run.js
+```
+
+テスト区分: SP価格カーブ / SP効果関数 / DPS計算 / waveAccum帯別スケール /
+SaveDataマイグレーション / 属性効果 / LUCK・DEF・BARRIER SP反映 /
+レアドロップ全キル経路コードパターン検査。
+
+実装方式: `tests/loader.js` が `<script>` を Node.js `vm` で評価。
+index.html は一切書き換えない（詳細は `docs/decisions/018-automated-testing-approach.md`）。
+
+---
+
 ## デバッグ
 
 URLに `?wave=N` を付けるとウェーブNからスタート（例: `?wave=20`）。
@@ -49,6 +66,9 @@ URLに `?wave=N` を付けるとウェーブNからスタート（例: `?wave=20
 
 ```
 index.html          ← ゲーム本体
+tests/
+  loader.js         ← Node.js vm でゲームロジックを評価するローダー
+  run.js            ← テストスクリプト (node tests/run.js)
 manifest.json       ← PWAマニフェスト
 hexa-favicon.svg    ← ファビコン用アイコン素材（小サイズ向け）
 favicon-32.png      ← ファビコン 32×32
