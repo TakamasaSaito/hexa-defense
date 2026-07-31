@@ -470,6 +470,12 @@ html, body { width:100%; height:100%; overflow:hidden; background:#05090f; touch
     <polygon points="32,20 42,25 42,37 32,42 22,37 22,25" stroke-width="3.2" filter="url(#ng)"/>
   </g>
 </symbol>
+<symbol id="ic-luck" viewBox="0 0 64 64">
+  <g filter="url(#ng)" fill="none" stroke="#C87FFF" stroke-width="3.2" stroke-linejoin="round" stroke-linecap="round">
+    <path d="M32 10 L36 26 L52 32 L36 38 L32 54 L28 38 L12 32 L28 26 Z"/>
+  </g>
+  <circle cx="32" cy="32" r="5" fill="#C87FFF" opacity=".85"/>
+</symbol>
 <symbol id="ic-hp" viewBox="0 0 64 64">
   <g filter="url(#ng)" fill="none" stroke="#3DDC74" stroke-width="3.2" stroke-linejoin="round">
     <polygon points="32,6 54,19 54,45 32,58 10,45 10,19"/>
@@ -673,7 +679,7 @@ var CFG = {
   BULLET_TRAIL: 0.6,
 
   /* 敵:赤 */
-  ENEMY_RED_HP_BASE:    12,
+  ENEMY_RED_HP_BASE:    10,
   ENEMY_RED_HP_WAVE:    6,
   ENEMY_RED_SPEED_BASE: 55,
   ENEMY_RED_SPEED_WAVE: 4,
@@ -681,7 +687,7 @@ var CFG = {
   ENEMY_RED_SIZE:       15,
 
   /* 敵:オレンジ(タンク) */
-  ENEMY_ORANGE_HP_BASE:    26,
+  ENEMY_ORANGE_HP_BASE:    22,
   ENEMY_ORANGE_HP_WAVE:    10,
   ENEMY_ORANGE_SPEED_BASE: 34,
   ENEMY_ORANGE_SPEED_WAVE: 4,
@@ -778,9 +784,10 @@ var CFG = {
   /* SP価格逓増(v3〜) */
   SP_PRICE_BASE:   2.59,  /* 基礎ステータス: cost(n)=round(BASE*EXP^(n/10)) */
   SP_PRICE_EXP:    10.0,  /* 10レベルごとに累計コストが1桁上がる */
-  SP_SUB_PRICE_BASE:   1.5, /* サブウェポン: cost(n)=round(BASE*GROWTH^n) */
-  SP_SUB_PRICE_GROWTH: 2.0, /* サブウェポン倍率(緩めカーブ) */
+  SP_SUB_PRICE_BASE:   1.5, /* v4移行計算用(サブウェポン旧コスト) */
+  SP_SUB_PRICE_GROWTH: 2.0, /* v4移行計算用(サブウェポン旧倍率) */
   SP_V3_MIGRATE_CAP: 500,   /* v3移行時の払い戻し上限SP */
+  SP_LUCK_RATE: 0.15,       /* LUCK 1Lvあたりのレアドロップ率倍率(+15%) */
 
   /* SP効果(基礎ステータス逓減係数) */
   SP_ATK_RATE:  0.10,  /* 1SP当たり+10%(逓減あり) */
@@ -1078,14 +1085,15 @@ var CFG = {
     { id:'attrRange',icon:'<svg width="22" height="22"><use href="#ic-thunder"/></svg>',name:'属性範囲', desc:'属性効果<br>範囲+20%' }
   ],
 
-  /* W11以降にXPプールへ追加されるサブウェポンカード */
-  CARD_SUB_WAVE:   11,
-  CARD_SUB_WEIGHT: 2,
+  /* W1以降にXPプールへ追加されるサブウェポンカード(v4: W1から出現・高重み) */
+  CARD_SUB_WAVE:   1,
+  CARD_SUB_WEIGHT: 3,
   CARD_POOL_SUB: [
     { id:'cardOrbital',   icon:'<svg width="22" height="22"><use href="#ic-orbital"/></svg>',   name:'公転球+',   desc:'公転球を<br>1個追加(最大6)' },
     { id:'cardSatellite', icon:'<svg width="22" height="22"><use href="#ic-satellite"/></svg>', name:'衛星砲台+', desc:'衛星砲台を<br>1基追加(最大5)' },
     { id:'cardField',     icon:'<svg width="22" height="22"><use href="#ic-field"/></svg>',     name:'フィールド+',desc:'設置数を<br>+1(最大5)' },
-    { id:'cardTurret',    icon:'<svg width="22" height="22"><use href="#ic-subturret"/></svg>', name:'サブ砲台+', desc:'サブ砲台を<br>1基追加(最大4)' }
+    { id:'cardTurret',    icon:'<svg width="22" height="22"><use href="#ic-subturret"/></svg>', name:'サブ砲台+', desc:'サブ砲台を<br>1基追加(最大4)' },
+    { id:'cardExplosion', icon:'<svg width="22" height="22"><use href="#ic-blast"/></svg>',     name:'爆発弾+',   desc:'爆発弾を<br>1段階強化(最大3)' }
   ]
 };
 
@@ -1204,6 +1212,7 @@ var barrierCount = 0;
 var barrierBreakTimer = 0;
 var bossesKilled = 0;  /* ラン中ボス撃破数(SP計算用) */
 var defDmgMult = 1.0;  /* SP DEF による被ダメ軽減倍率 */
+var rareDropMult = 1.0; /* SP LUCK によるレアドロップ率倍率 */
 
 /* チェックポイント: 武器報酬画面をCP開始補償として使う際のフラグ */
 var checkpointWeaponMode = false;
@@ -1231,15 +1240,15 @@ var hexRot = 0;
 ===================================================================== */
 function defaultSaveData(){
   return {
-    version: 3,
+    version: 4,
     skillPoints: 0,
-    spAlloc: { atk: 0, def: 0, spd: 0, subturret: 0, orbital: 0, satellite: 0, field: 0, blast: 0 },
+    spAlloc: { atk: 0, def: 0, spd: 0, barrier: 0, luck: 0 },
     bestWave: 0,
     totalKills: 0,
     unlockedCheckpoints: [1],
     suspendedRun: null,
     settings: { mute: false, speedIdx: 1 },
-    v3MigrateNotify: false
+    v4MigrateNotify: false
   };
 }
 
@@ -1291,19 +1300,40 @@ function migrateSave(data){
   if(typeof data.bestWave === 'number') d.bestWave = data.bestWave;
   if(typeof data.totalKills === 'number') d.totalKills = data.totalKills;
 
-  if(data.version === 3){
-    /* v3: 逓増価格対応セーブデータ */
+  if(data.version === 4){
+    /* v4: SP=基礎5系統のみ */
     if(typeof data.skillPoints === 'number') d.skillPoints = data.skillPoints;
     if(data.spAlloc && typeof data.spAlloc === 'object'){
-      var sa3 = data.spAlloc;
-      var keys3 = ['atk', 'def', 'spd', 'subturret', 'orbital', 'satellite', 'field', 'blast'];
-      for(var ki3 = 0; ki3 < keys3.length; ki3++){
-        if(typeof sa3[keys3[ki3]] === 'number') d.spAlloc[keys3[ki3]] = sa3[keys3[ki3]];
+      var sa4 = data.spAlloc;
+      var keys4 = ['atk', 'def', 'spd', 'barrier', 'luck'];
+      for(var ki4 = 0; ki4 < keys4.length; ki4++){
+        if(typeof sa4[keys4[ki4]] === 'number') d.spAlloc[keys4[ki4]] = sa4[keys4[ki4]];
       }
     }
-    if(typeof data.v3MigrateNotify === 'boolean') d.v3MigrateNotify = data.v3MigrateNotify;
+    if(typeof data.v4MigrateNotify === 'boolean') d.v4MigrateNotify = data.v4MigrateNotify;
+  } else if(data.version === 3){
+    /* v3 → v4: サブウェポン投資SP全額払い戻し */
+    var sp3 = typeof data.skillPoints === 'number' ? data.skillPoints : 0;
+    var subRefund = 0;
+    var subKeys = ['subturret', 'orbital', 'satellite', 'field', 'blast'];
+    if(data.spAlloc && typeof data.spAlloc === 'object'){
+      var sa3 = data.spAlloc;
+      for(var ski = 0; ski < subKeys.length; ski++){
+        var subLv = typeof sa3[subKeys[ski]] === 'number' ? sa3[subKeys[ski]] : 0;
+        for(var sn = 0; sn < subLv; sn++){
+          subRefund += Math.max(1, Math.round(CFG.SP_SUB_PRICE_BASE * Math.pow(CFG.SP_SUB_PRICE_GROWTH, sn)));
+        }
+      }
+      /* 基礎3系統はそのまま引き継ぎ */
+      var baseKeys3 = ['atk', 'def', 'spd'];
+      for(var bki = 0; bki < baseKeys3.length; bki++){
+        if(typeof sa3[baseKeys3[bki]] === 'number') d.spAlloc[baseKeys3[bki]] = sa3[baseKeys3[bki]];
+      }
+    }
+    d.skillPoints = sp3 + subRefund;
+    d.v4MigrateNotify = true;
   } else if(data.version === 2){
-    /* v2 → v3 マイグレーション: 旧投資SP(固定1SP/Lv)を払い戻しリスペック */
+    /* v2 → v4: 旧投資SP(固定1SP/Lv)を全額払い戻し */
     var sp2 = typeof data.skillPoints === 'number' ? data.skillPoints : 0;
     var invested2 = 0;
     if(data.spAlloc && typeof data.spAlloc === 'object'){
@@ -1313,13 +1343,11 @@ function migrateSave(data){
         if(typeof sa2[keys2[ki2]] === 'number') invested2 += sa2[keys2[ki2]];
       }
     }
-    /* 旧固定価格は1SP/Lvなので投資量=Lv数。上限を適用して払い戻し */
     var refund2 = sp2 + invested2;
     if(refund2 > CFG.SP_V3_MIGRATE_CAP) refund2 = CFG.SP_V3_MIGRATE_CAP;
     d.skillPoints = refund2;
-    d.v3MigrateNotify = true;
   } else {
-    /* v1 → v3 マイグレーション: 旧metaCoins + 旧恒久強化購入コストをSPに換算 */
+    /* v1 → v4: 旧metaCoins + 旧恒久強化購入コストをSPに換算 */
     var oldMeta = typeof data.metaCoins === 'number' ? data.metaCoins : 0;
     var oldPermCost = 0;
     if(data.permanentUpgrades && typeof data.permanentUpgrades === 'object'){
@@ -1350,7 +1378,7 @@ function migrateSave(data){
       d.settings.speedIdx = data.settings.speedIdx;
     }
   }
-  d.version = 3;
+  d.version = 4;
   return d;
 }
 
@@ -1599,7 +1627,7 @@ function takeDamage(dmg){
 /* =====================================================================
    レアドロップ
 ===================================================================== */
-var RARE_EFFECT_POOL = ['attrPower', 'attrRange', 'orbital', 'field', 'satellite', 'barrier'];
+var RARE_EFFECT_POOL = ['attrPower', 'attrRange', 'orbital', 'field', 'satellite', 'sub_turret', 'explosion', 'barrier'];
 
 function spawnRareItem(x, y){
   /* 効果プールを状況に合わせてフィルタ */
@@ -1608,9 +1636,11 @@ function spawnRareItem(x, y){
   for(pi = 0; pi < RARE_EFFECT_POOL.length; pi++){
     var ef = RARE_EFFECT_POOL[pi];
     if((ef === 'attrPower' || ef === 'attrRange') && !chosenElement) continue;
-    if(ef === 'orbital'   && weapons.orbital   >= 6) continue;
-    if(ef === 'satellite' && weapons.satellite  >= 5) continue;
-    if(ef === 'field'     && weapons.field      >= 5) continue;
+    if(ef === 'orbital'    && weapons.orbital    >= 6) continue;
+    if(ef === 'satellite'  && weapons.satellite  >= 5) continue;
+    if(ef === 'field'      && weapons.field      >= 5) continue;
+    if(ef === 'sub_turret' && weapons.subTurret  >= 4) continue;
+    if(ef === 'explosion'  && weapons.explosion  >= 3) continue;
     pool.push(ef);
   }
   if(pool.length === 0) pool = ['barrier'];
@@ -1641,6 +1671,12 @@ function applyRareEffect(effect, ix, iy){
     weapons.satellite = Math.min(5, (weapons.satellite || 0) + 1);
     rebuildSatellites();
     label = 'SATELLITE+1';
+  } else if(effect === 'sub_turret'){
+    weapons.subTurret = Math.min(4, (weapons.subTurret || 0) + 1);
+    label = 'TURRET+1';
+  } else if(effect === 'explosion'){
+    weapons.explosion = Math.min(3, (weapons.explosion || 0) + 1);
+    label = 'BLAST+1';
   } else if(effect === 'barrier'){
     barrierCount = Math.min(CFG.BARRIER_MAX, barrierCount + 1);
     label = 'BARRIER+1';
@@ -1702,10 +1738,11 @@ function renderLvCards(){
     var sub = CFG.CARD_POOL_SUB;
     for(si = 0; si < sub.length; si++){
       var c = sub[si];
-      if(c.id === 'cardOrbital'   && weapons.orbital   >= 6) continue;
+      if(c.id === 'cardOrbital'   && weapons.orbital    >= 6) continue;
       if(c.id === 'cardSatellite' && weapons.satellite  >= 5) continue;
       if(c.id === 'cardField'     && weapons.field      >= 5) continue;
       if(c.id === 'cardTurret'    && weapons.subTurret  >= 4) continue;
+      if(c.id === 'cardExplosion' && weapons.explosion  >= 3) continue;
       var wt = CFG.CARD_SUB_WEIGHT, wi;
       for(wi = 0; wi < wt; wi++) pool.push(c);
     }
@@ -1771,7 +1808,8 @@ function applyUpgrade(id){
     else { fieldUsesLeft += CFG.FIELD_EXTRA_USES; }
     weapons.field = Math.min(5, (weapons.field||0)+1);
   }
-  if(id === 'cardTurret')   { weapons.subTurret  = Math.min(4, (weapons.subTurret||0)+1); }
+  if(id === 'cardTurret')    { weapons.subTurret  = Math.min(4, (weapons.subTurret ||0)+1); }
+  if(id === 'cardExplosion') { weapons.explosion  = Math.min(3, (weapons.explosion ||0)+1); }
   if(typeof upgradeCounts[id] !== 'undefined') upgradeCounts[id]++;
 }
 
@@ -2407,7 +2445,7 @@ function updateOrbitals(dt){
               burst(e.x, e.y, e.color, 18);
             }
             if(Math.random() < CFG.DROP_HEAL_CHANCE) healItems.push({ x: e.x, y: e.y, life: 8.0 });
-            if(Math.random() < CFG.DROP_RARE_CHANCE) spawnRareItem(e.x, e.y);
+            if(Math.random() < CFG.DROP_RARE_CHANCE * rareDropMult) spawnRareItem(e.x, e.y);
           }
         }
         break;
@@ -2513,7 +2551,7 @@ function updateFields(dt){
               burst(e.x, e.y, e.color, 14);
             }
             if(Math.random() < CFG.DROP_HEAL_CHANCE) healItems.push({ x: e.x, y: e.y, life: 8.0 });
-            if(Math.random() < CFG.DROP_RARE_CHANCE) spawnRareItem(e.x, e.y);
+            if(Math.random() < CFG.DROP_RARE_CHANCE * rareDropMult) spawnRareItem(e.x, e.y);
             enemies.splice(fei, 1);
           }
         }
@@ -2684,7 +2722,7 @@ function update(dt){
         burst(e.x, e.y, e.color, 18);
       }
       if(Math.random() < CFG.DROP_HEAL_CHANCE) healItems.push({ x: e.x, y: e.y, life: 8.0 });
-      if(Math.random() < CFG.DROP_RARE_CHANCE) spawnRareItem(e.x, e.y);
+      if(Math.random() < CFG.DROP_RARE_CHANCE * rareDropMult) spawnRareItem(e.x, e.y);
       continue;
     }
 
@@ -2719,7 +2757,7 @@ function update(dt){
           burst(e.x, e.y, e.color, 18);
         }
         if(Math.random() < CFG.DROP_HEAL_CHANCE) healItems.push({ x: e.x, y: e.y, life: 8.0 });
-        if(Math.random() < CFG.DROP_RARE_CHANCE) spawnRareItem(e.x, e.y);
+        if(Math.random() < CFG.DROP_RARE_CHANCE * rareDropMult) spawnRareItem(e.x, e.y);
         continue;
       }
     }
@@ -4807,6 +4845,8 @@ function showStatusScreen(){
   h += '<div class="status-row"><span>' + svgIc('#ic-atk') + ' ATTACK</span><span class="status-val">Lv.' + (sa.atk||0) + '  x' + spAtkMult(sa.atk||0).toFixed(2) + '</span></div>';
   h += '<div class="status-row"><span>' + svgIc('#ic-def') + ' DEFENSE</span><span class="status-val">Lv.' + (sa.def||0) + '  -' + Math.round((1-spDefDmgMult(sa.def||0))*100) + '%dmg</span></div>';
   h += '<div class="status-row"><span>' + svgIc('#ic-spd') + ' SPEED</span><span class="status-val">Lv.' + (sa.spd||0) + '  x' + spSpdMult(sa.spd||0).toFixed(2) + '</span></div>';
+  if(sa.barrier > 0) h += '<div class="status-row"><span>' + svgIc('#ic-barrier') + ' BARRIER</span><span class="status-val">開始' + (sa.barrier||0) + '枚</span></div>';
+  if(sa.luck    > 0) h += '<div class="status-row"><span>' + svgIc('#ic-luck')    + ' LUCK</span><span class="status-val">レアドロ x' + (1 + (sa.luck||0) * CFG.SP_LUCK_RATE).toFixed(2) + '</span></div>';
   h += '</div>';
 
   /* 主砲 */
@@ -5027,17 +5067,9 @@ function applySpUpgrades(){
   /* SPD: 連射間隔短縮 */
   tower.fireInterval *= spSpdMult(sa.spd || 0);
 
-  /* サブウェポン初期値 */
-  weapons.subTurret = Math.min(sa.subturret || 0, CFG.SP_SUB_MAX_TURRET);
-  weapons.orbital   = Math.min(sa.orbital   || 0, CFG.SP_SUB_MAX_ORBITAL);
-  weapons.satellite = Math.min(sa.satellite  || 0, CFG.SP_SUB_MAX_SATELLITE);
-  weapons.field     = Math.min(sa.field      || 0, CFG.SP_SUB_MAX_FIELD);
-  weapons.explosion = Math.min(sa.blast      || 0, CFG.SP_SUB_MAX_BLAST);
-
-  if(weapons.field > 0) fieldUsesLeft = CFG.FIELD_BASE_USES;
-
   tower.hp = tower.maxHp;
-  barrierCount = 0;
+  barrierCount = Math.min(CFG.BARRIER_MAX, sa.barrier || 0);
+  rareDropMult = 1.0 + (sa.luck || 0) * CFG.SP_LUCK_RATE;
   applyPermGlobals();
   rebuildOrbitals();
   rebuildSatellites();
@@ -5051,10 +5083,9 @@ function applyPermanentUpgrades(){ applySpUpgrades(); }
 ===================================================================== */
 function spCostForLevel(id, n){
   /* 基礎ステータス: cost(n) = round(BASE * EXP^(n/10)) — 10Lvごとに累計1桁上昇 */
-  if(id === 'atk' || id === 'def' || id === 'spd'){
+  if(id === 'atk' || id === 'def' || id === 'spd' || id === 'barrier' || id === 'luck'){
     return Math.max(1, Math.round(CFG.SP_PRICE_BASE * Math.pow(CFG.SP_PRICE_EXP, n / 10)));
   }
-  /* サブウェポン: cost(n) = round(SUB_BASE * GROWTH^n) — 緩めカーブ */
   return Math.max(1, Math.round(CFG.SP_SUB_PRICE_BASE * Math.pow(CFG.SP_SUB_PRICE_GROWTH, n)));
 }
 
@@ -5062,17 +5093,16 @@ function spCostForLevel(id, n){
    SP投資UI
 ===================================================================== */
 var SP_DEFS = [
-  { id:'atk',       icon:'#ic-atk',       name:'ATTACK',    sec:'BASE STATS',     maxLv:0,
+  { id:'atk',     icon:'#ic-atk',     name:'ATTACK',  sec:'BASE STATS', maxLv:0,
     effFn: function(n){ return 'DMG x' + spAtkMult(n).toFixed(2); } },
-  { id:'def',       icon:'#ic-def',       name:'DEFENSE',   sec:null,             maxLv:0,
+  { id:'def',     icon:'#ic-def',     name:'DEFENSE', sec:null,         maxLv:0,
     effFn: function(n){ return '被ダメ ' + Math.round((1-spDefDmgMult(n))*100) + '% 軽減'; } },
-  { id:'spd',       icon:'#ic-spd',       name:'SPEED',     sec:null,             maxLv:0,
+  { id:'spd',     icon:'#ic-spd',     name:'SPEED',   sec:null,         maxLv:0,
     effFn: function(n){ return '発射 x' + spSpdMult(n).toFixed(2); } },
-  { id:'subturret', icon:'#ic-subturret', name:'SUB TURRET',sec:'SUB WEAPONS',    maxLv:CFG.SP_SUB_MAX_TURRET,    effFn:null },
-  { id:'orbital',   icon:'#ic-orbital',   name:'ORBITAL',   sec:null,             maxLv:CFG.SP_SUB_MAX_ORBITAL,   effFn:null },
-  { id:'satellite', icon:'#ic-satellite', name:'SATELLITE', sec:null,             maxLv:CFG.SP_SUB_MAX_SATELLITE,  effFn:null },
-  { id:'field',     icon:'#ic-field',     name:'FIELD',     sec:null,             maxLv:CFG.SP_SUB_MAX_FIELD,     effFn:null },
-  { id:'blast',     icon:'#ic-blast',     name:'BLAST',     sec:null,             maxLv:CFG.SP_SUB_MAX_BLAST,     effFn:null }
+  { id:'barrier', icon:'#ic-barrier', name:'BARRIER', sec:null,         maxLv:CFG.BARRIER_MAX,
+    effFn: function(n){ return '開始バリア ' + n + '枚'; } },
+  { id:'luck',    icon:'#ic-luck',    name:'LUCK',    sec:null,         maxLv:0,
+    effFn: function(n){ return 'レアドロ x' + (1 + n * CFG.SP_LUCK_RATE).toFixed(2); } }
 ];
 
 var spLongPressTimer = null;
@@ -5172,9 +5202,10 @@ function openPermaScreen(){
   renderSPScreen();
   var notice = document.getElementById('spMigrateNotice');
   if(notice){
-    if(saveData.v3MigrateNotify){
+    if(saveData.v4MigrateNotify){
+      notice.textContent = 'サブウェポンはラン内で獲得する方式に変わりました。投資済みSPを払い戻しました';
       notice.style.display = 'block';
-      saveData.v3MigrateNotify = false;
+      saveData.v4MigrateNotify = false;
       persistSave();
     } else {
       notice.style.display = 'none';
