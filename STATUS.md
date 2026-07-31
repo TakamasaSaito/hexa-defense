@@ -1,6 +1,6 @@
 最終更新日: 2026-07-31
 
-現状: SPをATK/DEF/SPD/BARRIER/LUCK基礎5系統に限定・サブウェポンをラン内成長に移行完了(#22)。v4マイグレーション実装済み。
+現状: 沈黙バグ4件修正(弾/ミサイル/レールガンのレアドロップ欠落・ミサイルの属性未適用) fixes #24。
 
 完了済み:
 - M1: プロトタイプ移植+50ウェーブ化+CONFIG集約+XPレベルアップ3択+必殺ゲージ
@@ -29,7 +29,7 @@
 
 残タスク:
 - [#23 [P1] チェックポイント制と中断セーブの動作検証](https://github.com/TakamasaSaito/hexa-defense/issues/23)
-- [#24 [P1] 沈黙バグの洗い出し(効果が計算に乗っているかの全数確認)](https://github.com/TakamasaSaito/hexa-defense/issues/24)
+- [#24 [P1] 沈黙バグの洗い出し(効果が計算に乗っているかの全数確認)](https://github.com/TakamasaSaito/hexa-defense/issues/24) ← 完了(4件修正済み)
 - [#25 [P1] 自動テストの導入](https://github.com/TakamasaSaito/hexa-defense/issues/25)
 - [#26 [P2] index.htmlの構造整理](https://github.com/TakamasaSaito/hexa-defense/issues/26)
 - [#27 [P2] チュートリアル/初見向けガイドの追加](https://github.com/TakamasaSaito/hexa-defense/issues/27)
