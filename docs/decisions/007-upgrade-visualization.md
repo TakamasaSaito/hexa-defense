@@ -23,5 +23,6 @@ DPS等分により既存バランスは維持し、見た目の派手さのみ�
 - missiles配列・missileTimer変数が新設される
 - enemies に stunTimer フィールドが追加(PULSE用)
 - PULSE役割変更: ダメージ主体→スタン主体(DMG_MULT 8→2、stun 2秒)
+  > **廃止:** PULSEスタン効果は #008 で全方位弾幕(面制圧)に変更。stunTimerフィールドは削除済み。
 - XP_BASE 20→50、XP_CAP 500→600(レベルアップ頻度を1ウェーブ1回程度に緩和)
 - SPECIAL_DMG_RATIO 0.5→0.25(ゲージ蓄積を半減)

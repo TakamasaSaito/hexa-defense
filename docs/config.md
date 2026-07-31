@@ -13,7 +13,6 @@ CONFIGオブジェクトは `index.html` 冒頭にまとめる。マジックナ
 | 射程上限 | `TOWER_RANGE_MAX` | 0.45 | ×min(W,H) |
 | ショップ射程逓減 | `TOWER_RANGE_SHOP_STEPS` | [0.12,0.09,0.07,0.05] | 購入回数ごとの増加率 |
 | タワーY中心 | `TOWER_CENTER_Y` | 0.50 | ×画面高 |
-| サブ砲台ダメージ倍率 | `SUB_DMG_RATIO` | 0.5 | |
 
 **基礎DPS:** 7 / 0.55 ≈ 12.7/秒
 
@@ -31,9 +30,9 @@ CONFIGオブジェクトは `index.html` 冒頭にまとめる。マジックナ
 | `ENEMY_ORANGE_SPEED_WAVE` | 4 | |
 | `ENEMY_ORANGE_DMG` | 14 | タンク接触ダメージ |
 | `ENEMY_ORANGE_RATIO` | 0.35 | タンク出現率(+wave*0.02上限0.6) |
-| `COIN_RED` | 1 | 赤スクエアコイン報酬 |
-| `COIN_ORANGE` | 3 | タンクコイン報酬 |
-| `COIN_BOSS` | 50 | ボスコイン報酬 |
+| `COIN_RED` | 1 | 赤スクエアコイン報酬 (**廃止 #019**) |
+| `COIN_ORANGE` | 3 | タンクコイン報酬 (**廃止 #019**) |
+| `COIN_BOSS` | 50 | ボスコイン報酬 (**廃止 #019**) |
 
 ## ウェーブ設計
 | キー | 値 | 説明 |
@@ -98,12 +97,15 @@ CONFIGオブジェクトは `index.html` 冒頭にまとめる。マジックナ
 
 **廃止:** `PULSE_DMG_MULT` / `PULSE_RANGE_MULT` / `PULSE_KNOCKBACK` / `PULSE_STUN_DUR` / `PULSE_STUN_DUR_BOSS` (#11で削除)
 
-### RAILGUN(W10解放)
+### RAILGUN(W10解放) — #017でボスキラーに再設計
 | キー | 値 | 説明 |
 |---|---|---|
 | `RAILGUN_COST` | 500 | コスト(50%) |
-| `RAILGUN_CD` | 6 | クールダウン(秒) |
-| `RAILGUN_DMG_MULT` | 20 | 射線上の全敵に適用 |
+| `RAILGUN_CD` | **12** | クールダウン(秒) (旧6 → #017で延長) |
+| `RAILGUN_DMG_MULT` | **16** | 通常敵倍率 (旧20 → #017で変更) |
+| `RAILGUN_BOSS_DMG_MULT` | **2.2** | ボス専用追加倍率(通常×2.2) (#017新規) |
+| `RAILGUN_CHARGE_DUR` | 0.28 | チャージ予兆秒数 (#017新規) |
+| `RAILGUN_BEAM_DUR` | 0.55 | ビーム表示秒数 (#017新規) |
 
 ### OVERDRIVE(W20解放)
 | キー | 値 | 説明 |
@@ -202,19 +204,24 @@ CONFIGオブジェクトは `index.html` 冒頭にまとめる。マジックナ
 
 | キー | 値 | 説明 |
 |---|---|---|
-| `SP_WAVE_RATE` | 0.06 | floor(wave × rate) = ベースSP/ラン |
-| `SP_BOSS_BONUS` | 1 | ボス1体撃破あたりボーナスSP |
-| `SP_MIGRATE_RATE` | 80 | v1→v2マイグレーション: 旧コスト÷この値=SP |
+| `SP_WAVE_RATE` | **0.5** | floor(wave × rate) = ベースSP/ラン (旧0.06 → #020で変更) |
+| `SP_BOSS_BONUS` | **3** | ボス1体撃破あたりボーナスSP (旧1 → #020で変更) |
+| `SP_MIGRATE_RATE` | 80 | v1→v4マイグレーション: 旧メタコイン÷この値=SP |
 | `SP_ATK_RATE` | 0.10 | ATK: 各ポイントの初期乗数 |
 | `SP_ATK_DECAY` | 0.04 | ATK: 乗数の逓減率(n番目 = rate/(1+decay*n)) |
 | `SP_DEF_SCALE` | 20 | DEF: アーマー公式 20/(20+n) の分子 |
 | `SP_SPD_RATE` | 0.08 | SPD: 各ポイントの初期間隔短縮率 |
 | `SP_SPD_DECAY` | 0.035 | SPD: 短縮率の逓減率 |
-| `SP_SUB_MAX_TURRET` | 4 | サブ砲台最大Lv |
+| `SP_LUCK_RATE` | 0.15 | LUCK: 1Lvあたりのレアドロップ率倍率(+15%) (#022新規) |
+| `SP_SUB_MAX_TURRET` | 4 | サブ砲台最大Lv(武器報酬/カード上限) |
 | `SP_SUB_MAX_ORBITAL` | 6 | オービタル最大Lv |
 | `SP_SUB_MAX_SATELLITE` | 5 | 衛星砲台最大Lv |
 | `SP_SUB_MAX_FIELD` | 5 | 設置フィールド最大Lv |
 | `SP_SUB_MAX_BLAST` | 3 | 範囲爆発最大Lv |
+
+**SP系統 (#022現在: ATK/DEF/SPD/BARRIER/LUCK の5系統):**
+- BARRIER: 開始バリア枚数(上限BARRIER_MAX=3)。1Lvで開始バリア+1 (#022新規)
+- LUCK: レアドロップ率 × (1 + Lv × 0.15) (#022新規)
 
 **SP効果式:**
 - ATK Lv.n: `∏(1 + 0.10/(1+0.04*i))` for i=0..n-1 (逓減乗算)
@@ -232,22 +239,21 @@ CONFIGオブジェクトは `index.html` 冒頭にまとめる。マジックナ
 
 残存キー (ゲージ効率・属性初期値は仕様継続): `PERM_GAUGE_RATE_PER_LV`, `PERM_ELEM_START_MAX`, `ELEM_CHOICE_PRIORITY`
 
-**経済目標:** W5前後敗北ランで60〜80コイン → メタコイン36〜48 → 2ランに1個ペースでTier1購入
+## ラン内ショップ — **廃止(#019)**
 
-## ラン内ショップ
-| キー | 値 | 説明 |
+> `SHOP_BASE_PRICE` / `SHOP_PRICE_SCALE` は削除済み。以下は記録のみ。
+
+| キー | 旧値 | 説明 |
 |---|---|---|
 | `SHOP_BASE_PRICE` | 10 | 初回価格 |
 | `SHOP_PRICE_SCALE` | 1.5 | 購入ごと倍率 |
 
-**品目(バリア追加):** 連射速度/ダメージ/射程/弾速/バリア+1/HP即時回復
-(旧「最大HP+30」をバリア+1に置き換え: #11)
-
 ## 回復アイテムドロップ
+
+> 現行値は SP制セクションの「HP回復ドロップ (#019上方修正)」を参照(DROP_HEAL_CHANCE=0.09, DROP_HEAL_AMOUNT=20)。
+
 | キー | 値 | 説明 |
 |---|---|---|
-| `DROP_HEAL_CHANCE` | 0.05 | 通常敵撃破時のドロップ率 |
-| `DROP_HEAL_AMOUNT` | 15 | 取得時回復量 |
 | `DROP_SPEED` | 40 | タワーへの漂い速度(px/s) |
 
 ## レアドロップ(金色六角形, #15新規)
@@ -266,27 +272,41 @@ CONFIGオブジェクトは `index.html` 冒頭にまとめる。マジックナ
 | キー | 値 | 説明 |
 |---|---|---|
 | `CHECKPOINT_WAVES` | [10,20,30,40] | 到達時に解除されるウェーブ番号 |
-| `CHECKPOINT_START_COINS` | 80 | CP開始時の補償コイン数 |
+| `CHECKPOINT_START_COINS` | 80 | CP開始時の補償コイン数 (**廃止 #019**: コイン自体が廃止) |
 
 ## 中断セーブ
 
 `saveData.suspendedRun` に1スロット上書き保存。保存内容:
 wave/hp/maxHp/dmg/fireInterval/bulletSpeed/range/level/xp/xpNext/coins/kills/specialGauge/weapons/upgradeCounts/**barrierCount**
 
-## SaveData スキーマ(v1)
+## SaveData スキーマ(v4 現行)
+
+localStorageキー: `hd_save`。
+
+```json
+{
+  "version": 4,
+  "skillPoints": 0,
+  "spAlloc": { "atk": 0, "def": 0, "spd": 0, "barrier": 0, "luck": 0 },
+  "bestWave": 0,
+  "totalKills": 0,
+  "unlockedCheckpoints": [1],
+  "suspendedRun": null,
+  "v4MigrateNotify": false,
+  "settings": { "mute": false, "speedIdx": 1 }
+}
+```
+
+**マイグレーション経路:** v1(メタコイン時代) → v4(SP換算), v2(固定SP) → v3(逓増SP払戻) → v4(サブウェポンSP払戻)
+
+### 旧スキーマ(v1, 参考)
 ```json
 {
   "version": 1,
   "metaCoins": 0,
-  "bestWave": 0,
-  "totalKills": 0,
-  "permanentUpgrades": { "dmg":0, "rate":0, "hp":0, "range":0, "coinGain":0 },
-  "unlockedCheckpoints": [1],
-  "suspendedRun": null,
-  "settings": { "mute": false, "speedIdx": 1 }
+  "permanentUpgrades": { "dmg":0, "rate":0, "hp":0, "range":0, "coinGain":0 }
 }
 ```
-localStorageキー: `hd_save`。
 
 ## 倍速設定
 | キー | 値 | 説明 |
@@ -316,13 +336,14 @@ localStorageキー: `hd_save`。
 | `ATTR_LIGHTNING_CHAINS` | [1,2,3] | 雷Lv1〜3の連鎖数 |
 | `ATTR_LIGHTNING_FRAC` | 0.55 | 連鎖ダメージ(元弾ダメの55%) |
 
-## オービタル (#12で追加)
+## オービタル (#12で追加, #21で視認性改善)
 | キー | 値 | 説明 |
 |---|---|---|
-| `ORBITAL_RADIUS` | 88 | 公転半径(px) |
+| `ORBITAL_RADIUS_RATIO` | 0.55 | 公転半径 = tower.range × この値 (旧: ORBITAL_RADIUS=88px固定 → #21で変更) |
 | `ORBITAL_SPEED` | 2.2 | 公転角速度(rad/s) |
 | `ORBITAL_DMG_MULT` | 1.2 | タワーDMGへのダメージ倍率 |
-| `ORBITAL_BALL_SIZE` | 7 | 球の半径(px) |
+| `ORBITAL_BALL_BASE` | 9 | Lv1球半径(px) (旧: ORBITAL_BALL_SIZE=7 → #21で変更) |
+| `ORBITAL_BALL_GROW` | 1.5 | Lvごとの球半径増加量(px) (#21新規) |
 | `ORBITAL_HIT_CD` | 0.65 | 同一敵への再ヒット間隔(秒) |
 
 ## 範囲爆発弾 (#12で追加)
@@ -366,8 +387,8 @@ localStorageキー: `hd_save`。
 | field(設置型フィールド) | 3 | **5** | 武器報酬 or XPカード(W11〜) |
 | subTurret(サブ砲台) | 2 | **4** | 武器報酬 or XPカード(W11〜) |
 
-`CARD_SUB_WAVE=11`: W11以降のXPレベルアップカードにサブウェポン強化が追加。
-`CARD_SUB_WEIGHT=2`: CARD_POOL_SUBの各カードを2回プールに追加(出現確率2倍)。
+`CARD_SUB_WAVE=1`: **W1から**レベルアップカードにサブウェポン強化が追加 (旧=11 → #022でW1に変更)。
+`CARD_SUB_WEIGHT=3`: CARD_POOL_SUBの各カードを3回プールに追加(出現確率3倍) (旧=2 → #022で引き上げ)。
 `SUB_TURRET_OFFSETS`: 4エントリに拡張(4基目: dx=±52, dy=+36)。
 
 ## デバッグ: URLパラメータ `?wave=N`
@@ -375,8 +396,8 @@ localStorageキー: `hd_save`。
 任意のウェーブからゲームを開始。`?wave=5` でW5ボス即確認など。
 
 ## 調整指針
-1. **設計目標:** 恒久強化ゼロで初見W5ボス敗北。フルコンプ+武器/必殺全解放でW50クリア可(余裕なし)
+1. **設計目標:** SP振り分けゼロで初見W5ボス敗北。SP/武器/必殺全解放でW50クリア可(余裕なし)
 2. **5帯係数:** `WAVE_HP_SCALES` の各値を変えることで帯境界の急加速タイミングを制御
-3. **バリア入手難度:** ショップ/カードでのみ入手。BARRIER_MAX=3を超えない(希少資源)
+3. **バリア入手難度:** カード/レアドロップ/SP(BARRIER系統)でのみ開始時付与。BARRIER_MAX=3を超えない
 4. **PULSE弾幕:** PULSE_BULLET_COUNT(20)とPULSE_BULLET_DMG_MULT(1.5)のバランスで面処理力を調整
 5. **iPhone Safari 60fps 維持が最優先:** PARTICLE_MAX=200を超えたら削除
