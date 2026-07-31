@@ -1284,6 +1284,10 @@ var stars = [];
 /* 六角グリッド回転 */
 var hexRot = 0;
 
+/* デバッグオーバーレイ (?debug=1 で有効) */
+var debugMode = (typeof window !== 'undefined' && window.location && window.location.search.indexOf('debug=1') !== -1);
+var fpsFrames = 0; var fpsElapsed = 0; var fpsDisplay = 0;
+
 /* =====================================================================
    StorageAdapter + SaveData
 ===================================================================== */
@@ -2734,6 +2738,11 @@ function loop(t){
     pendingSteps = 0;
   }
   draw(t / 1000, dt);
+  if(debugMode){
+    fpsFrames++;
+    fpsElapsed += dt;
+    if(fpsElapsed >= 1.0){ fpsDisplay = Math.round(fpsFrames / fpsElapsed); fpsFrames = 0; fpsElapsed = 0; }
+  }
 }
 
 /* ---- update サブ関数 ---- */
@@ -4829,6 +4838,31 @@ function draw(tm, dt){
 
   /* HPバー / フローター / 各種オーバーレイ */
   drawHUDLayer(tm);
+
+  /* デバッグオーバーレイ (?debug=1) */
+  if(debugMode && STATE !== 'title'){
+    var dbgBullets = bullets.length + enemyBullets.length + missiles.length;
+    var dbgEffects = orbitals.length + satellites.length + fields.length + lightningFlashes.length + explosionFlashes.length;
+    var dbgLines = [
+      'FPS: ' + fpsDisplay,
+      'ENEMIES: ' + enemies.length + (boss ? '+BOSS' : ''),
+      'BULLETS: ' + dbgBullets,
+      'PARTICLES: ' + particles.length,
+      'EFFECTS: ' + dbgEffects
+    ];
+    ctx.save();
+    ctx.font = '600 12px "Chakra Petch", Arial';
+    ctx.textAlign = 'left';
+    ctx.shadowBlur = 0;
+    var dbgI;
+    for(dbgI = 0; dbgI < dbgLines.length; dbgI++){
+      ctx.fillStyle = 'rgba(0,0,0,0.6)';
+      ctx.fillRect(8, H - 110 + dbgI * 18, 140, 16);
+      ctx.fillStyle = 'rgba(77,243,255,0.95)';
+      ctx.fillText(dbgLines[dbgI], 10, H - 96 + dbgI * 18);
+    }
+    ctx.restore();
+  }
 
   ctx.restore();
 }
