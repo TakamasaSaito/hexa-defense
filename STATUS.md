@@ -1,6 +1,6 @@
 最終更新日: 2026-07-31
 
-現状: 自動テスト導入(75件全パス) fixes #25。沈黙バグ4件修正 fixes #24 済み。
+現状: CP/中断セーブのcoins残骸除去(85件全パス) fixes #23。自動テスト導入 fixes #25。沈黙バグ4件修正 fixes #24 済み。
 
 完了済み:
 - M1: プロトタイプ移植+50ウェーブ化+CONFIG集約+XPレベルアップ3択+必殺ゲージ
@@ -28,7 +28,7 @@
 - SPを基礎能力に限定・サブウェポンをラン内成長に移行: BARRIER/LUCK追加・v4マイグレーション・W1からサブウェポンカード出現 fixes #22
 
 残タスク:
-- [#23 [P1] チェックポイント制と中断セーブの動作検証](https://github.com/TakamasaSaito/hexa-defense/issues/23)
+- [#23 [P1] チェックポイント制と中断セーブの動作検証](https://github.com/TakamasaSaito/hexa-defense/issues/23) ← 完了(coins残骸除去・85件パス)
 - [#24 [P1] 沈黙バグの洗い出し(効果が計算に乗っているかの全数確認)](https://github.com/TakamasaSaito/hexa-defense/issues/24) ← 完了(4件修正済み)
 - [#25 [P1] 自動テストの導入](https://github.com/TakamasaSaito/hexa-defense/issues/25) ← 完了(75件パス)
 - [#26 [P2] index.htmlの構造整理](https://github.com/TakamasaSaito/hexa-defense/issues/26)
@@ -38,4 +38,4 @@
 - [#30 [P3] ドキュメントの棚卸し](https://github.com/TakamasaSaito/hexa-defense/issues/30)
 - [#31 [P3] ボスの新規追加(後半帯W35以降向け)](https://github.com/TakamasaSaito/hexa-defense/issues/31)
 
-次の一手: #23 チェックポイント制と中断セーブの動作検証(SP制移行後の整合性確認)
+次の一手: #26 index.htmlの構造整理 または 実機60fps確認
