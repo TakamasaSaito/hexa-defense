@@ -193,13 +193,20 @@ html, body { width:100%; height:100%; overflow:hidden; background:#05090f; touch
                background:rgba(77,243,255,0.06); color:#9fe8ff; font-family:'Chakra Petch',sans-serif; font-weight:700;
                font-size:12px; letter-spacing:4px; cursor:pointer; }
 
-/* タイトル追加ボタン(UPGRADE/CONTINUE/SELECT WAVE) */
+/* タイトル追加ボタン(CONTINUE) */
 .title-sub-btn { pointer-events:auto; margin-top:12px; border:none; cursor:pointer;
   font-family:'Chakra Petch',sans-serif; font-weight:700; font-size:13px; letter-spacing:3px;
   color:#4df3ff; padding:11px 32px; display:block;
   background:rgba(77,243,255,0.06); border:1px solid rgba(77,243,255,0.45);
   clip-path:polygon(10px 0,100% 0,100% calc(100% - 10px),calc(100% - 10px) 100%,0 100%,0 10px); }
 .title-sub-btn:active { background:rgba(77,243,255,0.18); }
+/* タイトル下段アイコンボタン行 */
+.title-icon-row { display:flex; gap:12px; margin-top:20px; }
+.title-icon-btn { pointer-events:auto; display:flex; flex-direction:column; align-items:center; gap:5px;
+  font-family:'Chakra Petch',sans-serif; font-weight:700; font-size:9px; letter-spacing:2px;
+  color:rgba(77,243,255,0.55); padding:10px 16px; cursor:pointer;
+  background:rgba(77,243,255,0.04); border:1px solid rgba(77,243,255,0.24); }
+.title-icon-btn:active { background:rgba(77,243,255,0.12); color:#4df3ff; }
 
 /* HELP画面 */
 .help-panel { width:min(92vw,400px); max-height:84vh; overflow-y:auto; -webkit-overflow-scrolling:touch;
@@ -629,9 +636,20 @@ html, body { width:100%; height:100%; overflow:hidden; background:#05090f; touch
     <div style="display:flex;flex-direction:column;align-items:center">
       <button class="play-btn" id="playBtn">PLAY NOW</button>
       <button class="title-sub-btn" id="continueBtn" style="display:none">CONTINUE</button>
-      <button class="title-sub-btn" id="upgradeBtn">SKILL POINTS</button>
-      <button class="title-sub-btn" id="helpBtn" style="font-size:12px;letter-spacing:4px">HELP</button>
-      <button class="title-sub-btn" id="dataBtn" style="font-size:12px;letter-spacing:4px">DATA</button>
+      <div class="title-icon-row">
+        <button class="title-icon-btn" id="upgradeBtn">
+          <svg width="18" height="18"><use href="#ic-sp"/></svg>
+          <span>SP</span>
+        </button>
+        <button class="title-icon-btn" id="helpBtn">
+          <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round"><circle cx="12" cy="12" r="10"/><path d="M9.09 9a3 3 0 0 1 5.83 1c0 2-3 3-3 3"/><line x1="12" y1="17" x2="12.01" y2="17"/></svg>
+          <span>HELP</span>
+        </button>
+        <button class="title-icon-btn" id="dataBtn">
+          <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round"><ellipse cx="12" cy="5" rx="9" ry="3"/><path d="M3 5v14c0 1.66 4.03 3 9 3s9-1.34 9-3V5"/><path d="M3 12c0 1.66 4.03 3 9 3s9-1.34 9-3"/></svg>
+          <span>DATA</span>
+        </button>
+      </div>
     </div>
     <div class="ios-hint" id="iosHint" style="display:none">ホーム画面に追加するとデータが保持されやすくなります</div>
     <div class="title-meta">
@@ -949,6 +967,18 @@ var CFG = {
   DROP_RARE_LIFE:   10.0,   /* 消滅までの秒数 */
   DROP_RARE_SIZE:   11,     /* 六角形の半径 */
   DROP_RARE_SPEED:  38,     /* タワーへの漂い速度 */
+
+  /* 一時効果(レアドロップで発動) */
+  TEMP_EFFECT_DUR:      12.0,  /* 効果持続秒数 */
+  TEMP_FLASH_DUR:        2.2,  /* 取得時フラッシュ表示秒数 */
+  REINFORCE_COUNT:          4,  /* 援軍砲台数 */
+  REINFORCE_DIST:          80,  /* タワーからの距離px */
+  REINFORCE_INTERVAL:    0.85,  /* 援軍砲台の発射間隔秒 */
+  REINFORCE_DMG_RATIO:   0.38,  /* tower.dmg 比の威力 */
+  REINFORCE_RANGE:        220,  /* 援軍砲台の射程px */
+  OVERLOAD_DMG_MULT:      2.5,  /* 過負荷時のダメージ倍率 */
+  OVERLOAD_RATE_MULT:     3.0,  /* 過負荷時の発射間隔短縮倍率 */
+  TIMEWARP_SLOW:         0.22,  /* 時間減速時の敵速度倍率 */
 
   /* 報酬ウェーブ — ボス全W5刻み(W10=RAILGUN固定, W20=OVERDRIVE固定, W50はゲーム終了) */
   REWARD_WAVES: [5, 10, 15, 20, 25, 30, 35, 40, 45],
@@ -1279,7 +1309,7 @@ var CFG = {
 
   /* W1以降にXPプールへ追加されるサブウェポンカード(v4: W1から出現・高重み) */
   CARD_SUB_WAVE:   1,
-  CARD_SUB_WEIGHT: 3,
+  CARD_SUB_WEIGHT: 4,
   CARD_POOL_SUB: [
     { id:'cardOrbital',   icon:'<svg width="22" height="22"><use href="#ic-orbital"/></svg>',   name:'公転球+',   desc:'公転球を<br>1個追加(最大6)' },
     { id:'cardSatellite', icon:'<svg width="22" height="22"><use href="#ic-satellite"/></svg>', name:'衛星砲台+', desc:'衛星砲台を<br>1基追加(最大5)' },
@@ -1405,6 +1435,10 @@ var fieldUsesLeft = 0;  /* 今ランの残使用回数 */
 var healItems = [];
 var rareItems = [];  /* レアドロップ: { x,y,life,effect } */
 var upgradeCounts = { rate: 0, dmg: 0, range: 0, speed: 0, barrier: 0, heal: 0 };
+var tempEffects = [];       /* 一時効果: { type, timer, maxTimer } */
+var reinforceTurrets = [];  /* 援軍砲台: { angle, aimAngle, fireTimer } */
+var tempEffectFlash = null; /* 取得時フラッシュ: { name, timer } */
+var timewarpSlowMult = 1.0; /* TIMEWARP中に敵速を乗算 */
 var barrierCount = 0;
 var barrierBreakTimer = 0;
 var bossesKilled = 0;  /* ラン中ボス撃破数(SP計算用) */
@@ -1827,64 +1861,97 @@ function takeDamage(dmg){
 /* =====================================================================
    レアドロップ
 ===================================================================== */
-var RARE_EFFECT_POOL = ['attrPower', 'attrRange', 'orbital', 'field', 'satellite', 'sub_turret', 'explosion', 'barrier'];
+var RARE_EFFECT_POOL = ['REINFORCE', 'OVERLOAD', 'TIMEWARP'];
 
 function spawnRareItem(x, y){
-  /* 効果プールを状況に合わせてフィルタ */
-  var pool = [];
-  var pi;
-  for(pi = 0; pi < RARE_EFFECT_POOL.length; pi++){
-    var ef = RARE_EFFECT_POOL[pi];
-    if((ef === 'attrPower' || ef === 'attrRange') && !chosenElement) continue;
-    if(ef === 'orbital'    && weapons.orbital    >= 6) continue;
-    if(ef === 'satellite'  && weapons.satellite  >= 5) continue;
-    if(ef === 'field'      && weapons.field      >= 5) continue;
-    if(ef === 'sub_turret' && weapons.subTurret  >= 4) continue;
-    if(ef === 'explosion'  && weapons.explosion  >= 3) continue;
-    pool.push(ef);
-  }
-  if(pool.length === 0) pool = ['barrier'];
-  var effect = pool[Math.floor(Math.random() * pool.length)];
+  var effect = RARE_EFFECT_POOL[Math.floor(Math.random() * RARE_EFFECT_POOL.length)];
   rareItems.push({ x: x, y: y, life: CFG.DROP_RARE_LIFE, effect: effect });
   showTutorialHint('raredrop', 'RARE DROP!', 'Gold hexagon drifts toward your tower — move close to collect it');
 }
 
 function applyRareEffect(effect, ix, iy){
-  var label = '';
-  if(effect === 'attrPower' && chosenElement){
-    var key = 'attr' + chosenElement.charAt(0).toUpperCase() + chosenElement.slice(1);
-    var oldLv = weapons[key] || 0;
-    weapons[key] = Math.min(3, oldLv + 1);
-    label = chosenElement.toUpperCase() + ' PWR+';
-  } else if(effect === 'attrRange'){
-    attrRangeMult = attrRangeMult * 1.15;
-    label = 'ATTR RNG+';
-  } else if(effect === 'orbital'){
-    weapons.orbital = Math.min(6, (weapons.orbital || 0) + 1);
-    rebuildOrbitals();
-    label = 'ORBITAL+1';
-  } else if(effect === 'field'){
-    if(weapons.field === 0){ fieldUsesLeft += CFG.FIELD_BASE_USES; }
-    else { fieldUsesLeft += CFG.FIELD_EXTRA_USES; }
-    weapons.field = Math.min(5, (weapons.field || 0) + 1);
-    label = 'FIELD +USE';
-  } else if(effect === 'satellite'){
-    weapons.satellite = Math.min(5, (weapons.satellite || 0) + 1);
-    rebuildSatellites();
-    label = 'SATELLITE+1';
-  } else if(effect === 'sub_turret'){
-    weapons.subTurret = Math.min(4, (weapons.subTurret || 0) + 1);
-    label = 'TURRET+1';
-  } else if(effect === 'explosion'){
-    weapons.explosion = Math.min(3, (weapons.explosion || 0) + 1);
-    label = 'BLAST+1';
-  } else if(effect === 'barrier'){
-    barrierCount = Math.min(CFG.BARRIER_MAX, barrierCount + 1);
-    label = 'BARRIER+1';
+  var dur = CFG.TEMP_EFFECT_DUR;
+  if(effect === 'REINFORCE') spawnReinforceTurrets();
+  var found = false, ti;
+  for(ti = 0; ti < tempEffects.length; ti++){
+    if(tempEffects[ti].type === effect){ tempEffects[ti].timer = dur; found = true; break; }
   }
-  if(label !== '') floater(ix, iy - 20, label, '#ffd257');
+  if(!found) tempEffects.push({ type: effect, timer: dur, maxTimer: dur });
+  var label = effect === 'REINFORCE' ? 'REINFORCE!' : (effect === 'OVERLOAD' ? 'OVERLOAD!' : 'TIME WARP!');
+  tempEffectFlash = { name: label, timer: CFG.TEMP_FLASH_DUR };
+  floater(ix, iy - 20, label, '#ffd257');
   playSound('rare');
   burst(ix, iy, '#ffd257', 16);
+}
+
+function hasTempEffect(type){
+  var ti;
+  for(ti = 0; ti < tempEffects.length; ti++){
+    if(tempEffects[ti].type === type) return true;
+  }
+  return false;
+}
+
+function spawnReinforceTurrets(){
+  reinforceTurrets = [];
+  var n = CFG.REINFORCE_COUNT, i;
+  for(i = 0; i < n; i++){
+    reinforceTurrets.push({ angle: Math.PI * 2 / n * i, aimAngle: 0, fireTimer: 0.3 * i });
+  }
+}
+
+function updateTempEffects(dt){
+  var ti;
+  for(ti = tempEffects.length - 1; ti >= 0; ti--){
+    tempEffects[ti].timer -= dt;
+    if(tempEffects[ti].timer <= 0){
+      if(tempEffects[ti].type === 'REINFORCE') reinforceTurrets = [];
+      tempEffects.splice(ti, 1);
+    }
+  }
+  timewarpSlowMult = hasTempEffect('TIMEWARP') ? CFG.TIMEWARP_SLOW : 1.0;
+}
+
+function updateReinforceTurrets(dt){
+  if(reinforceTurrets.length === 0) return;
+  var sCombatants = enemies.slice(), ri, rj;
+  if(boss !== null) sCombatants.push(boss);
+  for(ri = 0; ri < reinforceTurrets.length; ri++){
+    var rt = reinforceTurrets[ri];
+    var rx = cx() + Math.cos(rt.angle) * CFG.REINFORCE_DIST;
+    var ry = cy() + Math.sin(rt.angle) * CFG.REINFORCE_DIST;
+    var rtarget = null, rbest = 1e9;
+    for(rj = 0; rj < sCombatants.length; rj++){
+      var rc = sCombatants[rj];
+      var rdx = rc.x - rx, rdy = rc.y - ry;
+      var rdd = rdx * rdx + rdy * rdy;
+      if(rdd < CFG.REINFORCE_RANGE * CFG.REINFORCE_RANGE && rdd < rbest){ rbest = rdd; rtarget = rc; }
+    }
+    rt.fireTimer -= dt;
+    if(rtarget){
+      var rta = Math.atan2(rtarget.y - ry, rtarget.x - rx);
+      var rdiff2 = rta - rt.aimAngle;
+      while(rdiff2 >  Math.PI) rdiff2 -= Math.PI * 2;
+      while(rdiff2 < -Math.PI) rdiff2 += Math.PI * 2;
+      rt.aimAngle += rdiff2 * Math.min(1, dt * 8);
+      if(rt.fireTimer <= 0){
+        rt.fireTimer = CFG.REINFORCE_INTERVAL;
+        var rDmg = tower.dmg * CFG.REINFORCE_DMG_RATIO;
+        var rAng = rt.aimAngle;
+        bullets.push({
+          x: rx + Math.cos(rAng) * 14,
+          y: ry + Math.sin(rAng) * 14,
+          vx: Math.cos(rAng) * tower.bulletSpeed,
+          vy: Math.sin(rAng) * tower.bulletSpeed,
+          life: CFG.BULLET_LIFE, dmg: rDmg, pierceLeft: 0,
+          r: 4, bcolor: '#ffcc44', bglow: '#ffaa00', exploded: false
+        });
+        playSound('shoot');
+      }
+    } else {
+      if(rt.fireTimer < 0) rt.fireTimer = 0;
+    }
+  }
 }
 
 /* =====================================================================
@@ -2274,6 +2341,7 @@ function resetGame(){
   healItems = []; rareItems = [];
   upgradeCounts = { rate: 0, dmg: 0, range: 0, speed: 0, barrier: 0, heal: 0 };
   barrierCount = 0; barrierBreakTimer = 0; bossesKilled = 0;
+  tempEffects = []; reinforceTurrets = []; tempEffectFlash = null; timewarpSlowMult = 1.0;
   enemies = []; bullets = []; missiles = []; particles = []; floaters = []; enemyBullets = [];
   missileTimer = 0;
   boss = null; warningTimer = 0; bossSpawnFn = null; newEnemyAlert = null; tutorialHint = null;
@@ -2899,6 +2967,11 @@ function loop(t){
       tutorialHint.timer -= dt;
       if(tutorialHint.timer <= 0) tutorialHint = null;
     }
+    /* 一時効果フラッシュタイマー(実時間) */
+    if(tempEffectFlash !== null){
+      tempEffectFlash.timer -= dt;
+      if(tempEffectFlash.timer <= 0) tempEffectFlash = null;
+    }
     if(shakeTimer > 0){
       shakeTimer -= dt;
       shakeX = (Math.random() - 0.5) * 2 * shakeMag;
@@ -3140,7 +3213,7 @@ function update(dt){
       e.rot += e.rotSpd * dt;
       continue;
     }
-    var effSpd = e.speed * (e.slowIce ? e.slowIce.mult : 1.0);
+    var effSpd = e.speed * (e.slowIce ? e.slowIce.mult : 1.0) * timewarpSlowMult;
     if(e.type === 'sniper'){
       moveSniper(e, dt);
     } else if(e.type === 'weaver'){
@@ -3193,7 +3266,8 @@ function update(dt){
 
     fireTimer -= dt;
     if(fireTimer <= 0){
-      fireTimer = tower.fireInterval;
+      var overloadOn = hasTempEffect('OVERLOAD');
+      fireTimer = overloadOn ? tower.fireInterval / CFG.OVERLOAD_RATE_MULT : tower.fireInterval;
       var pierceMax = CFG.PIERCE_LV[Math.min(weapons.pierce, CFG.PIERCE_LV.length - 1)];
       var streamCount = Math.min(4, upgradeCounts.rate + 1);
       var dmgLv = Math.min(4, upgradeCounts.dmg);
@@ -3201,7 +3275,7 @@ function update(dt){
       var bColor  = CFG.BULLET_DMG_COLORS[dmgLv];
       var bGlow   = CFG.BULLET_DMG_GLOWS[dmgLv];
       var spreads = CFG.BULLET_STREAM_SPREADS[streamCount - 1];
-      var bDmg    = tower.dmg / streamCount;
+      var bDmg    = (overloadOn ? tower.dmg * CFG.OVERLOAD_DMG_MULT : tower.dmg) / streamCount;
       var bAttr = getBulletAttrColor(bColor, bGlow);
       for(var ssi = 0; ssi < streamCount; ssi++){
         var ssa = turretAngle + spreads[ssi];
@@ -3442,6 +3516,10 @@ function update(dt){
 
   /* ボス処理 */
   if(boss !== null) updateBoss(dt);
+
+  /* 一時効果タイマー・援軍砲台 */
+  updateTempEffects(dt);
+  updateReinforceTurrets(dt);
 
   /* サブ砲台発射 */
   if(weapons.subTurret > 0) updateSubTurrets(dt);
@@ -4596,6 +4674,29 @@ function drawBossLayer(tm){
 
 function drawSubWeaponsLayer(tm){
   var j;
+  /* 援軍砲台(一時効果 REINFORCE) */
+  if(reinforceTurrets.length > 0){
+    var reTimer = 0, reti;
+    for(reti = 0; reti < tempEffects.length; reti++){
+      if(tempEffects[reti].type === 'REINFORCE'){ reTimer = tempEffects[reti].timer; break; }
+    }
+    var reAlpha = Math.min(1.0, reTimer * 2.0);
+    var rePulse = 0.65 + 0.35 * Math.abs(Math.sin(tm * 3.5));
+    for(var rdi = 0; rdi < reinforceTurrets.length; rdi++){
+      var rdt = reinforceTurrets[rdi];
+      var rtx = cx() + Math.cos(rdt.angle) * CFG.REINFORCE_DIST;
+      var rty = cy() + Math.sin(rdt.angle) * CFG.REINFORCE_DIST;
+      ctx.save();
+      ctx.globalAlpha = reAlpha * rePulse;
+      ctx.translate(rtx, rty);
+      ctx.shadowColor = '#ff9944'; ctx.shadowBlur = 14;
+      ctx.strokeStyle = 'rgba(255,153,68,0.9)'; ctx.lineWidth = 2;
+      hexPath(10, -hexRot * 2); ctx.stroke();
+      ctx.rotate(rdt.aimAngle);
+      ctx.fillStyle = '#ffcc88'; ctx.fillRect(7, -2, 10, 4);
+      ctx.shadowBlur = 0; ctx.globalAlpha = 1; ctx.restore();
+    }
+  }
   /* サブ砲台 */
   for(var si = 0; si < weapons.subTurret && si < CFG.SUB_TURRET_OFFSETS.length; si++){
     var soff = CFG.SUB_TURRET_OFFSETS[si];
@@ -4811,6 +4912,41 @@ function drawHUDLayer(tm){
     ctx.fillStyle = 'rgba(200,235,255,0.90)';
     ctx.font = '600 ' + thSml + 'px "Rajdhani", Arial';
     ctx.fillText(tutorialHint.text, cx(), thY + thBig + 4);
+    ctx.shadowBlur = 0; ctx.restore();
+    ctx.globalAlpha = 1;
+  }
+  /* 一時効果HUD(残り時間バー) */
+  if(tempEffects.length > 0){
+    var tehX = 14, tehY = H - 14, tehi;
+    for(tehi = tempEffects.length - 1; tehi >= 0; tehi--){
+      var te = tempEffects[tehi];
+      var teRatio = te.timer / te.maxTimer;
+      var teColor = te.type === 'REINFORCE' ? '#ff9944' : (te.type === 'OVERLOAD' ? '#ffd257' : '#aa66ff');
+      tehY -= 30;
+      ctx.save();
+      ctx.fillStyle = 'rgba(4,10,24,0.82)';
+      ctx.fillRect(tehX, tehY, 136, 22);
+      ctx.shadowColor = teColor; ctx.shadowBlur = 8;
+      ctx.fillStyle = teColor;
+      ctx.fillRect(tehX + 2, tehY + 16, Math.floor((136 - 4) * teRatio), 4);
+      ctx.shadowBlur = 0;
+      ctx.font = '700 11px "Chakra Petch", Arial';
+      ctx.textAlign = 'left';
+      ctx.fillStyle = teColor;
+      ctx.fillText(te.type + '  ' + Math.ceil(te.timer) + 's', tehX + 5, tehY + 12);
+      ctx.restore();
+    }
+  }
+  /* 一時効果取得フラッシュ */
+  if(tempEffectFlash !== null){
+    var tfRatio = tempEffectFlash.timer / CFG.TEMP_FLASH_DUR;
+    var tfFade = tfRatio > 0.7 ? 1.0 : (tfRatio / 0.7);
+    ctx.save(); ctx.textAlign = 'center';
+    ctx.globalAlpha = tfFade * 0.95;
+    ctx.shadowColor = '#ffd257'; ctx.shadowBlur = 36;
+    ctx.fillStyle = '#ffd257';
+    ctx.font = '700 ' + Math.floor(Math.min(W, H) * 0.066) + 'px "Chakra Petch", Arial';
+    ctx.fillText(tempEffectFlash.name, cx(), cy() - Math.floor(H * 0.16));
     ctx.shadowBlur = 0; ctx.restore();
     ctx.globalAlpha = 1;
   }
@@ -5187,6 +5323,19 @@ function draw(tm, dt){
   }
   ctx.globalAlpha = 1;
 
+  /* TIMEWARP中: 画面エッジ紫グロー */
+  if(hasTempEffect('TIMEWARP')){
+    var twAlpha = 0.06 + 0.04 * Math.abs(Math.sin(tm * 2.0));
+    ctx.save();
+    ctx.globalAlpha = twAlpha;
+    var twGrad = ctx.createRadialGradient(cx(), cy(), Math.min(W, H) * 0.28, cx(), cy(), Math.max(W, H) * 0.82);
+    twGrad.addColorStop(0, 'rgba(80,40,180,0)');
+    twGrad.addColorStop(1, 'rgba(100,50,220,0.9)');
+    ctx.fillStyle = twGrad;
+    ctx.fillRect(0, 0, W, H);
+    ctx.globalAlpha = 1; ctx.restore();
+  }
+
   /* 敵 */
   drawEnemiesLayer(tm);
 
@@ -5533,6 +5682,7 @@ function suspendRun(){
   satellites = []; fields = []; fieldCooldown = 0; fieldUsesLeft = 0;
   missileTimer = 0;
   boss = null; warningTimer = 0; bossSpawnFn = null; newEnemyAlert = null; hideBossBar();
+  tempEffects = []; reinforceTurrets = []; tempEffectFlash = null; timewarpSlowMult = 1.0;
   document.getElementById('hudEl').style.display = 'none';
   document.getElementById('specialArea').style.display = 'none';
   showScreen('scrTitle');
@@ -5550,6 +5700,7 @@ function resumeRun(){
   subTurretAngles = [0, 0, 0, 0]; subTurretFireTimers = [0, 0, 0, 0];
   pendingLevelUps = 0; pendingSteps = 0;
   flashTimer = 0; shakeTimer = 0; hideBossBar();
+  tempEffects = []; reinforceTurrets = []; tempEffectFlash = null; timewarpSlowMult = 1.0;
 
   /* セーブ状態を復元 */
   wave            = sr.wave;
@@ -5824,7 +5975,7 @@ function openHelp(){
     '<div class="help-row"><span class="help-kw">BEAM</span> 10秒間 持続レーザー。ドラッグで向き変更(100%消費). W15解放</div>' +
     '<div class="help-sec">LEVEL UP CARDS</div>' +
     '<div class="help-row">敵を倒してXPを貯めるとレベルアップ。3択カードで任意の強化を選ぶ</div>' +
-    '<div class="help-row">W11以降はサブウェポン強化カードも出現(高確率)</div>' +
+    '<div class="help-row">W1以降はサブウェポン強化カードも出現(高確率)。レベルアップでのみサブウェポンが増える</div>' +
     '<div class="help-sec">ELEMENT (W5選択)</div>' +
     '<div class="help-row"><span class="help-kw">FIRE</span> 着弾後に継続ダメージ(DoT). 単体硬い敵に有効</div>' +
     '<div class="help-row"><span class="help-kw">ICE</span> 命中した敵を減速. 生存優先・時間稼ぎ向き</div>' +
@@ -5839,8 +5990,11 @@ function openHelp(){
     '<div class="help-row">タワー周囲に六角形シェル。ダメージを1回完全無効化(最大3枚)</div>' +
     '<div class="help-row">レベルアップカード「BARRIER+1」で取得</div>' +
     '<div class="help-sec">RARE DROP (金色六角形)</div>' +
-    '<div class="help-row">敵撃破時・ボス撃破時にランダムドロップ</div>' +
-    '<div class="help-row">タワーに近づくと自動取得。武器強化・バリア・属性強化などの効果</div>' +
+    '<div class="help-row">敵撃破時・ボス撃破時にランダムドロップ。タワーに近づくと自動取得</div>' +
+    '<div class="help-row"><span class="help-kw">REINFORCE</span> ' + String(CFG.TEMP_EFFECT_DUR) + '秒間、周囲に援軍砲台(' + String(CFG.REINFORCE_COUNT) + '基)が出現して自動射撃</div>' +
+    '<div class="help-row"><span class="help-kw">OVERLOAD</span> ' + String(CFG.TEMP_EFFECT_DUR) + '秒間、主砲の発射速度x' + String(CFG.OVERLOAD_RATE_MULT) + '・ダメージx' + String(CFG.OVERLOAD_DMG_MULT) + 'に上昇</div>' +
+    '<div class="help-row"><span class="help-kw">TIME WARP</span> ' + String(CFG.TEMP_EFFECT_DUR) + '秒間、全敵の移動速度を大幅に低下させる</div>' +
+    '<div class="help-row">効果はLUCK投資で発生頻度が上がる。重複取得でタイマーを延長</div>' +
     '<div class="help-sec">SKILL POINTS (SP)</div>' +
     '<div class="help-row">ゲーム終了時に到達ウェーブ+ボス撃破数に応じて獲得</div>' +
     '<div class="help-row">タイトル「SKILL POINTS」画面でATK/DEF/SPD/BARRIERなどに恒久投資</div>' +
